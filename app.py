@@ -4,10 +4,11 @@ import json
 import tempfile
 import asyncio
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+import edge_tts
 
 # Initialize Faster-Whisper
 whisper_model = None
@@ -159,6 +160,23 @@ LESSONS = [
 @app.get("/api/academy/lessons")
 async def get_lessons():
     return LESSONS
+
+@app.get("/api/audio/tts")
+async def generate_pilot_voice(text: str = Query(..., min_length=1), voice: str = "en-US-GuyNeural"):
+    """
+    Generate natural pilot radio speech via edge-tts.
+    Bypasses Linux host missing speech-dispatcher/festival libraries completely!
+    """
+    try:
+        communicate = edge_tts.Communicate(text, voice)
+        mp3_bytes = bytearray()
+        async for chunk in communicate.stream():
+            if chunk.get("type") == "audio" and "data" in chunk:
+                mp3_bytes.extend(chunk["data"]) # type: ignore
+        return Response(content=bytes(mp3_bytes), media_type="audio/mpeg")
+    except Exception as e:
+        print(f"TTS Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/stt/transcribe")
 async def transcribe_audio(

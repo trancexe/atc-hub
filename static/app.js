@@ -202,25 +202,44 @@ function playRadioChirp() {
   }
 }
 
-function speakPilotReadback(text) {
-  if (!('speechSynthesis' in window)) return;
+async function speakPilotReadback(text) {
   playRadioChirp();
 
-  setTimeout(() => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.05;
-    utterance.pitch = 0.95;
+  try {
+    // Primary: High-fidelity natural cockpit voice via Edge-TTS backend
+    // Works flawlessly on Linux/Firefox without speech-dispatcher dependencies!
+    const audioUrl = `/api/audio/tts?text=${encodeURIComponent(text)}&voice=en-US-GuyNeural`;
+    const audio = new Audio(audioUrl);
     
-    const voices = window.speechSynthesis.getVoices();
-    const enVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
-    if (enVoice) utterance.voice = enVoice;
-
-    utterance.onend = () => {
+    audio.onended = () => {
       playRadioChirp();
     };
 
+    audio.onerror = () => {
+      // Fallback to browser speechSynthesis if network fails
+      fallbackBrowserSpeech(text);
+    };
+
+    await audio.play();
+  } catch (err) {
+    fallbackBrowserSpeech(text);
+  }
+}
+
+function fallbackBrowserSpeech(text) {
+  if (!('speechSynthesis' in window)) return;
+  try {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = 0.95;
+    const voices = window.speechSynthesis.getVoices();
+    const enVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+    if (enVoice) utterance.voice = enVoice;
+    utterance.onend = () => { playRadioChirp(); };
     window.speechSynthesis.speak(utterance);
-  }, 100);
+  } catch (e) {
+    console.warn("speechSynthesis error:", e);
+  }
 }
 
 // Media Recorder for Push-To-Talk
