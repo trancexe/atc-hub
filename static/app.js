@@ -40,11 +40,11 @@ const refLat = -6.12557;
 const refLon = 106.655998;
 const BASE_SCALE = 60000;
 
-// Simulation aircraft
+// Simulation aircraft with Strict ICAO Standard Callsigns & Telephony
 let aircraft = [
   {
-    id: "GIA123",
-    callsign: "Garuda 123",
+    id: "GIA502",
+    callsign: "INDONESIA 502",
     airline: "Garuda Indonesia",
     type: "B738",
     lat: -6.1265,
@@ -58,8 +58,8 @@ let aircraft = [
     squawk: "4215"
   },
   {
-    id: "LNI456",
-    callsign: "Lion 456",
+    id: "LNI650",
+    callsign: "LION INTER 650",
     airline: "Lion Air",
     type: "A333",
     lat: -6.1800,
@@ -71,51 +71,66 @@ let aircraft = [
     state: "APPROACH",
     clearedRwy: "25L",
     squawk: "5521"
+  },
+  {
+    id: "CTV712",
+    callsign: "SUPERGREEN 712",
+    airline: "Citilink",
+    type: "A320",
+    lat: -6.1285,
+    lon: 106.6490,
+    heading: 70,
+    altitude: 0,
+    groundSpeed: 15,
+    targetHeading: 70,
+    state: "TAXI",
+    clearedRwy: "25R",
+    squawk: "3312"
   }
 ];
 
 let selectedAircraftIndex = 0;
 
-// Easy Mode Dynamic Prompts by Aircraft State
+// Easy Mode Dynamic Prompts by Aircraft State (Strict ICAO Standard Telephony)
 const stateInstructions = {
   "GATE": {
     context: "Pesawat parkir di Terminal 3, siap pushback dan engine start.",
-    speech: "Garuda 123 push and start approved, facing west",
+    speech: "Indonesia 502 push and start approved, facing west",
     actionDesc: "Pushback & Start Approved"
   },
   "PUSHBACK": {
-    context: "Pesawat selesai pushback, meminta izin taxi menuju Runway 25R.",
-    speech: "Garuda 123 taxi to holding point runway 25R via NC1",
+    context: "Pesawat selesai pushback, meminta izin taxi menuju holding point Runway 25R.",
+    speech: "Indonesia 502 taxi to holding point runway 25R via NC1, N2",
     actionDesc: "Taxi Clearance via NC1"
   },
   "TAXI": {
     context: "Pesawat tiba di holding point Runway 25R, runway sedang ada traffic mendarat.",
-    speech: "Garuda 123 line up and wait runway 25R",
+    speech: "Indonesia 502 line up and wait runway 25R",
     actionDesc: "Line up and wait"
   },
   "LINE_UP": {
     context: "Runway sudah bebas dan aman untuk keberangkatan, angin 250 derajat 8 knot.",
-    speech: "Garuda 123 wind 250 at 8 knots, runway 25R cleared for takeoff",
+    speech: "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff",
     actionDesc: "Cleared for Takeoff"
   },
   "DEPARTURE": {
     context: "Pesawat sudah airborne, kontak Jakarta Radar untuk climb cruise.",
-    speech: "Garuda 123 contact Jakarta Radar 125 decimal 1",
+    speech: "Indonesia 502 contact Jakarta Radar 125 decimal 1",
     actionDesc: "Contact Radar"
   },
   "APPROACH": {
-    context: "Lion 456 mendekat via STAR DOLTA 1A, arahkan intercept localizer ILS 25L.",
-    speech: "Lion 456 descend to 3000 feet, cleared ILS runway 25L",
+    context: "Lion Inter 650 mendekat via STAR DOLTA 1A, arahkan intercept localizer ILS 25L.",
+    speech: "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L",
     actionDesc: "Descend & Cleared ILS"
   },
   "FINAL": {
-    context: "Lion 456 sudah di short final 3 mile, runway 25L clear.",
-    speech: "Lion 456 runway 25L cleared to land, wind 250 at 6",
+    context: "Lion Inter 650 sudah di short final 3 mile, runway 25L clear.",
+    speech: "Lion Inter 650 runway 25L cleared to land, wind 250 at 6",
     actionDesc: "Cleared to Land"
   },
   "LANDED": {
     context: "Pesawat sudah mendarat dan memperlambat laju, arahkan keluar via exit taxiway.",
-    speech: "Lion 456 vacate runway via taxiway South Charlie, taxi to Terminal 2",
+    speech: "Lion Inter 650 vacate runway via taxiway South Charlie, taxi to Terminal 2",
     actionDesc: "Vacate & Taxi to Gate"
   }
 };
