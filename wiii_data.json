@@ -67436,5 +67436,163 @@
         ]
       ]
     }
+  ],
+  "airways": [
+    {
+      "id": "W12",
+      "type": "RNAV / ATS",
+      "color": "rgba(147, 197, 253, 0.45)",
+      "handoff_point": "BUNTO / KRAKE",
+      "coords": [
+        [
+          -5.9,
+          105.8
+        ],
+        [
+          -6.02,
+          106.28
+        ],
+        [
+          -6.1275,
+          106.658
+        ],
+        [
+          -6.12,
+          106.95
+        ],
+        [
+          -6.2,
+          107.5
+        ]
+      ]
+    },
+    {
+      "id": "B470",
+      "type": "ATS Route",
+      "color": "rgba(167, 139, 250, 0.45)",
+      "handoff_point": "DOLTA / GOMBA",
+      "coords": [
+        [
+          -5.7,
+          106.85
+        ],
+        [
+          -5.92,
+          106.75
+        ],
+        [
+          -6.05,
+          106.72
+        ],
+        [
+          -6.1275,
+          106.658
+        ],
+        [
+          -6.345,
+          106.72
+        ],
+        [
+          -6.65,
+          106.85
+        ]
+      ]
+    },
+    {
+      "id": "M766",
+      "type": "RNAV Upper",
+      "color": "rgba(52, 211, 153, 0.45)",
+      "handoff_point": "KRAKE",
+      "coords": [
+        [
+          -5.6,
+          105.7
+        ],
+        [
+          -6.02,
+          106.28
+        ],
+        [
+          -5.95,
+          106.45
+        ],
+        [
+          -6.1275,
+          106.658
+        ]
+      ]
+    },
+    {
+      "id": "W17",
+      "type": "Domestic Lower",
+      "color": "rgba(251, 191, 36, 0.45)",
+      "handoff_point": "RAKIT",
+      "coords": [
+        [
+          -6.1275,
+          106.658
+        ],
+        [
+          -6.25,
+          106.4
+        ],
+        [
+          -6.55,
+          106.1
+        ]
+      ]
+    }
+  ],
+  "handoff_points": [
+    {
+      "id": "DOLTA",
+      "name": "DOLTA (SE GATEWAY)",
+      "sector": "JAKARTA CENTER (SOUTH)",
+      "freq": "128.5 MHz",
+      "inbound_level": "FL140 or descending",
+      "outbound_level": "Climbing FL240+",
+      "lat": -6.345,
+      "lon": 106.72
+    },
+    {
+      "id": "BUNTO",
+      "name": "BUNTO (EAST GATEWAY)",
+      "sector": "JAKARTA CENTER (EAST)",
+      "freq": "132.8 MHz",
+      "inbound_level": "FL150 or descending",
+      "outbound_level": "Climbing FL260+",
+      "lat": -6.12,
+      "lon": 106.95
+    },
+    {
+      "id": "KRAKE",
+      "name": "KRAKE (WEST GATEWAY)",
+      "sector": "JAKARTA CENTER (WEST)",
+      "freq": "124.6 MHz",
+      "inbound_level": "FL160 or descending",
+      "outbound_level": "Climbing FL240+",
+      "lat": -6.02,
+      "lon": 106.28
+    },
+    {
+      "id": "GOMBA",
+      "name": "GOMBA (NORTH GATEWAY)",
+      "sector": "JAKARTA CENTER (NORTH)",
+      "freq": "134.2 MHz",
+      "inbound_level": "FL140 or descending",
+      "outbound_level": "Climbing FL220+",
+      "lat": -5.92,
+      "lon": 106.75
+    },
+    {
+      "id": "RAKIT",
+      "name": "RAKIT (SW GATEWAY)",
+      "sector": "JAKARTA CENTER (SW)",
+      "freq": "125.1 MHz",
+      "inbound_level": "FL120 or descending",
+      "outbound_level": "Climbing FL180+",
+      "lat": -6.25,
+      "lon": 106.4
+    }
   ]
 }
