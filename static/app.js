@@ -748,7 +748,8 @@ function drawGroundScreen() {
     if (st.zoom > 2.0) {
       ctx.font = "bold 9px 'Share Tech Mono'";
       ctx.fillStyle = "#fde68a";
-      ctx.fillText(`HOLD ${hp.ref || ''}`, p.x + 5, p.y + 3);
+      const hpName = hp.name || hp.ref || 'STOP BAR';
+      ctx.fillText(`HOLD ${hpName}`, p.x + 5, p.y + 3);
     }
   });
 
@@ -1369,26 +1370,26 @@ function executePushbackMovement(ac) {
 }
 
 function executeTaxiMovement(ac) {
-  // Use exact real taxiway centerline points from OSM graph (NC6 to HP 25R)
-  const points = (airportData && airportData.routes && airportData.routes.taxi_nc6_to_rwy25r) 
-    ? airportData.routes.taxi_nc6_to_rwy25r.map(p => ({ lat: p[0], lon: p[1] }))
-    : ((airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r)
-        ? airportData.routes.gate_e1_to_rwy25r.map(p => ({ lat: p[0], lon: p[1] }))
+  // Use exact real taxiway centerline points from OSM graph (NC6 to HP N2 on RWY 25R)
+  const points = (airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2) 
+    ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
+    : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_rwy25r)
+        ? airportData.routes.taxi_nc6_to_rwy25r.map(p => ({ lat: p[0], lon: p[1] }))
         : flightRouteMission.taxiwayPoints);
 
   let ptIdx = 0;
 
   function moveNextTaxiNode() {
     if (ptIdx >= points.length) {
-      // Arrived precisely at Holding Point 25R! Stop bar lock.
+      // Arrived precisely at Holding Point N2! Stop bar lock.
       ac.groundSpeed = 0;
-      // Exact stop coordinates at HP 25R (-6.110065, 106.669746)
+      // Exact stop coordinates at HP N2 (-6.1104895, 106.6679684)
       ac.lat = points[points.length - 1].lat;
       ac.lon = points[points.length - 1].lon;
-      ac.heading = 250; // Aligned towards Runway 25R threshold
+      ac.heading = 335; // Aligned along Taxiway N2 facing holding bar into Runway 25R
       ac.state = "HOLDING";
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, holding point runway two five right, ready for departure.";
+      ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, holding point November two runway two five right, ready for departure.";
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
@@ -1416,7 +1417,7 @@ function executeTaxiMovement(ac) {
     const hdgDiff = Math.abs((targetHdg - ac.heading + 540) % 360 - 180);
     ac.groundSpeed = hdgDiff > 20 ? 8 : 15;
 
-    // Realistic step timing: ~70-80 seconds for the entire 2.7 km taxiway journey
+    // Realistic step timing
     const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
     const totalSteps = Math.max(10, Math.round(distDeg * 110000));
     let step = 0;
@@ -1448,62 +1449,95 @@ function executeTaxiMovement(ac) {
 }
 
 function executeLineUpMovement(ac) {
-  let step = 0;
-  const totalSteps = 80;
-  const startLat = ac.lat;
-  const startLon = ac.lon;
-  const target = flightRouteMission.runwayLineUp;
+  // Continuous, unbroken lead-in curve from HP N2 across Way 747840866 into Runway 25R threshold
+  const entryNodes = (airportData && airportData.routes && airportData.routes.runway_25r_entry_lineup)
+    ? airportData.routes.runway_25r_entry_lineup.map(p => ({ lat: p[0], lon: p[1] }))
+    : [
+        { lat: -6.110490, lon: 106.667968 },
+        { lat: -6.109798, lon: 106.667797 },
+        { lat: -6.109270, lon: 106.668258 },
+        { lat: -6.108959, lon: 106.669062 }
+      ];
 
-  const lineInterval = setInterval(() => {
-    step++;
-    const prog = step / totalSteps;
-    ac.lat = startLat + (target.lat - startLat) * prog;
-    ac.lon = startLon + (target.lon - startLon) * prog;
-    ac.heading = 250;
-    ac.groundSpeed = 10;
-    renderAllScreens();
+  let eIdx = 1;
+  ac.groundSpeed = 10;
 
-    if (step >= totalSteps) {
-      clearInterval(lineInterval);
+  function moveNextEntryNode() {
+    if (eIdx >= entryNodes.length) {
+      // Perfectly lined up on Runway 25R centerline threshold!
       ac.groundSpeed = 0;
+      const lastPt = entryNodes[entryNodes.length - 1];
+      ac.lat = lastPt.lat;
+      ac.lon = lastPt.lon;
+      ac.heading = 250; // Aligned perfectly down the runway
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
+      return;
     }
-  }, 100);
+
+    const targetPt = entryNodes[eIdx];
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+
+    const dLat = targetPt.lat - startLat;
+    const dLon = targetPt.lon - startLon;
+    let targetHdg = ac.heading;
+    if (Math.abs(dLat) > 0.000001 || Math.abs(dLon) > 0.000001) {
+      const angleRad = Math.atan2(dLat, dLon * Math.cos(startLat * Math.PI / 180));
+      targetHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
+    }
+
+    const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
+    const totalSteps = Math.max(12, Math.round(distDeg * 110000));
+    let step = 0;
+
+    const entryInterval = setInterval(() => {
+      step++;
+      const prog = step / totalSteps;
+      ac.lat = startLat + (targetPt.lat - startLat) * prog;
+      ac.lon = startLon + (targetPt.lon - startLon) * prog;
+
+      const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
+      ac.heading = Math.round((ac.heading + angleDelta * 0.18 + 360) % 360);
+
+      renderAllScreens();
+
+      if (step >= totalSteps) {
+        clearInterval(entryInterval);
+        ac.lat = targetPt.lat;
+        ac.lon = targetPt.lon;
+        ac.heading = targetHdg;
+        eIdx++;
+        moveNextEntryNode();
+      }
+    }, 75);
+  }
+
+  moveNextEntryNode();
 }
 
 function executeTakeoffMovement(ac) {
-  let step = 0;
-  // Realistic takeoff roll on 3,600m runway: ~22-25 seconds to reach Vr (150 kts)
-  const totalSteps = 220;
-  const startLat = ac.lat;
-  const startLon = ac.lon;
-  const target = flightRouteMission.runwayRollEnd;
+  // Continuous real runway centerline roll along Runway 25R (Way 28141931)
+  const rollNodes = (airportData && airportData.routes && airportData.routes.runway_25r_takeoff_roll)
+    ? airportData.routes.runway_25r_takeoff_roll.map(p => ({ lat: p[0], lon: p[1] }))
+    : [
+        { lat: -6.108959, lon: 106.669062 },
+        { lat: -6.113463, lon: 106.657748 },
+        { lat: -6.117106, lon: 106.648619 },
+        { lat: -6.120986, lon: 106.638883 }
+      ];
 
-  const rollInterval = setInterval(() => {
-    step++;
-    const prog = step / totalSteps;
-    const accelProg = Math.pow(prog, 1.4);
-    ac.lat = startLat + (target.lat - startLat) * accelProg;
-    ac.lon = startLon + (target.lon - startLon) * accelProg;
-    ac.groundSpeed = Math.round(5 + accelProg * 155);
-    
-    if (prog > 0.65) {
-      const climbProg = (prog - 0.65) / 0.35;
-      ac.altitude = Math.round(climbProg * 1200);
-    } else {
-      ac.altitude = 0;
-    }
-    renderAllScreens();
+  let rIdx = 1;
+  const totalRollPoints = rollNodes.length;
 
-    if (step >= totalSteps) {
-      clearInterval(rollInterval);
+  function moveNextRollNode() {
+    if (rIdx >= totalRollPoints) {
       ac.state = "AIRBORNE";
       ac.hasCheckedIn = false;
       ac.groundSpeed = 185;
-      ac.altitude = 1200;
-      ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, airborne runway two five right passing one thousand two hundred feet.";
+      ac.altitude = 1500;
+      ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, airborne runway two five right passing one thousand five hundred feet.";
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
@@ -1511,8 +1545,51 @@ function executeTakeoffMovement(ac) {
       setTimeout(() => {
         triggerPilotCheckIn(ac);
       }, 1000);
+      return;
     }
-  }, 100);
+
+    const targetPt = rollNodes[rIdx];
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+
+    const progOverall = rIdx / totalRollPoints;
+    ac.groundSpeed = Math.round(15 + Math.pow(progOverall, 1.3) * 145);
+
+    if (progOverall > 0.55) {
+      const climbP = (progOverall - 0.55) / 0.45;
+      ac.altitude = Math.round(climbP * 1500);
+    } else {
+      ac.altitude = 0;
+    }
+
+    const dLat = targetPt.lat - startLat;
+    const dLon = targetPt.lon - startLon;
+    const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
+    // Faster steps as aircraft accelerates down the runway
+    const stepSpeedFactor = Math.max(25000, 90000 - ac.groundSpeed * 400);
+    const totalSteps = Math.max(6, Math.round(distDeg * stepSpeedFactor));
+    let step = 0;
+
+    const rollStepInterval = setInterval(() => {
+      step++;
+      const prog = step / totalSteps;
+      ac.lat = startLat + (targetPt.lat - startLat) * prog;
+      ac.lon = startLon + (targetPt.lon - startLon) * prog;
+      ac.heading = 250;
+
+      renderAllScreens();
+
+      if (step >= totalSteps) {
+        clearInterval(rollStepInterval);
+        ac.lat = targetPt.lat;
+        ac.lon = targetPt.lon;
+        rIdx++;
+        moveNextRollNode();
+      }
+    }, 45);
+  }
+
+  moveNextRollNode();
 }
 
 function executeClimbEnroute(ac) {
