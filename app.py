@@ -1,5 +1,6 @@
 import os
-import io
+import os
+import re
 import json
 import tempfile
 import asyncio
@@ -222,11 +223,14 @@ async def transcribe_audio(
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+        parsed = sanitize_and_normalize(transcript)
         score = calculate_score(transcript, target_text) if target_text else 100
 
         return JSONResponse({
             "success": True,
             "text": transcript.strip(),
+            "normalized": parsed["normalized"],
+            "parsed": parsed,
             "duration": duration,
             "score": score
         })
@@ -235,19 +239,136 @@ async def transcribe_audio(
         print(f"Transcribe error: {e}")
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
+# Normalizer dictionary: spoken / phonetic numbers & common speech artifacts
+NUMBER_WORDS = {
+    "zero": "0", "one": "1", "won": "1", "two": "2", "to": "2", "too": "2",
+    "three": "3", "tree": "3", "four": "4", "fower": "4", "for": "4",
+    "five": "5", "fife": "5", "six": "6", "seven": "7", "eight": "8", "ate": "8",
+    "nine": "9", "niner": "9"
+}
+
+PHONETIC_ALPHABET = {
+    "alpha": "A", "alfa": "A", "bravo": "B", "charlie": "C", "delta": "D",
+    "echo": "E", "foxtrot": "F", "golf": "G", "hotel": "H", "india": "I",
+    "juliett": "J", "juliet": "J", "kilo": "K", "lima": "L", "mike": "M",
+    "november": "N", "oscar": "O", "papa": "P", "quebec": "Q", "romeo": "R",
+    "sierra": "S", "tango": "T", "uniform": "U", "victor": "V", "whiskey": "W",
+    "x-ray": "X", "xray": "X", "yankee": "Y", "zulu": "Z"
+}
+
+AVIATION_SYNONYMS = {
+    "the send": "descend",
+    "the sand": "descend",
+    "disend": "descend",
+    "claim": "climb",
+    "flight level": "fl",
+    "run way": "runway",
+    "one way": "runway",
+    "ran way": "runway",
+    "lineup": "line up",
+    "take off": "takeoff",
+    "clear to land": "cleared to land",
+    "clear for takeoff": "cleared for takeoff",
+    "push back": "pushback",
+    "north cross": "nc",
+    "north charlie": "nc",
+    "south charlie": "sc"
+}
+
+def sanitize_and_normalize(raw_text: str) -> dict:
+    """
+    Sanitize and parse voice input into standardized aviation tokens.
+    Returns cleaned transcript, normalized token stream, and matched intents.
+    """
+    if not raw_text:
+        return {"clean": "", "normalized": "", "callsign": None, "intent": None, "runway": None}
+
+    cleaned = re.sub(r'[^\w\s]', ' ', raw_text.lower())
+    for phrase, rep in AVIATION_SYNONYMS.items():
+        cleaned = re.sub(rf'\b{phrase}\b', rep, cleaned)
+
+    tokens = cleaned.split()
+    norm_tokens = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok in NUMBER_WORDS:
+            # Check sequential digits
+            digit_seq = [NUMBER_WORDS[tok]]
+            j = i + 1
+            while j < len(tokens) and tokens[j] in NUMBER_WORDS:
+                digit_seq.append(NUMBER_WORDS[tokens[j]])
+                j += 1
+            norm_tokens.append("".join(digit_seq))
+            i = j
+            continue
+        elif tok in PHONETIC_ALPHABET:
+            norm_tokens.append(PHONETIC_ALPHABET[tok])
+        else:
+            norm_tokens.append(tok)
+        i += 1
+
+    normalized_str = " ".join(norm_tokens)
+
+    # Detect Runway (e.g. 25R, 25 left, 07L, 06)
+    rwy_match = re.search(r'\b(runway\s+)?(0[67][LR]?|2[45][LR]?|\d{2}\s*(?:left|right|center|L|R|C)?)\b', normalized_str, re.I)
+    runway = None
+    if rwy_match:
+        rwy_raw = rwy_match.group(2).replace(" ", "").upper()
+        rwy_raw = rwy_raw.replace("LEFT", "L").replace("RIGHT", "R").replace("CENTER", "C")
+        runway = rwy_raw
+
+    # Detect Callsign
+    callsign = None
+    airline_match = re.search(r'\b(garuda|lion|batik|citilink|sriwijaya|super air jet|airasia)\s*(\d{1,4})?\b', normalized_str, re.I)
+    if airline_match:
+        al = airline_match.group(1).title()
+        num = airline_match.group(2) or ""
+        callsign = f"{al} {num}".strip()
+
+    # Detect Intent
+    intent = "UNKNOWN"
+    if any(k in normalized_str for k in ["push", "pushback", "start"]):
+        intent = "PUSHBACK"
+    elif "taxi" in normalized_str or "holding point" in normalized_str:
+        intent = "TAXI"
+    elif "line up" in normalized_str or "wait" in normalized_str:
+        intent = "LINE_UP"
+    elif "takeoff" in normalized_str or "take off" in normalized_str:
+        intent = "TAKEOFF"
+    elif "land" in normalized_str or "cleared to land" in normalized_str:
+        intent = "LANDING"
+    elif "descend" in normalized_str:
+        intent = "DESCEND"
+    elif "climb" in normalized_str:
+        intent = "CLIMB"
+
+    return {
+        "clean": cleaned,
+        "normalized": normalized_str,
+        "callsign": callsign,
+        "runway": runway,
+        "intent": intent
+    }
+
 def calculate_score(transcript: str, target: str) -> int:
     if not transcript or not target:
         return 0
-    t_words = [w.lower().strip(".,!?") for w in transcript.split()]
-    target_words = [w.lower().strip(".,!?") for w in target.split()]
+    parsed_actual = sanitize_and_normalize(transcript)
+    parsed_target = sanitize_and_normalize(target)
     
-    # Check keyword overlap
+    t_words = [w.lower().strip(".,!?") for w in parsed_actual["normalized"].split()]
+    target_words = [w.lower().strip(".,!?") for w in parsed_target["normalized"].split()]
+    
     matches = 0
     for tw in target_words:
-        if any(tw in w or w in tw for w in t_words):
+        if any(tw == w or tw in w or w in tw for w in t_words):
             matches += 1
             
     accuracy = int((matches / len(target_words)) * 100)
+    # Intent bonus if core intent matches
+    if parsed_actual["intent"] != "UNKNOWN" and parsed_actual["intent"] == parsed_target["intent"]:
+        accuracy = max(accuracy, 75)
     return min(100, max(0, accuracy))
 
 # Serve static frontend

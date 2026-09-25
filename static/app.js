@@ -393,7 +393,7 @@ async function sendAudioToWhisper(blob, ext) {
       if (currentTab === 'radar') {
         document.getElementById('recognized-text').textContent = `"${res.text}"`;
         document.getElementById('ptt-status').textContent = `Transmitted (${res.duration}s)`;
-        handleRadarVoiceCommand(res.text);
+        handleRadarVoiceCommand(res.text, res.parsed);
       } else {
         handleAcademyResult(res);
       }
@@ -879,26 +879,38 @@ function handleAcademyResult(res) {
   document.getElementById('academy-score-total').textContent = `${avg}%`;
 }
 
-function handleRadarVoiceCommand(text) {
-  const lower = text.toLowerCase();
-  let matchedAc = aircraft.find(a => lower.includes(a.id.toLowerCase()) || lower.includes("garuda") || lower.includes("lion"));
+function handleRadarVoiceCommand(text, parsedData) {
+  const parsed = parsedData || {};
+  const norm = (parsed.normalized || text).toLowerCase();
+  
+  // Find matching aircraft
+  let matchedAc = null;
+  if (parsed.callsign) {
+    const cs = parsed.callsign.toLowerCase().replace(/\s+/g, '');
+    matchedAc = aircraft.find(a => a.id.toLowerCase() === cs || a.callsign.toLowerCase().includes(cs));
+  }
+  if (!matchedAc) {
+    matchedAc = aircraft.find(a => norm.includes(a.id.toLowerCase()) || norm.includes("garuda") || norm.includes("lion"));
+  }
   
   if (matchedAc) {
     let readback = "";
-    if (lower.includes("push") || lower.includes("start")) {
+    const intent = parsed.intent || "";
+
+    if (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start")) {
       matchedAc.state = "PUSHBACK";
       readback = "Push and start approved, facing west, " + matchedAc.callsign;
-    } else if (lower.includes("taxi")) {
+    } else if (intent === "TAXI" || norm.includes("taxi")) {
       matchedAc.state = "TAXI";
       readback = "Taxi to holding point runway 25R via NC1, " + matchedAc.callsign;
-    } else if (lower.includes("line up") || lower.includes("wait")) {
+    } else if (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait")) {
       matchedAc.state = "LINE_UP";
       readback = "Line up and wait runway 25R, " + matchedAc.callsign;
-    } else if (lower.includes("cleared for takeoff")) {
+    } else if (intent === "TAKEOFF" || norm.includes("cleared for takeoff") || norm.includes("takeoff")) {
       matchedAc.state = "DEPARTURE";
       matchedAc.groundSpeed = 160;
       readback = "Runway 25R cleared for takeoff, " + matchedAc.callsign;
-    } else if (lower.includes("cleared to land")) {
+    } else if (intent === "LANDING" || norm.includes("cleared to land") || norm.includes("land")) {
       matchedAc.state = "LANDED";
       readback = "Cleared to land runway 25L, " + matchedAc.callsign;
     } else {
