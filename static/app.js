@@ -41,66 +41,53 @@ const refLon = 106.655998;
 const BASE_SCALE = 60000;
 
 // Simulation aircraft with Strict ICAO Standard Callsigns & Telephony
+// Sole test aircraft: INDONESIA 502 departing from Gate E1 via RWY 25R to COP DOLTA (Jakarta Center South FL240)
 let aircraft = [
   {
     id: "GIA502",
     callsign: "INDONESIA 502",
     airline: "Garuda Indonesia",
     type: "B738",
-    lat: -6.1265,
-    lon: 106.6540,
-    heading: 90,
+    lat: -6.121483,
+    lon: 106.651348,
+    heading: 250,
     altitude: 0,
     groundSpeed: 0,
-    targetHeading: 90,
+    targetHeading: 250,
     state: "GATE",
     clearedRwy: "25R",
     squawk: "4215",
     hasCheckedIn: false,
     checkInPhrase: "Jakarta Ground, INDONESIA 502, Gate Echo 1, information Bravo, request push and start.",
     responsePrompt: "Indonesia 502 push and start approved, facing west"
-  },
-  {
-    id: "LNI650",
-    callsign: "LION INTER 650",
-    airline: "Lion Air",
-    type: "A333",
-    lat: -6.1800,
-    lon: 106.8500,
-    heading: 260,
-    altitude: 8000,
-    groundSpeed: 240,
-    targetHeading: 260,
-    state: "APPROACH",
-    clearedRwy: "25L",
-    squawk: "5521",
-    hasCheckedIn: false,
-    checkInPhrase: "Jakarta Approach, LION INTER 650, descending flight level 80, inbound via DOLTA 1A, information Charlie.",
-    responsePrompt: "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L"
-  },
-  {
-    id: "CTV712",
-    callsign: "SUPERGREEN 712",
-    airline: "Citilink",
-    type: "A320",
-    lat: -6.1285,
-    lon: 106.6490,
-    heading: 70,
-    altitude: 0,
-    groundSpeed: 0,
-    targetHeading: 70,
-    state: "TAXI",
-    clearedRwy: "25R",
-    squawk: "3312",
-    hasCheckedIn: false,
-    checkInPhrase: "Jakarta Tower, SUPERGREEN 712, holding point runway two five right, ready for departure.",
-    responsePrompt: "Supergreen 712 line up and wait runway 25R"
   }
 ];
 
 let selectedAircraftIndex = 0;
 let incomingRadioQueue = [];
 let isRadioTransmitting = false;
+
+// Autonomous Waypoints Mission for GIA502 from Gate to Center Handoff
+const flightRouteMission = {
+  gate: { lat: -6.121483, lon: 106.651348, hdg: 250 },
+  pushbackEnd: { lat: -6.122100, lon: 106.652800, hdg: 250 },
+  taxiwayPoints: [
+    { lat: -6.122100, lon: 106.652800, hdg: 70, desc: "Taxi NC1" },
+    { lat: -6.118000, lon: 106.662000, hdg: 70, desc: "Taxiway NC1" },
+    { lat: -6.113000, lon: 106.668500, hdg: 340, desc: "Turn N2" },
+    { lat: -6.110065, lon: 106.669746, hdg: 250, desc: "Holding Point 25R" }
+  ],
+  runwayLineUp: { lat: -6.108959, lon: 106.669062, hdg: 250 },
+  runwayRollEnd: { lat: -6.120986, lon: 106.638883, hdg: 250 },
+  climbWaypoints: [
+    { lat: -6.127500, lon: 106.658000, alt: 3000, spd: 210, hdg: 135, desc: "CKG VOR" },
+    { lat: -6.200000, lon: 106.480000, alt: 7000, spd: 250, hdg: 160, desc: "IMUBA" },
+    { lat: -6.345000, lon: 106.720000, alt: 14000, spd: 280, hdg: 135, desc: "DOLTA (COP Handsoff)" }
+  ]
+};
+
+let missionLegIndex = 0;
+let flightTickTimer = null;
 
 // Trigger pilot initial check-in transmission
 async function triggerPilotCheckIn(ac) {
@@ -154,44 +141,59 @@ async function speakPilotTransmission(text) {
 // Easy Mode Dynamic Prompts by Aircraft State (Strict ICAO Standard Telephony)
 const stateInstructions = {
   "GATE": {
-    context: "Pesawat parkir di Terminal 3, siap pushback dan engine start.",
+    context: "Pesawat parkir di Gate Echo 1 Terminal 3, siap pushback dan engine start.",
     speech: "Indonesia 502 push and start approved, facing west",
     actionDesc: "Pushback & Start Approved"
   },
   "PUSHBACK": {
-    context: "Pesawat selesai pushback, meminta izin taxi menuju holding point Runway 25R.",
+    context: "Pesawat sedang pushback mandiri ke taxiway...",
+    speech: "Standby for taxi request",
+    actionDesc: "Pushback in progress"
+  },
+  "READY_TAXI": {
+    context: "Pesawat selesai pushback di NC1, pilot check-in meminta clearance taxi menuju Runway 25R.",
     speech: "Indonesia 502 taxi to holding point runway 25R via NC1, N2",
-    actionDesc: "Taxi Clearance via NC1"
+    actionDesc: "Taxi to Holding Point 25R"
   },
   "TAXI": {
-    context: "Pesawat tiba di holding point Runway 25R, runway sedang ada traffic mendarat.",
+    context: "Pesawat sedang taxi menuju holding point 25R...",
+    speech: "Standby at holding point",
+    actionDesc: "Taxiing"
+  },
+  "HOLDING": {
+    context: "Pesawat berhenti di Holding Point 25R, runway sedang menunggu antrean.",
     speech: "Indonesia 502 line up and wait runway 25R",
     actionDesc: "Line up and wait"
   },
   "LINE_UP": {
-    context: "Runway sudah bebas dan aman untuk keberangkatan, angin 250 derajat 8 knot.",
+    context: "Pesawat sudah berada di posisi runway 25R siap lepas landas, angin 250 derajat 8 knot.",
     speech: "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff",
     actionDesc: "Cleared for Takeoff"
   },
-  "DEPARTURE": {
-    context: "Pesawat sudah airborne, kontak Jakarta Radar untuk climb cruise.",
-    speech: "Indonesia 502 contact Jakarta Radar 125 decimal 1",
-    actionDesc: "Contact Radar"
+  "TAKEOFF": {
+    context: "Pesawat akselerasi dan lepas landas dari runway 25R...",
+    speech: "Airborne climb out",
+    actionDesc: "Takeoff roll"
   },
-  "APPROACH": {
-    context: "Lion Inter 650 mendekat via STAR DOLTA 1A, arahkan intercept localizer ILS 25L.",
-    speech: "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L",
-    actionDesc: "Descend & Cleared ILS"
+  "AIRBORNE": {
+    context: "Pesawat airborne passing 2000ft, transfer kendali dari Tower ke Jakarta Approach.",
+    speech: "Indonesia 502 contact Jakarta Approach 119 decimal 75",
+    actionDesc: "Contact Approach"
   },
-  "FINAL": {
-    context: "Lion Inter 650 sudah di short final 3 mile, runway 25L clear.",
-    speech: "Lion Inter 650 runway 25L cleared to land, wind 250 at 6",
-    actionDesc: "Cleared to Land"
+  "CLIMBING": {
+    context: "Pesawat mengikuti SID DOLTA 1C, climb passing FL120 menuju FL140.",
+    speech: "Indonesia 502 climb and maintain flight level 140",
+    actionDesc: "Climb FL140"
   },
-  "LANDED": {
-    context: "Pesawat sudah mendarat dan memperlambat laju, arahkan keluar via exit taxiway.",
-    speech: "Lion Inter 650 vacate runway via taxiway South Charlie, taxi to Terminal 2",
-    actionDesc: "Vacate & Taxi to Gate"
+  "HANDOFF": {
+    context: "Pesawat mendekati batas COP DOLTA (14.000 ft), handoff transfer kendali ke Jakarta Center!",
+    speech: "Indonesia 502 contact Jakarta Center 128 decimal 5, good day",
+    actionDesc: "Handsoff to Center"
+  },
+  "HANDED_OFF": {
+    context: "Pesawat berhasil ditransfer ke Jakarta Center. Misi selesai!",
+    speech: "Mission Complete",
+    actionDesc: "Enroute with Center"
   }
 };
 
@@ -1157,36 +1159,244 @@ function handleRadarVoiceCommand(text, parsedData) {
     matchedAc = aircraft.find(a => a.id.toLowerCase() === cs || a.callsign.toLowerCase().includes(cs));
   }
   if (!matchedAc) {
-    matchedAc = aircraft.find(a => norm.includes(a.id.toLowerCase()) || norm.includes("garuda") || norm.includes("lion"));
+    matchedAc = aircraft.find(a => norm.includes(a.id.toLowerCase()) || norm.includes("garuda") || norm.includes("indonesia"));
   }
   
   if (matchedAc) {
     let readback = "";
     const intent = parsed.intent || "";
 
-    if (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start")) {
+    if (matchedAc.state === "GATE" && (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start"))) {
       matchedAc.state = "PUSHBACK";
       readback = "Push and start approved, facing west, " + matchedAc.callsign;
-    } else if (intent === "TAXI" || norm.includes("taxi")) {
+      executePushbackMovement(matchedAc);
+    } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
-      readback = "Taxi to holding point runway 25R via NC1, " + matchedAc.callsign;
-    } else if (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait")) {
+      readback = "Taxi to holding point runway 25R via NC1 and N2, " + matchedAc.callsign;
+      executeTaxiMovement(matchedAc);
+    } else if ((matchedAc.state === "HOLDING" || matchedAc.state === "TAXI") && (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait"))) {
       matchedAc.state = "LINE_UP";
       readback = "Line up and wait runway 25R, " + matchedAc.callsign;
-    } else if (intent === "TAKEOFF" || norm.includes("cleared for takeoff") || norm.includes("takeoff")) {
-      matchedAc.state = "DEPARTURE";
-      matchedAc.groundSpeed = 160;
+      executeLineUpMovement(matchedAc);
+    } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("cleared for takeoff") || norm.includes("takeoff"))) {
+      matchedAc.state = "TAKEOFF";
       readback = "Runway 25R cleared for takeoff, " + matchedAc.callsign;
-    } else if (intent === "LANDING" || norm.includes("cleared to land") || norm.includes("land")) {
-      matchedAc.state = "LANDED";
-      readback = "Cleared to land runway 25L, " + matchedAc.callsign;
+      executeTakeoffMovement(matchedAc);
+    } else if (matchedAc.state === "AIRBORNE" && (norm.includes("approach") || norm.includes("radar") || norm.includes("119") || norm.includes("125"))) {
+      matchedAc.state = "CLIMBING";
+      readback = "Contact Jakarta Approach 119 decimal 75, good day, " + matchedAc.callsign;
+      executeClimbEnroute(matchedAc);
+    } else if ((matchedAc.state === "CLIMBING" || matchedAc.state === "HANDOFF") && (norm.includes("center") || norm.includes("128") || norm.includes("handoff") || norm.includes("good day"))) {
+      matchedAc.state = "HANDED_OFF";
+      readback = "Contact Jakarta Center 128 decimal 5, thank you for service, " + matchedAc.callsign;
+      executeHandoffComplete(matchedAc);
     } else {
       readback = "Roger instructions, " + matchedAc.callsign;
     }
+
     renderFlightStrips();
     updateEasyModePrompter();
     renderAllScreens();
     speakPilotReadback(readback);
+  }
+}
+
+// Autonomous Flight Movement Sequences for GIA502
+function executePushbackMovement(ac) {
+  let step = 0;
+  const totalSteps = 40;
+  const startLat = ac.lat;
+  const startLon = ac.lon;
+  const target = flightRouteMission.pushbackEnd;
+
+  const pushInterval = setInterval(() => {
+    step++;
+    const progress = step / totalSteps;
+    ac.lat = startLat + (target.lat - startLat) * progress;
+    ac.lon = startLon + (target.lon - startLon) * progress;
+    ac.groundSpeed = 6;
+    ac.heading = 250;
+    renderAllScreens();
+
+    if (step >= totalSteps) {
+      clearInterval(pushInterval);
+      ac.groundSpeed = 0;
+      ac.heading = 70;
+      ac.state = "READY_TAXI";
+      ac.hasCheckedIn = false;
+      ac.checkInPhrase = "Ground, INDONESIA 502, ready to taxi, request clearance.";
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+
+      // Trigger Pilot Request to Taxi
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 1500);
+    }
+  }, 100);
+}
+
+function executeTaxiMovement(ac) {
+  const points = flightRouteMission.taxiwayPoints;
+  let ptIdx = 0;
+
+  function moveNextTaxiLeg() {
+    if (ptIdx >= points.length) {
+      // Arrived at Holding Point 25R!
+      ac.groundSpeed = 0;
+      ac.state = "HOLDING";
+      ac.hasCheckedIn = false;
+      ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, holding point runway two five right, ready for departure.";
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 1200);
+      return;
+    }
+
+    const legTarget = points[ptIdx];
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+    ac.heading = legTarget.hdg;
+    ac.groundSpeed = 18;
+    let step = 0;
+    const totalSteps = 35;
+
+    const legInterval = setInterval(() => {
+      step++;
+      const prog = step / totalSteps;
+      ac.lat = startLat + (legTarget.lat - startLat) * prog;
+      ac.lon = startLon + (legTarget.lon - startLon) * prog;
+      renderAllScreens();
+
+      if (step >= totalSteps) {
+        clearInterval(legInterval);
+        ptIdx++;
+        setTimeout(moveNextTaxiLeg, 100);
+      }
+    }, 100);
+  }
+
+  moveNextTaxiLeg();
+}
+
+function executeLineUpMovement(ac) {
+  let step = 0;
+  const totalSteps = 25;
+  const startLat = ac.lat;
+  const startLon = ac.lon;
+  const target = flightRouteMission.runwayLineUp;
+
+  const lineInterval = setInterval(() => {
+    step++;
+    const prog = step / totalSteps;
+    ac.lat = startLat + (target.lat - startLat) * prog;
+    ac.lon = startLon + (target.lon - startLon) * prog;
+    ac.heading = 250;
+    ac.groundSpeed = 10;
+    renderAllScreens();
+
+    if (step >= totalSteps) {
+      clearInterval(lineInterval);
+      ac.groundSpeed = 0;
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+    }
+  }, 100);
+}
+
+function executeTakeoffMovement(ac) {
+  let step = 0;
+  const totalSteps = 60;
+  const startLat = ac.lat;
+  const startLon = ac.lon;
+  const target = flightRouteMission.runwayRollEnd;
+
+  const rollInterval = setInterval(() => {
+    step++;
+    const prog = step / totalSteps;
+    ac.lat = startLat + (target.lat - startLat) * prog;
+    ac.lon = startLon + (target.lon - startLon) * prog;
+    ac.groundSpeed = Math.round(10 + prog * 160);
+    ac.altitude = Math.round(prog * 500);
+    renderAllScreens();
+
+    if (step >= totalSteps) {
+      clearInterval(rollInterval);
+      ac.state = "AIRBORNE";
+      ac.hasCheckedIn = false;
+      ac.groundSpeed = 190;
+      ac.altitude = 1200;
+      ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, airborne runway two five right passing one thousand two hundred feet.";
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 1000);
+    }
+  }, 100);
+}
+
+function executeClimbEnroute(ac) {
+  const points = flightRouteMission.climbWaypoints;
+  let ptIdx = 0;
+
+  function moveNextClimbLeg() {
+    if (ptIdx >= points.length) {
+      // Arrived at DOLTA COP Gateway!
+      ac.state = "HANDOFF";
+      ac.hasCheckedIn = false;
+      ac.checkInPhrase = "Jakarta Approach, INDONESIA 502, passing flight level one four zero, reaching DOLTA.";
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 1200);
+      return;
+    }
+
+    const legTarget = points[ptIdx];
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+    const startAlt = ac.altitude;
+    const startSpd = ac.groundSpeed;
+    ac.heading = legTarget.hdg;
+    let step = 0;
+    const totalSteps = 60;
+
+    const climbInterval = setInterval(() => {
+      step++;
+      const prog = step / totalSteps;
+      ac.lat = startLat + (legTarget.lat - startLat) * prog;
+      ac.lon = startLon + (legTarget.lon - startLon) * prog;
+      ac.altitude = Math.round(startAlt + (legTarget.alt - startAlt) * prog);
+      ac.groundSpeed = Math.round(startSpd + (legTarget.spd - startSpd) * prog);
+      renderAllScreens();
+
+      if (step >= totalSteps) {
+        clearInterval(climbInterval);
+        ptIdx++;
+        setTimeout(moveNextClimbLeg, 200);
+      }
+    }, 100);
+  }
+
+  moveNextClimbLeg();
+}
+
+function executeHandoffComplete(ac) {
+  const pttStatus = document.getElementById('ptt-status');
+  if (pttStatus) {
+    pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check"></i> HANDOFF COMPLETE - CRUISE ENROUTE JAKARTA CENTER</span>`;
   }
 }
 
