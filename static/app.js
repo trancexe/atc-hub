@@ -702,6 +702,37 @@ function drawGroundScreen() {
     }
   });
 
+  // 4b. Pushback Waypoints & Release Point Indicator (Debug / Operational)
+  if (airportData.routes && airportData.routes.pushback_waypoints) {
+    const pts = airportData.routes.pushback_waypoints;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    const pStart = latLonToScreenCoord(pts[0].lat, pts[0].lon, st);
+    ctx.moveTo(pStart.x, pStart.y);
+    for (let i = 1; i < pts.length; i++) {
+      const pNext = latLonToScreenCoord(pts[i].lat, pts[i].lon, st);
+      ctx.lineTo(pNext.x, pNext.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw Stop / Release Point on Taxiway
+    const relPt = pts[pts.length - 1];
+    const sp = latLonToScreenCoord(relPt.lat, relPt.lon, st);
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    if (st.zoom > 2.0) {
+      ctx.font = "bold 9px 'Share Tech Mono'";
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillText("PUSH RELEASE", sp.x + 8, sp.y + 3);
+    }
+  }
+
   // 5. Holding Positions (Stop Bars)
   (airportData.holding_positions || []).forEach(hp => {
     const p = latLonToScreenCoord(hp.lat, hp.lon, st);
@@ -1251,24 +1282,32 @@ function handleRadarVoiceCommand(text, parsedData) {
 
 // Autonomous Flight Movement Sequences for GIA502
 function executePushbackMovement(ac) {
-  // Use exact OSM lead-in line from Gate E1 stand to Taxiway NC6
+  // Discrete, verifiable pushback points:
+  // Waypoint 0: Gate E1 Stand (Parked, lat -6.121757, lon 106.651077)
+  // Waypoint 1: Apron Taxilane (Clear of concourse building, lat -6.121650, lon 106.650600)
+  // Waypoint 2: Apron Alley curve (lat -6.121480, lon 106.650280)
+  // Waypoint 3: Intersection into Taxiway NC6 (lat -6.121260, lon 106.650050)
+  // Waypoint 4: PUSH RELEASE POINT on Taxiway NC6 centerline (lat -6.121013, lon 106.650012)
   const pushNodes = (airportData && airportData.routes && airportData.routes.pushback_gate_e1)
     ? airportData.routes.pushback_gate_e1.map(p => ({ lat: p[0], lon: p[1] }))
     : [
         { lat: -6.121757, lon: 106.651077 },
-        { lat: -6.121647, lon: 106.505053 },
-        { lat: -6.121543, lon: 106.650260 },
-        { lat: -6.121354, lon: 106.650043 }
+        { lat: -6.121650, lon: 106.650600 },
+        { lat: -6.121480, lon: 106.650280 },
+        { lat: -6.121260, lon: 106.650050 },
+        { lat: -6.121013, lon: 106.650012 }
       ];
 
-  let nodeIdx = 0;
+  let nodeIdx = 1; // start from P1
   ac.groundSpeed = 4;
 
   function moveNextPushNode() {
     if (nodeIdx >= pushNodes.length) {
       // Reached centerline of Taxiway NC6!
       ac.groundSpeed = 0;
-      ac.heading = 330; // Facing northwest along Taxiway NC6 towards Runway 25R
+      ac.lat = pushNodes[pushNodes.length - 1].lat;
+      ac.lon = pushNodes[pushNodes.length - 1].lon;
+      ac.heading = 355; // Aligned along Taxiway NC6 facing north
       ac.state = "READY_TAXI";
       ac.hasCheckedIn = false;
       ac.checkInPhrase = "Ground, INDONESIA 502, ready to taxi, request clearance.";
@@ -1297,8 +1336,9 @@ function executePushbackMovement(ac) {
       pushHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 180 + 360) % 360);
     }
 
+    // Steady, realistic pushback speed: ~22-25 seconds total maneuver
     const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
-    const totalSteps = Math.max(6, Math.round(distDeg * 50000));
+    const totalSteps = Math.max(12, Math.round(distDeg * 120000));
     let step = 0;
 
     const pushStepInterval = setInterval(() => {
@@ -1309,16 +1349,18 @@ function executePushbackMovement(ac) {
 
       // Smooth nose rotation during pushback turn
       const angleDelta = ((pushHdg - ac.heading + 540) % 360) - 180;
-      ac.heading = Math.round((ac.heading + angleDelta * 0.15 + 360) % 360);
+      ac.heading = Math.round((ac.heading + angleDelta * 0.12 + 360) % 360);
 
       renderAllScreens();
 
       if (step >= totalSteps) {
         clearInterval(pushStepInterval);
+        ac.lat = targetPt.lat;
+        ac.lon = targetPt.lon;
         nodeIdx++;
         moveNextPushNode();
       }
-    }, 70);
+    }, 80);
   }
 
   moveNextPushNode();
@@ -1368,13 +1410,13 @@ function executeTaxiMovement(ac) {
       targetHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
     }
 
-    // Realistic taxi speed: straight 18-20 kts, turns 8-10 kts
+    // Realistic taxi speed: straight 15 kts, turns 8 kts
     const hdgDiff = Math.abs((targetHdg - ac.heading + 540) % 360 - 180);
-    ac.groundSpeed = hdgDiff > 25 ? 9 : 17;
+    ac.groundSpeed = hdgDiff > 20 ? 8 : 15;
 
-    // Distance-based step timing for smooth realistic glide (~35-45 seconds full taxi roll)
+    // Realistic step timing: ~70-80 seconds for the entire 2.7 km taxiway journey
     const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
-    const totalSteps = Math.max(6, Math.round(distDeg * 45000));
+    const totalSteps = Math.max(10, Math.round(distDeg * 110000));
     let step = 0;
 
     const stepInterval = setInterval(() => {
@@ -1385,17 +1427,19 @@ function executeTaxiMovement(ac) {
 
       // Smooth heading turn
       const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
-      ac.heading = Math.round((ac.heading + angleDelta * 0.18 + 360) % 360);
+      ac.heading = Math.round((ac.heading + angleDelta * 0.15 + 360) % 360);
 
       renderAllScreens();
 
       if (step >= totalSteps) {
         clearInterval(stepInterval);
+        ac.lat = targetPt.lat;
+        ac.lon = targetPt.lon;
         ac.heading = targetHdg;
         ptIdx++;
         moveNextTaxiNode();
       }
-    }, 60);
+    }, 75);
   }
 
   moveNextTaxiNode();
