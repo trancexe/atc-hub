@@ -313,16 +313,20 @@ function updateMicStatusWarning(msg) {
 
 async function startRecording() {
   if (isRecording) return;
+  const pttStatus = document.getElementById('ptt-status');
+
   if (!mediaRecorder) {
+    if (pttStatus) pttStatus.innerHTML = `<span class="text-amber-400 font-bold">MENGHUBUNGKAN MIC...</span>`;
     try {
       await setupRecording();
     } catch (e) {
       console.error("Mic setup failed:", e);
+      if (pttStatus) pttStatus.innerHTML = `<span class="text-red-400 font-bold">GAGAL AKSES MIC (${e.name || e.message})</span>`;
+      return;
     }
   }
 
   if (!mediaRecorder) {
-    const pttStatus = document.getElementById('ptt-status');
     if (pttStatus) {
       pttStatus.innerHTML = `<span class="text-amber-400 font-bold">KLIK TOMBOL MIC DI BAWAH DULU UNTUK IZIN MIC!</span>`;
     }
@@ -922,26 +926,34 @@ function bindPTT() {
   addListeners(pttBtn);
   addListeners(acadMicBtn);
 
+  // Global Keydown for Spacebar PTT
   window.addEventListener('keydown', (e) => {
-    const isTyping = document.activeElement && (
-      document.activeElement.tagName === 'INPUT' || 
-      document.activeElement.tagName === 'TEXTAREA' || 
-      document.activeElement.isContentEditable
-    );
     if (e.code === 'Tab' && currentTab === 'radar') {
       e.preventDefault();
       cyclePrompterAircraft();
+      return;
     }
-    if ((e.code === 'Space' || e.key === ' ') && !e.repeat && !isTyping) {
+
+    if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       e.preventDefault();
-      startRecording();
+      if (!isRecording) {
+        startRecording();
+      }
     }
   });
 
   window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space' || e.key === ' ') {
+    if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       e.preventDefault();
-      stopRecording();
+      if (isRecording) {
+        stopRecording();
+      }
     }
   });
 }
