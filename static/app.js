@@ -55,7 +55,10 @@ let aircraft = [
     targetHeading: 90,
     state: "GATE",
     clearedRwy: "25R",
-    squawk: "4215"
+    squawk: "4215",
+    hasCheckedIn: false,
+    checkInPhrase: "Jakarta Ground, INDONESIA 502, Gate Echo 1, information Bravo, request push and start.",
+    responsePrompt: "Indonesia 502 push and start approved, facing west"
   },
   {
     id: "LNI650",
@@ -70,7 +73,10 @@ let aircraft = [
     targetHeading: 260,
     state: "APPROACH",
     clearedRwy: "25L",
-    squawk: "5521"
+    squawk: "5521",
+    hasCheckedIn: false,
+    checkInPhrase: "Jakarta Approach, LION INTER 650, descending flight level 80, inbound via DOLTA 1A, information Charlie.",
+    responsePrompt: "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L"
   },
   {
     id: "CTV712",
@@ -81,15 +87,69 @@ let aircraft = [
     lon: 106.6490,
     heading: 70,
     altitude: 0,
-    groundSpeed: 15,
+    groundSpeed: 0,
     targetHeading: 70,
     state: "TAXI",
     clearedRwy: "25R",
-    squawk: "3312"
+    squawk: "3312",
+    hasCheckedIn: false,
+    checkInPhrase: "Jakarta Tower, SUPERGREEN 712, holding point runway two five right, ready for departure.",
+    responsePrompt: "Supergreen 712 line up and wait runway 25R"
   }
 ];
 
 let selectedAircraftIndex = 0;
+let incomingRadioQueue = [];
+let isRadioTransmitting = false;
+
+// Trigger pilot initial check-in transmission
+async function triggerPilotCheckIn(ac) {
+  if (ac.hasCheckedIn || isRadioTransmitting) return;
+  ac.hasCheckedIn = true;
+  isRadioTransmitting = true;
+
+  // Visual notify in PTT banner & strips
+  const pttStatus = document.getElementById('ptt-status');
+  if (pttStatus) {
+    pttStatus.innerHTML = `<span class="text-amber-400 font-bold animate-pulse"><i class="fa-solid fa-volume-high"></i> INCOMING: ${ac.callsign}</span>`;
+  }
+  renderFlightStrips();
+  updateEasyModePrompter();
+
+  // Speak pilot check-in via radio
+  await speakPilotTransmission(ac.checkInPhrase);
+  
+  if (pttStatus) {
+    pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-microphone"></i> ATC TRANSMIT READY (SPACEBAR)</span>`;
+  }
+  isRadioTransmitting = false;
+  renderFlightStrips();
+  updateEasyModePrompter();
+}
+
+async function speakPilotTransmission(text) {
+  playRadioChirp();
+  try {
+    const audioUrl = `/api/audio/tts?text=${encodeURIComponent(text)}&voice=en-US-GuyNeural`;
+    const audio = new Audio(audioUrl);
+    await new Promise((resolve) => {
+      audio.onended = () => {
+        playRadioChirp();
+        resolve();
+      };
+      audio.onerror = () => {
+        fallbackBrowserSpeech(text);
+        resolve();
+      };
+      audio.play().catch(() => {
+        fallbackBrowserSpeech(text);
+        resolve();
+      });
+    });
+  } catch (e) {
+    fallbackBrowserSpeech(text);
+  }
+}
 
 // Easy Mode Dynamic Prompts by Aircraft State (Strict ICAO Standard Telephony)
 const stateInstructions = {
@@ -176,6 +236,12 @@ function toggleEasyMode() {
 function cyclePrompterAircraft() {
   selectedAircraftIndex = (selectedAircraftIndex + 1) % aircraft.length;
   updateEasyModePrompter();
+  renderFlightStrips();
+  renderAllScreens();
+  const ac = aircraft[selectedAircraftIndex];
+  if (ac && !ac.hasCheckedIn && !isRadioTransmitting) {
+    triggerPilotCheckIn(ac);
+  }
 }
 
 function playCurrentPromptAudio() {
@@ -770,18 +836,24 @@ function resetScreen(screenKey) {
 function renderFlightStrips() {
   const container = document.getElementById('flight-strips');
   if (!container) return;
-  container.innerHTML = aircraft.map((ac, idx) => `
-    <div onclick="selectAircraft(${idx})" class="p-2 rounded text-xs cursor-pointer border transition ${idx === selectedAircraftIndex ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'}">
-      <div class="flex justify-between items-center ${idx === selectedAircraftIndex ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
-        <span>${ac.id} (${ac.type})</span>
-        <span class="text-[10px] text-slate-400">${ac.airline}</span>
+  container.innerHTML = aircraft.map((ac, idx) => {
+    const isPending = !ac.hasCheckedIn;
+    const isSel = idx === selectedAircraftIndex;
+    return `
+      <div onclick="selectAircraft(${idx})" class="p-2 rounded text-xs cursor-pointer border transition ${isSel ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
+        <div class="flex justify-between items-center ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
+          <span>${ac.id} (${ac.type})</span>
+          <span class="text-[10px] ${isPending ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-400'}">
+            ${isPending ? 'CALLING...' : ac.airline}
+          </span>
+        </div>
+        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+          <span>STATE: <b class="text-white">${ac.state}</b></span>
+          <span>RWY: <b class="text-white">${ac.clearedRwy}</b></span>
+        </div>
       </div>
-      <div class="flex justify-between text-[11px] text-slate-400 mt-1">
-        <span>STATE: <b class="text-white">${ac.state}</b></span>
-        <span>RWY: <b class="text-white">${ac.clearedRwy}</b></span>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
   document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
 }
 
@@ -790,6 +862,12 @@ function selectAircraft(idx) {
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
+
+  // If selected aircraft has not checked in, trigger check-in call!
+  const ac = aircraft[idx];
+  if (ac && !ac.hasCheckedIn && !isRadioTransmitting) {
+    triggerPilotCheckIn(ac);
+  }
 }
 
 function switchTab(tab) {
@@ -1012,4 +1090,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderFlightStrips();
   updateEasyModePrompter();
   setupRecording();
+
+  // Pilot initiates check-in transmission after 2 seconds!
+  setTimeout(() => {
+    if (aircraft.length > 0) {
+      triggerPilotCheckIn(aircraft[0]);
+    }
+  }, 2000);
 });
