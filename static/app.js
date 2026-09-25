@@ -1336,9 +1336,11 @@ function executePushbackMovement(ac) {
       pushHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 180 + 360) % 360);
     }
 
-    // Steady, realistic pushback speed: ~22-25 seconds total maneuver
-    const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
-    const totalSteps = Math.max(12, Math.round(distDeg * 120000));
+    // Realistic, unhurried pushback tug speed: ~3 knots (~1.5 m/s)
+    // Takes ~45-55 seconds total to push back 160m to NC6 centerline
+    const distM = distDeg * 111000;
+    const durSec = Math.max(8, distM / 3.0); // ~3 m/s scaled
+    const totalSteps = Math.max(30, Math.round(durSec * 15)); // 15 fps
     let step = 0;
 
     const pushStepInterval = setInterval(() => {
@@ -1349,7 +1351,7 @@ function executePushbackMovement(ac) {
 
       // Smooth nose rotation during pushback turn
       const angleDelta = ((pushHdg - ac.heading + 540) % 360) - 180;
-      ac.heading = Math.round((ac.heading + angleDelta * 0.12 + 360) % 360);
+      ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
 
       renderAllScreens();
 
@@ -1360,7 +1362,7 @@ function executePushbackMovement(ac) {
         nodeIdx++;
         moveNextPushNode();
       }
-    }, 80);
+    }, 66);
   }
 
   moveNextPushNode();
