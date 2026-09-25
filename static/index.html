@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ATC HUB - WIII Radar & Voice Academy</title>
+  <title>ATC HUB - WIII Multi-Radar & Voice Academy</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -11,20 +11,17 @@
     .font-radar { font-family: 'Share Tech Mono', monospace; }
     .radar-grid {
       background-image: 
-        radial-gradient(circle, rgba(16, 185, 129, 0.1) 1px, transparent 1px),
+        radial-gradient(circle, rgba(16, 185, 129, 0.12) 1px, transparent 1px),
         linear-gradient(to right, rgba(16, 185, 129, 0.05) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(16, 185, 129, 0.05) 1px, transparent 1px);
       background-size: 40px 40px, 40px 40px, 40px 40px;
-    }
-    .sweep-glow {
-      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
     }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
 
   <!-- Top Navbar -->
-  <header class="bg-slate-900 border-b border-emerald-900/50 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-lg z-20">
+  <header class="bg-slate-900 border-b border-emerald-900/50 px-4 py-2 flex items-center justify-between shrink-0 shadow-lg z-20">
     <div class="flex items-center space-x-3">
       <div class="w-8 h-8 rounded bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-radar text-lg font-bold">
         <i class="fa-solid fa-plane-arrival"></i>
@@ -37,17 +34,34 @@
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="flex items-center space-x-2 bg-slate-950 p-1 rounded-lg border border-slate-800">
-      <button id="tab-radar-btn" onclick="switchTab('radar')" class="px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white">
-        <i class="fa-solid fa-crosshairs"></i> Radar Sim
-      </button>
-      <button id="tab-academy-btn" onclick="switchTab('academy')" class="px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
-        <i class="fa-solid fa-graduation-cap"></i> Voice Academy
-      </button>
+    <!-- Navigation & View Modes -->
+    <div class="flex items-center space-x-3">
+      <!-- Layout Switcher -->
+      <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 font-radar text-xs">
+        <span class="text-slate-500 px-2 text-[10px] uppercase font-bold">Layout:</span>
+        <button id="view-split-btn" onclick="setLayout('split')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white">
+          <i class="fa-solid fa-columns"></i> Split View
+        </button>
+        <button id="view-ground-btn" onclick="setLayout('ground')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white">
+          <i class="fa-solid fa-road"></i> Ground Only
+        </button>
+        <button id="view-tma-btn" onclick="setLayout('tma')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white">
+          <i class="fa-solid fa-satellite-dish"></i> TMA Only
+        </button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="flex items-center space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+        <button id="tab-radar-btn" onclick="switchTab('radar')" class="px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white">
+          <i class="fa-solid fa-crosshairs"></i> Radar Ops
+        </button>
+        <button id="tab-academy-btn" onclick="switchTab('academy')" class="px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
+          <i class="fa-solid fa-graduation-cap"></i> Voice Academy
+        </button>
+      </div>
     </div>
 
-    <!-- Radar Info & Status -->
+    <!-- Clock & Whisper Status -->
     <div class="flex items-center space-x-4 font-radar text-xs">
       <div class="text-right">
         <div class="text-emerald-400 font-bold" id="utc-clock">00:00:00 UTC</div>
@@ -63,52 +77,72 @@
   <!-- Main View Container -->
   <main class="flex-1 relative flex overflow-hidden">
     
-    <!-- TAB 1: RADAR SIMULATOR -->
+    <!-- TAB 1: RADAR SIMULATOR (MULTI VIEW SUPPORT) -->
     <div id="radar-view" class="flex-1 flex w-full h-full relative">
-      <!-- Radar Canvas Area -->
-      <div class="flex-1 h-full relative bg-slate-950 radar-grid overflow-hidden">
-        <canvas id="radar-canvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+      
+      <!-- Multi-Screen Grid Container -->
+      <div id="screens-container" class="flex-1 grid grid-cols-2 gap-1 bg-slate-900 p-1 h-full overflow-hidden">
         
-        <!-- Controls Overlay -->
-        <div class="absolute top-4 left-4 z-10 flex flex-col space-y-2">
-          <div class="bg-slate-900/90 backdrop-blur border border-emerald-900/60 p-2 rounded-lg flex items-center space-x-2 font-radar text-xs">
-            <button onclick="zoomRadar(1.2)" class="w-7 h-7 bg-slate-800 hover:bg-emerald-800 rounded flex items-center justify-center text-emerald-300 font-bold">+</button>
-            <button onclick="zoomRadar(0.8)" class="w-7 h-7 bg-slate-800 hover:bg-emerald-800 rounded flex items-center justify-center text-emerald-300 font-bold">-</button>
-            <button onclick="resetRadarView()" class="px-2 h-7 bg-slate-800 hover:bg-emerald-800 rounded flex items-center justify-center text-emerald-300">Center</button>
-            <span class="text-slate-500">|</span>
-            <button id="mode-btn" onclick="toggleRadarMode()" class="px-2.5 h-7 bg-emerald-950 border border-emerald-700 text-emerald-300 rounded font-semibold">MODE: GROUND</button>
+        <!-- Screen 1: Ground Radar (ASDE) -->
+        <div id="pane-ground" class="relative bg-slate-950 radar-grid rounded border border-emerald-900/40 overflow-hidden flex flex-col">
+          <!-- Pane Header -->
+          <div class="absolute top-2 left-2 z-10 flex items-center space-x-2">
+            <div class="bg-slate-900/90 backdrop-blur border border-emerald-800/60 px-2.5 py-1 rounded text-xs font-radar text-emerald-400 flex items-center gap-2">
+              <span class="font-bold tracking-wider"><i class="fa-solid fa-road text-emerald-500 mr-1"></i>GROUND RADAR (ASDE)</span>
+              <span class="text-[10px] text-slate-400">| TAXIWAYS & APRONS</span>
+            </div>
+            <div class="bg-slate-900/90 backdrop-blur border border-slate-800 px-2 py-0.5 rounded text-[11px] font-radar text-slate-400 flex gap-1.5">
+              <button onclick="zoomScreen('ground', 1.25)" class="hover:text-emerald-300 font-bold">+</button>
+              <button onclick="zoomScreen('ground', 0.8)" class="hover:text-emerald-300 font-bold">-</button>
+              <button onclick="resetScreen('ground')" class="hover:text-emerald-300 ml-1">Center</button>
+            </div>
           </div>
-          
-          <div class="bg-slate-900/80 backdrop-blur border border-slate-800 px-3 py-1.5 rounded text-[11px] font-radar text-slate-400">
-            <span class="text-emerald-400 font-bold">Scroll:</span> Zoom | <span class="text-emerald-400 font-bold">Drag:</span> Pan radar
-          </div>
+          <canvas id="ground-canvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
         </div>
 
-        <!-- Aircraft Strip Overlay -->
-        <div class="absolute top-4 right-4 z-10 w-72 bg-slate-900/90 backdrop-blur border border-emerald-900/60 rounded-lg p-3 font-radar">
-          <div class="text-xs font-bold text-emerald-400 border-b border-emerald-900/40 pb-1.5 mb-2 flex justify-between">
-            <span>ACTIVE STRIPS</span>
-            <span id="aircraft-count">2 Planes</span>
+        <!-- Screen 2: TMA Radar (Approach / Departure) -->
+        <div id="pane-tma" class="relative bg-slate-950 radar-grid rounded border border-emerald-900/40 overflow-hidden flex flex-col">
+          <!-- Pane Header -->
+          <div class="absolute top-2 left-2 z-10 flex items-center space-x-2">
+            <div class="bg-slate-900/90 backdrop-blur border border-sky-800/60 px-2.5 py-1 rounded text-xs font-radar text-sky-400 flex items-center gap-2">
+              <span class="font-bold tracking-wider"><i class="fa-solid fa-satellite-dish text-sky-400 mr-1"></i>TMA RADAR (APP/DEP)</span>
+              <span class="text-[10px] text-slate-400">| 60 NM RANGE</span>
+            </div>
+            <div class="bg-slate-900/90 backdrop-blur border border-slate-800 px-2 py-0.5 rounded text-[11px] font-radar text-slate-400 flex gap-1.5">
+              <button onclick="zoomScreen('tma', 1.25)" class="hover:text-sky-300 font-bold">+</button>
+              <button onclick="zoomScreen('tma', 0.8)" class="hover:text-sky-300 font-bold">-</button>
+              <button onclick="resetScreen('tma')" class="hover:text-sky-300 ml-1">Center</button>
+            </div>
           </div>
-          <div id="flight-strips" class="space-y-2 max-h-96 overflow-y-auto pr-1">
-            <!-- Strips rendered here -->
-          </div>
+          <canvas id="tma-canvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
         </div>
 
-        <!-- Bottom Push-to-Talk Bar -->
-        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
-          <div id="ptt-status" class="text-xs font-radar text-slate-400 mb-2 px-3 py-1 bg-slate-900/90 rounded border border-slate-800 transition-all">
-            Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Click Mic to Transmit
-          </div>
-          <div class="flex items-center space-x-3 bg-slate-900/95 backdrop-blur border border-emerald-900/80 p-2.5 rounded-2xl shadow-2xl">
-            <button id="ptt-btn" class="w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-xl shadow-lg transition transform active:scale-95 border-2 border-emerald-400">
-              <i class="fa-solid fa-microphone"></i>
-            </button>
-            <div class="w-80">
-              <div class="text-[10px] text-slate-400 font-radar uppercase tracking-wider">Controller Voice Input</div>
-              <div id="recognized-text" class="text-xs font-radar text-emerald-300 font-medium truncate italic py-0.5">
-                "Standby for voice..."
-              </div>
+      </div>
+
+      <!-- Aircraft Strip Overlay (Right floating drawer) -->
+      <div class="absolute top-3 right-3 z-10 w-72 bg-slate-900/95 backdrop-blur border border-emerald-900/80 rounded-lg p-3 font-radar shadow-xl">
+        <div class="text-xs font-bold text-emerald-400 border-b border-emerald-900/40 pb-1.5 mb-2 flex justify-between items-center">
+          <span>ACTIVE FLIGHT STRIPS</span>
+          <span id="aircraft-count" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">2 In Flight</span>
+        </div>
+        <div id="flight-strips" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+          <!-- Strips rendered here -->
+        </div>
+      </div>
+
+      <!-- Bottom Push-to-Talk Bar -->
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
+        <div id="ptt-status" class="text-xs font-radar text-slate-400 mb-1.5 px-3 py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow">
+          Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Mic to Transmit
+        </div>
+        <div class="flex items-center space-x-3 bg-slate-900/95 backdrop-blur border border-emerald-900/80 p-2.5 rounded-2xl shadow-2xl">
+          <button id="ptt-btn" class="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-lg shadow-lg transition transform active:scale-95 border-2 border-emerald-400">
+            <i class="fa-solid fa-microphone"></i>
+          </button>
+          <div class="w-72">
+            <div class="text-[10px] text-slate-400 font-radar uppercase tracking-wider">Controller Voice Input</div>
+            <div id="recognized-text" class="text-xs font-radar text-emerald-300 font-medium truncate italic py-0.5">
+              "Standby for voice transmission..."
             </div>
           </div>
         </div>

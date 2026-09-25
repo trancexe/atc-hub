@@ -1,27 +1,42 @@
-// ATC HUB - Client logic & Web Audio / Canvas Engine
+// ATC HUB - Client logic & Web Audio / Multi-Canvas Engine
 
 let airportData = null;
 let currentTab = 'radar';
-let radarMode = 'ground'; // 'ground' or 'tma'
+let currentLayout = 'split'; // 'split', 'ground', 'tma'
 
-// Canvas state
-const canvas = document.getElementById('radar-canvas');
-const ctx = canvas.getContext('2d');
-let width = 0;
-let height = 0;
+// Canvases
+const groundCanvas = document.getElementById('ground-canvas');
+const tmaCanvas = document.getElementById('tma-canvas');
+const groundCtx = groundCanvas ? groundCanvas.getContext('2d') : null;
+const tmaCtx = tmaCanvas ? tmaCanvas.getContext('2d') : null;
 
-let panX = 0;
-let panY = 0;
-let zoom = 1.0;
-let isDragging = false;
-let startX = 0;
-let startY = 0;
+// View states for both screens
+const viewState = {
+  ground: {
+    panX: 0,
+    panY: 0,
+    zoom: 2.8,
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    width: 0,
+    height: 0
+  },
+  tma: {
+    panX: 0,
+    panY: 0,
+    zoom: 0.35,
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    width: 0,
+    height: 0
+  }
+};
 
 // Airport coordinate center
-let refLat = -6.12557;
-let refLon = 106.655998;
-
-// Scale factors (degrees to pixels)
+const refLat = -6.12557;
+const refLon = 106.655998;
 const BASE_SCALE = 60000;
 
 // Simulation aircraft
@@ -70,7 +85,6 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// VHF Radio Sound Effect (squelch, bandpass filter, static hiss)
 function playRadioChirp() {
   try {
     const actx = getAudioContext();
@@ -99,7 +113,6 @@ function speakPilotReadback(text) {
     utterance.rate = 1.05;
     utterance.pitch = 0.95;
     
-    // Choose appropriate voice if available
     const voices = window.speechSynthesis.getVoices();
     const enVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
     if (enVoice) utterance.voice = enVoice;
@@ -116,11 +129,10 @@ function speakPilotReadback(text) {
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
-let micPermissionGranted = false;
 
 async function setupRecording() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    console.warn("navigator.mediaDevices.getUserMedia not available (needs HTTPS or localhost)");
+    console.warn("navigator.mediaDevices.getUserMedia not available");
     updateMicStatusWarning("Browser requires HTTPS for Mic. Access via https:// or localhost");
     return;
   }
@@ -128,7 +140,6 @@ async function setupRecording() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
-    micPermissionGranted = true;
 
     mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) audioChunks.push(e.data);
@@ -170,14 +181,12 @@ function updateMicStatusWarning(msg) {
 
 async function startRecording() {
   if (isRecording) return;
-
-  // If mic not initialized yet, try request again
   if (!mediaRecorder) {
     await setupRecording();
   }
 
   if (!mediaRecorder) {
-    alert("Microphone tidak dapat diakses! Pastikan membuka via HTTPS (contoh: https://100.75.217.97:8011) atau berikan izin mikrofon pada browser.");
+    alert("Microphone tidak dapat diakses! Buka lewat HTTPS: https://100.75.217.97:8011 dan izinkan akses microphone.");
     return;
   }
 
@@ -187,11 +196,10 @@ async function startRecording() {
     mediaRecorder.start();
     playRadioChirp();
 
-    // Update UI
     const pttStatus = document.getElementById('ptt-status');
     if (pttStatus) {
       pttStatus.textContent = "TRANSMITTING ON 118.10 MHz...";
-      pttStatus.className = "text-xs font-radar mb-2 px-3 py-1 rounded border transition-all bg-red-950 text-red-400 border-red-700 animate-pulse";
+      pttStatus.className = "text-xs font-radar mb-1.5 px-3 py-1 rounded border transition-all bg-red-950 text-red-400 border-red-700 animate-pulse";
     }
     const acadRecStatus = document.getElementById('academy-rec-status');
     if (acadRecStatus) acadRecStatus.textContent = "Merekam suara... Lepas SPACEBAR untuk kirim.";
@@ -211,7 +219,7 @@ function stopRecording() {
     const pttStatus = document.getElementById('ptt-status');
     if (pttStatus) {
       pttStatus.textContent = "PROCESSING WHISPER STT...";
-      pttStatus.className = "text-xs font-radar mb-2 px-3 py-1 rounded border transition-all bg-slate-900 border-emerald-800 text-emerald-400";
+      pttStatus.className = "text-xs font-radar mb-1.5 px-3 py-1 rounded border transition-all bg-slate-900 border-emerald-800 text-emerald-400";
     }
     const acadRecStatus = document.getElementById('academy-rec-status');
     if (acadRecStatus) acadRecStatus.textContent = "Memproses Whisper AI...";
@@ -254,222 +262,352 @@ async function sendAudioToWhisper(blob, ext) {
   }
 }
 
-// Radar Canvas Rendering
-function resizeCanvas() {
-  const rect = canvas.parentElement.getBoundingClientRect();
-  width = rect.width;
-  height = rect.height;
-  canvas.width = width * window.devicePixelRatio;
-  canvas.height = height * window.devicePixelRatio;
-  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-  drawRadar();
+// Multi-Screen Layout Switcher
+function setLayout(mode) {
+  currentLayout = mode;
+  const container = document.getElementById('screens-container');
+  const paneGround = document.getElementById('pane-ground');
+  const paneTma = document.getElementById('pane-tma');
+
+  const btnSplit = document.getElementById('view-split-btn');
+  const btnGround = document.getElementById('view-ground-btn');
+  const btnTma = document.getElementById('view-tma-btn');
+
+  // Reset button styles
+  [btnSplit, btnGround, btnTma].forEach(b => {
+    b.className = "px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white";
+  });
+
+  if (mode === 'split') {
+    container.className = "flex-1 grid grid-cols-2 gap-1 bg-slate-900 p-1 h-full overflow-hidden";
+    paneGround.classList.remove('hidden');
+    paneTma.classList.remove('hidden');
+    btnSplit.className = "px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
+  } else if (mode === 'ground') {
+    container.className = "flex-1 flex bg-slate-900 p-1 h-full overflow-hidden";
+    paneGround.classList.remove('hidden');
+    paneTma.classList.add('hidden');
+    btnGround.className = "px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
+  } else if (mode === 'tma') {
+    container.className = "flex-1 flex bg-slate-900 p-1 h-full overflow-hidden";
+    paneGround.classList.add('hidden');
+    paneTma.classList.remove('hidden');
+    btnTma.className = "px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
+  }
+
+  setTimeout(() => {
+    resizeCanvases();
+  }, 50);
 }
 
-function latLonToScreen(lat, lon) {
-  const x = (lon - refLon) * BASE_SCALE * zoom + width / 2 + panX;
-  const y = -(lat - refLat) * BASE_SCALE * zoom + height / 2 + panY;
+// Canvas Helpers
+function resizeCanvases() {
+  if (groundCanvas && !groundCanvas.parentElement.classList.contains('hidden')) {
+    const rect = groundCanvas.parentElement.getBoundingClientRect();
+    viewState.ground.width = rect.width;
+    viewState.ground.height = rect.height;
+    groundCanvas.width = rect.width * window.devicePixelRatio;
+    groundCanvas.height = rect.height * window.devicePixelRatio;
+    groundCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+
+  if (tmaCanvas && !tmaCanvas.parentElement.classList.contains('hidden')) {
+    const rect = tmaCanvas.parentElement.getBoundingClientRect();
+    viewState.tma.width = rect.width;
+    viewState.tma.height = rect.height;
+    tmaCanvas.width = rect.width * window.devicePixelRatio;
+    tmaCanvas.height = rect.height * window.devicePixelRatio;
+    tmaCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+
+  renderAllScreens();
+}
+
+function latLonToScreenCoord(lat, lon, st) {
+  const x = (lon - refLon) * BASE_SCALE * st.zoom + st.width / 2 + st.panX;
+  const y = -(lat - refLat) * BASE_SCALE * st.zoom + st.height / 2 + st.panY;
   return { x, y };
 }
 
-function drawRadar() {
-  ctx.clearRect(0, 0, width, height);
+// Draw Ground Radar (ASDE)
+function drawGroundScreen() {
+  if (!groundCtx || !viewState.ground.width) return;
+  const st = viewState.ground;
+  const ctx = groundCtx;
+  ctx.clearRect(0, 0, st.width, st.height);
 
-  // Draw Range Rings
+  // Range rings
   ctx.strokeStyle = "rgba(16, 185, 129, 0.12)";
   ctx.lineWidth = 1;
-  const center = latLonToScreen(refLat, refLon);
-  const ringDistances = radarMode === 'ground' ? [200, 400, 600] : [150, 300, 450, 600];
-  
-  ringDistances.forEach(r => {
+  const c = latLonToScreenCoord(refLat, refLon, st);
+  [150, 300, 450].forEach(r => {
     ctx.beginPath();
-    ctx.arc(center.x, center.y, r * zoom, 0, Math.PI * 2);
+    ctx.arc(c.x, c.y, r * (st.zoom / 2.5), 0, Math.PI * 2);
     ctx.stroke();
   });
 
-  if (!airportData) {
-    requestAnimationFrame(drawRadar);
-    return;
-  }
+  if (!airportData) return;
 
-  // 1. Draw Aprons
-  if (radarMode === 'ground') {
-    ctx.fillStyle = "rgba(30, 41, 59, 0.5)";
-    ctx.strokeStyle = "rgba(51, 65, 85, 0.7)";
-    ctx.lineWidth = 1;
-    (airportData.aprons || []).forEach(ap => {
-      if (!ap.coords || ap.coords.length < 3) return;
-      ctx.beginPath();
-      const p0 = latLonToScreen(ap.coords[0][0], ap.coords[0][1]);
-      ctx.moveTo(p0.x, p0.y);
-      for (let i = 1; i < ap.coords.length; i++) {
-        const pt = latLonToScreen(ap.coords[i][0], ap.coords[i][1]);
-        ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    });
+  // 1. Aprons
+  ctx.fillStyle = "rgba(30, 41, 59, 0.5)";
+  ctx.strokeStyle = "rgba(51, 65, 85, 0.7)";
+  ctx.lineWidth = 1;
+  (airportData.aprons || []).forEach(ap => {
+    if (!ap.coords || ap.coords.length < 3) return;
+    ctx.beginPath();
+    const p0 = latLonToScreenCoord(ap.coords[0][0], ap.coords[0][1], st);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < ap.coords.length; i++) {
+      const pt = latLonToScreenCoord(ap.coords[i][0], ap.coords[i][1], st);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  });
 
-    // 2. Draw Taxiways
-    (airportData.taxiways || []).forEach(tw => {
-      if (!tw.coords || tw.coords.length < 2) return;
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(16, 185, 129, 0.35)";
-      ctx.lineWidth = Math.max(2, 2.5 * zoom);
-      const p0 = latLonToScreen(tw.coords[0][0], tw.coords[0][1]);
-      ctx.moveTo(p0.x, p0.y);
-      for (let i = 1; i < tw.coords.length; i++) {
-        const pt = latLonToScreen(tw.coords[i][0], tw.coords[i][1]);
-        ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.stroke();
+  // 2. Taxiways
+  (airportData.taxiways || []).forEach(tw => {
+    if (!tw.coords || tw.coords.length < 2) return;
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(16, 185, 129, 0.4)";
+    ctx.lineWidth = Math.max(2, 2.5 * (st.zoom / 2));
+    const p0 = latLonToScreenCoord(tw.coords[0][0], tw.coords[0][1], st);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < tw.coords.length; i++) {
+      const pt = latLonToScreenCoord(tw.coords[i][0], tw.coords[i][1], st);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
 
-      // Taxiway label
-      if (tw.ref && tw.coords.length > 2 && zoom > 1.2) {
-        const mid = tw.coords[Math.floor(tw.coords.length / 2)];
-        const mp = latLonToScreen(mid[0], mid[1]);
-        ctx.font = "9px 'Share Tech Mono'";
-        ctx.fillStyle = "rgba(52, 211, 153, 0.7)";
-        ctx.fillText(tw.ref, mp.x + 3, mp.y - 3);
-      }
-    });
+    // Taxiway label
+    if (tw.ref && tw.coords.length > 2 && st.zoom > 1.8) {
+      const mid = tw.coords[Math.floor(tw.coords.length / 2)];
+      const mp = latLonToScreenCoord(mid[0], mid[1], st);
+      ctx.font = "9px 'Share Tech Mono'";
+      ctx.fillStyle = "rgba(52, 211, 153, 0.75)";
+      ctx.fillText(tw.ref, mp.x + 3, mp.y - 3);
+    }
+  });
 
-    // 3. Draw Holding Points
-    (airportData.holding_positions || []).forEach(hp => {
-      const p = latLonToScreen(hp.lat, hp.lon);
-      ctx.fillStyle = "#f59e0b";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3 * zoom, 0, Math.PI * 2);
-      ctx.fill();
-      if (zoom > 1.5) {
-        ctx.font = "8px 'Share Tech Mono'";
-        ctx.fillText(hp.ref, p.x + 5, p.y + 3);
-      }
-    });
-  }
+  // 3. Holding Points
+  (airportData.holding_positions || []).forEach(hp => {
+    const p = latLonToScreenCoord(hp.lat, hp.lon, st);
+    ctx.fillStyle = "#f59e0b";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3 * (st.zoom / 2), 0, Math.PI * 2);
+    ctx.fill();
+    if (st.zoom > 2.0) {
+      ctx.font = "8px 'Share Tech Mono'";
+      ctx.fillText(hp.ref, p.x + 5, p.y + 3);
+    }
+  });
 
-  // 4. Draw Runways (Visible in both Ground and TMA)
+  // 4. Runways
   (airportData.runways || []).forEach(rw => {
     if (!rw.coords || rw.coords.length < 2) return;
     ctx.beginPath();
     ctx.strokeStyle = "#10b981";
-    ctx.lineWidth = Math.max(3, (rw.width || 45) * 0.15 * zoom);
-    const p0 = latLonToScreen(rw.coords[0][0], rw.coords[0][1]);
+    ctx.lineWidth = Math.max(4, (rw.width || 45) * 0.12 * st.zoom);
+    const p0 = latLonToScreenCoord(rw.coords[0][0], rw.coords[0][1], st);
     ctx.moveTo(p0.x, p0.y);
     for (let i = 1; i < rw.coords.length; i++) {
-      const pt = latLonToScreen(rw.coords[i][0], rw.coords[i][1]);
+      const pt = latLonToScreenCoord(rw.coords[i][0], rw.coords[i][1], st);
       ctx.lineTo(pt.x, pt.y);
     }
     ctx.stroke();
 
     // Centerline dashed
-    ctx.setLineDash([6 * zoom, 4 * zoom]);
+    ctx.setLineDash([5 * st.zoom, 3 * st.zoom]);
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Runway Designator
-    const pEnd = latLonToScreen(rw.coords[rw.coords.length - 1][0], rw.coords[rw.coords.length - 1][1]);
+    const pEnd = latLonToScreenCoord(rw.coords[rw.coords.length - 1][0], rw.coords[rw.coords.length - 1][1], st);
     ctx.font = "bold 11px 'Share Tech Mono'";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(rw.ref, p0.x - 15, p0.y - 8);
-    ctx.fillText(rw.ref, pEnd.x + 8, pEnd.y + 8);
+    ctx.fillText(rw.ref, p0.x - 12, p0.y - 6);
+    ctx.fillText(rw.ref, pEnd.x + 6, pEnd.y + 6);
   });
 
-  // 5. Draw Waypoints / Navaids (TMA Mode)
-  if (radarMode === 'tma') {
-    (airportData.waypoints || []).concat(airportData.navaids || []).forEach(wp => {
-      const p = latLonToScreen(wp.lat, wp.lon);
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 1.5;
-      
-      // Triangle symbol for waypoint
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y - 5);
-      ctx.lineTo(p.x + 5, p.y + 4);
-      ctx.lineTo(p.x - 5, p.y + 4);
-      ctx.closePath();
-      ctx.stroke();
-
-      ctx.font = "10px 'Share Tech Mono'";
-      ctx.fillStyle = "#38bdf8";
-      ctx.fillText(wp.id, p.x + 7, p.y + 3);
-    });
-  }
-
-  // 6. Draw Aircraft & Radar Blips
+  // Aircraft on ground
   aircraft.forEach(ac => {
-    const p = latLonToScreen(ac.lat, ac.lon);
-
-    // Blip Target
+    const p = latLonToScreenCoord(ac.lat, ac.lon, st);
     ctx.fillStyle = "#22c55e";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = "10px 'Share Tech Mono'";
+    ctx.fillStyle = "#4ade80";
+    ctx.fillText(ac.id, p.x + 10, p.y - 10);
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText(`${ac.state} [${ac.squawk}]`, p.x + 10, p.y + 2);
+  });
+}
+
+// Draw TMA Radar (Approach / Departure)
+function drawTmaScreen() {
+  if (!tmaCtx || !viewState.tma.width) return;
+  const st = viewState.tma;
+  const ctx = tmaCtx;
+  ctx.clearRect(0, 0, st.width, st.height);
+
+  // Range rings (10, 20, 40, 60 NM)
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.15)";
+  ctx.lineWidth = 1;
+  const c = latLonToScreenCoord(refLat, refLon, st);
+  [80, 160, 240, 320].forEach((r, idx) => {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r * (st.zoom / 0.35), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = "9px 'Share Tech Mono'";
+    ctx.fillStyle = "rgba(56, 189, 248, 0.4)";
+    ctx.fillText(`${(idx + 1) * 15}NM`, c.x + r * (st.zoom / 0.35) + 3, c.y - 3);
+  });
+
+  if (!airportData) return;
+
+  // Runways simplified
+  (airportData.runways || []).forEach(rw => {
+    if (!rw.coords || rw.coords.length < 2) return;
+    ctx.beginPath();
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 2.5;
+    const p0 = latLonToScreenCoord(rw.coords[0][0], rw.coords[0][1], st);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < rw.coords.length; i++) {
+      const pt = latLonToScreenCoord(rw.coords[i][0], rw.coords[i][1], st);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+
+    // ILS Feather lines (Extended centerlines)
+    drawExtendedCenterline(ctx, rw.coords, st);
+  });
+
+  // Waypoints & Navaids
+  (airportData.waypoints || []).concat(airportData.navaids || []).forEach(wp => {
+    const p = latLonToScreenCoord(wp.lat, wp.lon, st);
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 1.2;
+
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 5);
+    ctx.lineTo(p.x + 5, p.y + 4);
+    ctx.lineTo(p.x - 5, p.y + 4);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.font = "10px 'Share Tech Mono'";
+    ctx.fillStyle = "#7dd3fc";
+    ctx.fillText(wp.id, p.x + 7, p.y + 3);
+  });
+
+  // Aircraft targets
+  aircraft.forEach(ac => {
+    const p = latLonToScreenCoord(ac.lat, ac.lon, st);
+
+    ctx.fillStyle = "#38bdf8";
     ctx.beginPath();
     ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Velocity Leader Line
+    // Velocity vector line
     const rad = (ac.heading - 90) * (Math.PI / 180);
-    const leaderLen = (ac.groundSpeed || 10) * 0.15;
-    ctx.strokeStyle = "#22c55e";
+    const leaderLen = (ac.groundSpeed || 50) * 0.18;
+    ctx.strokeStyle = "#38bdf8";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
     ctx.lineTo(p.x + Math.cos(rad) * leaderLen, p.y + Math.sin(rad) * leaderLen);
     ctx.stroke();
 
-    // Flight Data Tag
+    // Data Tag
     ctx.font = "10px 'Share Tech Mono'";
-    ctx.fillStyle = "#4ade80";
-    ctx.fillText(ac.id, p.x + 12, p.y - 12);
+    ctx.fillStyle = "#bae6fd";
+    ctx.fillText(ac.id, p.x + 12, p.y - 10);
     
     ctx.fillStyle = "#94a3b8";
     const altStr = ac.altitude === 0 ? "GND" : `A${String(Math.round(ac.altitude/100)).padStart(3, '0')}`;
     const spdStr = `${ac.groundSpeed}K`;
     ctx.fillText(`${altStr} ${spdStr}`, p.x + 12, p.y);
-    ctx.fillText(`${ac.state} [${ac.squawk}]`, p.x + 12, p.y + 12);
+    ctx.fillText(`${ac.state}`, p.x + 12, p.y + 10);
   });
 }
 
-// Pan & Zoom Event Listeners
-canvas.addEventListener('mousedown', (e) => {
-  isDragging = true;
-  startX = e.clientX - panX;
-  startY = e.clientY - panY;
-});
+function drawExtendedCenterline(ctx, coords, st) {
+  if (coords.length < 2) return;
+  const p0 = latLonToScreenCoord(coords[0][0], coords[0][1], st);
+  const p1 = latLonToScreenCoord(coords[1][0], coords[1][1], st);
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  if (len === 0) return;
 
-window.addEventListener('mousemove', (e) => {
-  if (!isDragging) return;
-  panX = e.clientX - startX;
-  panY = e.clientY - startY;
-  drawRadar();
-});
+  const ux = dx / len;
+  const uy = dy / len;
 
-window.addEventListener('mouseup', () => { isDragging = false; });
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
 
-canvas.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-  zoomRadar(zoomFactor);
-}, { passive: false });
+  // Extends backward 10NM for ILS
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+  ctx.lineTo(p0.x - ux * 180, p0.y - uy * 180);
+  ctx.stroke();
 
-function zoomRadar(factor) {
-  zoom = Math.max(0.1, Math.min(25.0, zoom * factor));
-  drawRadar();
+  ctx.setLineDash([]);
 }
 
-function resetRadarView() {
-  panX = 0;
-  panY = 0;
-  zoom = radarMode === 'ground' ? 2.5 : 0.4;
-  drawRadar();
+function renderAllScreens() {
+  drawGroundScreen();
+  drawTmaScreen();
 }
 
-function toggleRadarMode() {
-  radarMode = radarMode === 'ground' ? 'tma' : 'ground';
-  const btn = document.getElementById('mode-btn');
-  btn.textContent = `MODE: ${radarMode.toUpperCase()}`;
-  resetRadarView();
+// Attach Pan & Zoom for a canvas
+function setupCanvasInteraction(cElem, screenKey) {
+  const st = viewState[screenKey];
+  if (!cElem) return;
+
+  cElem.addEventListener('mousedown', (e) => {
+    st.isDragging = true;
+    st.startX = e.clientX - st.panX;
+    st.startY = e.clientY - st.panY;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!st.isDragging) return;
+    st.panX = e.clientX - st.startX;
+    st.panY = e.clientY - st.startY;
+    renderAllScreens();
+  });
+
+  window.addEventListener('mouseup', () => {
+    st.isDragging = false;
+  });
+
+  cElem.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 0.85;
+    zoomScreen(screenKey, factor);
+  }, { passive: false });
+}
+
+function zoomScreen(screenKey, factor) {
+  const st = viewState[screenKey];
+  st.zoom = Math.max(0.05, Math.min(25.0, st.zoom * factor));
+  renderAllScreens();
+}
+
+function resetScreen(screenKey) {
+  const st = viewState[screenKey];
+  st.panX = 0;
+  st.panY = 0;
+  st.zoom = screenKey === 'ground' ? 2.8 : 0.35;
+  renderAllScreens();
 }
 
 // Flight Strips UI
@@ -488,7 +626,7 @@ function renderFlightStrips() {
       </div>
     </div>
   `).join('');
-  document.getElementById('aircraft-count').textContent = `${aircraft.length} Planes`;
+  document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
 }
 
 // Navigation Tabs
@@ -502,14 +640,14 @@ function switchTab(tab) {
   if (tab === 'radar') {
     radarView.classList.remove('hidden');
     academyView.classList.add('hidden');
-    radarBtn.className = "px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white";
-    acadBtn.className = "px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
-    resizeCanvas();
+    radarBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white";
+    acadBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+    resizeCanvases();
   } else {
     radarView.classList.add('hidden');
     academyView.classList.remove('hidden');
-    acadBtn.className = "px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white";
-    radarBtn.className = "px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+    acadBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white";
+    radarBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
     loadAcademyLessons();
   }
 }
@@ -580,7 +718,6 @@ function handleAcademyResult(res) {
   lessonScores[activeLesson.id] = res.score;
   renderLessonList();
 
-  // Show readback if score >= 55%
   if (res.score >= 55) {
     const rbCont = document.getElementById('readback-container');
     const rbText = document.getElementById('pilot-readback-text');
@@ -589,7 +726,6 @@ function handleAcademyResult(res) {
     speakPilotReadback(activeLesson.pilot_readback);
   }
 
-  // Update total score
   const scores = Object.values(lessonScores);
   const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   document.getElementById('academy-score-total').textContent = `${avg}%`;
@@ -664,7 +800,9 @@ setInterval(() => {
 // Init
 window.addEventListener('DOMContentLoaded', async () => {
   bindPTT();
-  window.addEventListener('resize', resizeCanvas);
+  setupCanvasInteraction(groundCanvas, 'ground');
+  setupCanvasInteraction(tmaCanvas, 'tma');
+  window.addEventListener('resize', resizeCanvases);
   
   try {
     const res = await fetch('/api/airport/wiii');
@@ -673,10 +811,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     console.error(e);
   }
 
-  resetRadarView();
+  setLayout('split');
   renderFlightStrips();
-  resizeCanvas();
-
-  // Try initial setup of recording
   setupRecording();
 });
