@@ -263,10 +263,13 @@ function toggleEasyMode() {
 
 function cyclePrompterAircraft() {
   selectedAircraftIndex = (selectedAircraftIndex + 1) % aircraft.length;
+  const ac = aircraft[selectedAircraftIndex];
+  if (ac) {
+    focusAircraftOnGround(ac, 3.8);
+  }
   updateEasyModePrompter();
   renderFlightStrips();
   renderAllScreens();
-  const ac = aircraft[selectedAircraftIndex];
   if (ac && !ac.hasCheckedIn && !isRadioTransmitting) {
     triggerPilotCheckIn(ac);
   }
@@ -1062,14 +1065,30 @@ function renderFlightStrips() {
   document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
 }
 
+function focusAircraftOnGround(ac, optimalZoom = 3.8) {
+  if (!ac) return;
+  const st = viewState.ground;
+  st.zoom = optimalZoom;
+  // Calculate panX and panY so that (ac.lat, ac.lon) is placed directly in the center of the canvas
+  st.panX = - (ac.lon - refLon) * BASE_SCALE * st.zoom;
+  st.panY = (ac.lat - refLat) * BASE_SCALE * st.zoom;
+  renderAllScreens();
+}
+
 function selectAircraft(idx) {
   selectedAircraftIndex = idx;
+  const ac = aircraft[idx];
+
+  // If selecting aircraft, smoothly focus ground radar on this aircraft with clear viewing distance
+  if (ac) {
+    focusAircraftOnGround(ac, 3.8);
+  }
+
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
 
   // If selected aircraft has not checked in, trigger check-in call!
-  const ac = aircraft[idx];
   if (ac && !ac.hasCheckedIn && !isRadioTransmitting) {
     triggerPilotCheckIn(ac);
   }
