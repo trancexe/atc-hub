@@ -89,6 +89,7 @@ const flightRouteMission = {
 let missionLegIndex = 0;
 let flightTickTimer = null;
 let isDebugMuted = true; // DEBUG MODE: Suara di-mute & bypass audio wait
+let showTaxiwayLabels = true; // Toggle for high-visibility taxiway badges
 
 // Trigger pilot initial check-in transmission
 async function triggerPilotCheckIn(ac) {
@@ -742,35 +743,37 @@ function drawGroundScreen() {
   });
 
   // 4c. Macro Taxiway Signboards (Always Visible at ALL Zoom Levels, including Scale 1.0 & Overview)
-  const twLabels = airportData.taxiway_labels || [];
-  twLabels.forEach(lbl => {
-    const p = latLonToScreenCoord(lbl.lat, lbl.lon, st);
-    const text = lbl.ref;
+  if (showTaxiwayLabels) {
+    const twLabels = airportData.taxiway_labels || [];
+    twLabels.forEach(lbl => {
+      const p = latLonToScreenCoord(lbl.lat, lbl.lon, st);
+      const text = lbl.ref;
 
-    // Fixed readable typography regardless of scale
-    ctx.font = "900 12px 'Share Tech Mono', monospace";
-    const textWidth = ctx.measureText(text).width;
-    const boxW = Math.max(22, textWidth + 10);
-    const boxH = 16;
-    const boxX = p.x - boxW / 2;
-    const boxY = p.y - boxH / 2;
+      // Fixed readable typography regardless of scale
+      ctx.font = "900 12px 'Share Tech Mono', monospace";
+      const textWidth = ctx.measureText(text).width;
+      const boxW = Math.max(22, textWidth + 10);
+      const boxH = 16;
+      const boxX = p.x - boxW / 2;
+      const boxY = p.y - boxH / 2;
 
-    // High contrast black pill with neon aviation yellow border
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(boxX, boxY, boxW, boxH);
-    ctx.strokeStyle = "#facc15"; // Neon Amber Yellow
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(boxX, boxY, boxW, boxH);
+      // High contrast black pill with neon aviation yellow border
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(boxX, boxY, boxW, boxH);
+      ctx.strokeStyle = "#facc15"; // Neon Amber Yellow
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-    // Glowing yellow letters
-    ctx.fillStyle = "#fef08a";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, p.x, p.y + 0.5);
+      // Glowing yellow letters
+      ctx.fillStyle = "#fef08a";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, p.x, p.y + 0.5);
 
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-  });
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+    });
+  }
 
   // 4b. Pushback Waypoints & Release Point Indicator (Debug / Operational)
   if (airportData.routes && airportData.routes.pushback_waypoints) {
@@ -1132,6 +1135,21 @@ function zoomScreen(screenKey, factor) {
   const st = viewState[screenKey];
   const minZoom = screenKey === 'tma' ? 0.01 : 0.05;
   st.zoom = Math.max(minZoom, Math.min(25.0, st.zoom * factor));
+  renderAllScreens();
+}
+
+function toggleTaxiwayLabels() {
+  showTaxiwayLabels = !showTaxiwayLabels;
+  const btn = document.getElementById('btn-toggle-tw-labels');
+  if (btn) {
+    if (showTaxiwayLabels) {
+      btn.textContent = "TWY: ON";
+      btn.className = "px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-600/80 text-amber-300 font-bold hover:bg-amber-900 mr-1 text-[10px]";
+    } else {
+      btn.textContent = "TWY: OFF";
+      btn.className = "px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-600 text-slate-400 font-bold hover:bg-slate-700 mr-1 text-[10px]";
+    }
+  }
   renderAllScreens();
 }
 

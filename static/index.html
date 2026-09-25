@@ -97,7 +97,8 @@
               <span class="font-bold tracking-wider"><i class="fa-solid fa-road text-emerald-500 mr-1"></i>GROUND RADAR (ASDE)</span>
               <span class="text-[10px] text-slate-400">| TAXIWAYS & APRONS</span>
             </div>
-            <div class="bg-slate-900/90 backdrop-blur border border-slate-800 px-2 py-0.5 rounded text-[11px] font-radar text-slate-400 flex gap-1.5">
+            <div class="bg-slate-900/90 backdrop-blur border border-slate-800 px-2 py-0.5 rounded text-[11px] font-radar text-slate-400 flex gap-1.5 items-center">
+              <button onclick="toggleTaxiwayLabels()" id="btn-toggle-tw-labels" class="px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-600/80 text-amber-300 font-bold hover:bg-amber-900 mr-1 text-[10px]">TWY: ON</button>
               <button onclick="zoomScreen('ground', 1.25)" class="hover:text-emerald-300 font-bold">+</button>
               <button onclick="zoomScreen('ground', 0.8)" class="hover:text-emerald-300 font-bold">-</button>
               <button onclick="resetScreen('ground')" class="hover:text-emerald-300 ml-1">Center</button>
