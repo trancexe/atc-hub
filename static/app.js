@@ -14,9 +14,9 @@ const tmaCtx = tmaCanvas ? tmaCanvas.getContext('2d') : null;
 // View states for both screens
 const viewState = {
   ground: {
-    panX: 0,
-    panY: 0,
-    zoom: 2.8,
+    panX: -280, // Center on Terminal 2 / 3 gate concourses
+    panY: -120,
+    zoom: 4.5, // Crisp gate-level view
     isDragging: false,
     startX: 0,
     startY: 0,
@@ -632,18 +632,21 @@ function drawGroundScreen() {
     });
   }
 
-  // 3. Passenger Gates (Terminal 1, 2, 3)
+  // 3. Passenger Gates (Terminal 1, 2, 3) & Jet Bridges
   (airportData.gates || []).forEach(gt => {
     const p = latLonToScreenCoord(gt.lat, gt.lon, st);
     ctx.fillStyle = "#38bdf8";
+    ctx.strokeStyle = "#0284c7";
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.rect(p.x - 2, p.y - 2, 4, 4);
+    ctx.rect(p.x - 3, p.y - 3, 6, 6);
     ctx.fill();
+    ctx.stroke();
 
-    if (st.zoom > 2.2 && gt.ref) {
-      ctx.font = "bold 8px 'Share Tech Mono'";
+    if (st.zoom > 1.8 && gt.ref) {
+      ctx.font = "bold 9px 'Share Tech Mono'";
       ctx.fillStyle = "#7dd3fc";
-      ctx.fillText(gt.ref, p.x + 4, p.y + 3);
+      ctx.fillText(gt.ref, p.x + 5, p.y + 3);
     }
   });
 
