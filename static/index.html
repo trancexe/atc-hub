@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATC HUB - WIII Radar & Voice Academy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap');
+    .font-radar { font-family: 'Share Tech Mono', monospace; }
+    .radar-grid {
+      background-image: 
+        radial-gradient(circle, rgba(16, 185, 129, 0.1) 1px, transparent 1px),
+        linear-gradient(to right, rgba(16, 185, 129, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(16, 185, 129, 0.05) 1px, transparent 1px);
+      background-size: 40px 40px, 40px 40px, 40px 40px;
+    }
+    .sweep-glow {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
+
+  <!-- Top Navbar -->
+  <header class="bg-slate-900 border-b border-emerald-900/50 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-lg z-20">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-radar text-lg font-bold">
+        <i class="fa-solid fa-plane-arrival"></i>
+      </div>
+      <div>
+        <h1 class="font-radar text-lg font-bold tracking-wider text-emerald-400 flex items-center gap-2">
+          ATC HUB <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">WIII / CGK</span>
+        </h1>
+        <p class="text-[10px] text-slate-400">Jakarta Control Airspace & Voice Phraseology Academy</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center space-x-2 bg-slate-950 p-1 rounded-lg border border-slate-800">
+      <button id="tab-radar-btn" onclick="switchTab('radar')" class="px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white">
+        <i class="fa-solid fa-crosshairs"></i> Radar Sim
+      </button>
+      <button id="tab-academy-btn" onclick="switchTab('academy')" class="px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
+        <i class="fa-solid fa-graduation-cap"></i> Voice Academy
+      </button>
+    </div>
+
+    <!-- Radar Info & Status -->
+    <div class="flex items-center space-x-4 font-radar text-xs">
+      <div class="text-right">
+        <div class="text-emerald-400 font-bold" id="utc-clock">00:00:00 UTC</div>
+        <div class="text-[10px] text-slate-500">QNH 1011 | WIND 250/08KT</div>
+      </div>
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-950 border border-emerald-900/60 text-emerald-400">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[11px]" id="whisper-status">WHISPER READY</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="flex-1 relative flex overflow-hidden">
+    
+    <!-- TAB 1: RADAR SIMULATOR -->
+    <div id="radar-view" class="flex-1 flex w-full h-full relative">
+      <!-- Radar Canvas Area -->
+      <div class="flex-1 h-full relative bg-slate-950 radar-grid overflow-hidden">
+        <canvas id="radar-canvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+        
+        <!-- Controls Overlay -->
+        <div class="absolute top-4 left-4 z-10 flex flex-col space-y-2">
+          <div class="bg-slate-900/90 backdrop-blur border border-emerald-900/60 p-2 rounded-lg flex items-center space-x-2 font-radar text-xs">
+            <button onclick="zoomRadar(1.2)" class="w-7 h-7 bg-slate-800 hover:bg-emerald-800 rounded flex items-center justify-center text-emerald-300 font-bold">+</button>
+            <button onclick="zoomRadar(0.8)" class="w-7 h-7 bg-slate-800 hover:bg-emerald-800 rounded flex items-center justify-center text-emerald-300 font-bold">-</button>
+            <button onclick="resetRadarView()" class="px-2 h-7 bg-slate-800 hover:bg-emerald-800 rounded flex items-center justify-center text-emerald-300">Center</button>
+            <span class="text-slate-500">|</span>
+            <button id="mode-btn" onclick="toggleRadarMode()" class="px-2.5 h-7 bg-emerald-950 border border-emerald-700 text-emerald-300 rounded font-semibold">MODE: GROUND</button>
+          </div>
+          
+          <div class="bg-slate-900/80 backdrop-blur border border-slate-800 px-3 py-1.5 rounded text-[11px] font-radar text-slate-400">
+            <span class="text-emerald-400 font-bold">Scroll:</span> Zoom | <span class="text-emerald-400 font-bold">Drag:</span> Pan radar
+          </div>
+        </div>
+
+        <!-- Aircraft Strip Overlay -->
+        <div class="absolute top-4 right-4 z-10 w-72 bg-slate-900/90 backdrop-blur border border-emerald-900/60 rounded-lg p-3 font-radar">
+          <div class="text-xs font-bold text-emerald-400 border-b border-emerald-900/40 pb-1.5 mb-2 flex justify-between">
+            <span>ACTIVE STRIPS</span>
+            <span id="aircraft-count">2 Planes</span>
+          </div>
+          <div id="flight-strips" class="space-y-2 max-h-96 overflow-y-auto pr-1">
+            <!-- Strips rendered here -->
+          </div>
+        </div>
+
+        <!-- Bottom Push-to-Talk Bar -->
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
+          <div id="ptt-status" class="text-xs font-radar text-slate-400 mb-2 px-3 py-1 bg-slate-900/90 rounded border border-slate-800 transition-all">
+            Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Click Mic to Transmit
+          </div>
+          <div class="flex items-center space-x-3 bg-slate-900/95 backdrop-blur border border-emerald-900/80 p-2.5 rounded-2xl shadow-2xl">
+            <button id="ptt-btn" class="w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-xl shadow-lg transition transform active:scale-95 border-2 border-emerald-400">
+              <i class="fa-solid fa-microphone"></i>
+            </button>
+            <div class="w-80">
+              <div class="text-[10px] text-slate-400 font-radar uppercase tracking-wider">Controller Voice Input</div>
+              <div id="recognized-text" class="text-xs font-radar text-emerald-300 font-medium truncate italic py-0.5">
+                "Standby for voice..."
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: VOICE ACADEMY (TRAINING MODE) -->
+    <div id="academy-view" class="hidden flex-1 flex w-full h-full p-6 bg-slate-950 overflow-y-auto">
+      <div class="max-w-4xl mx-auto w-full space-y-6">
+        
+        <!-- Header banner -->
+        <div class="bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-800/40 p-5 rounded-xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-xs font-radar uppercase px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30">ICAO Phraseology Drill</span>
+              <h2 class="text-2xl font-bold font-radar text-white mt-2">Flight Academy: Departure to Gate</h2>
+              <p class="text-xs text-slate-400 mt-1 max-w-xl">
+                Latih pelafalan radio aviasi ICAO dari fase IFR clearance awal sampai pesawat kembali ke gate. Dilengkapi speech-to-text akurat Whisper, penilaian akurasi, dan pilot audio readback.
+              </p>
+            </div>
+            <div class="text-right">
+              <div class="text-3xl font-radar font-bold text-emerald-400" id="academy-score-total">0%</div>
+              <div class="text-[11px] text-slate-500 uppercase tracking-wider font-radar">Accuracy Level</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lessons Container -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Lesson List (Left column) -->
+          <div class="space-y-2">
+            <h3 class="text-xs font-radar uppercase text-slate-400 font-bold px-1">Phase Syllabus</h3>
+            <div id="lesson-list" class="space-y-1.5">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Active Drill Card (Right columns) -->
+          <div class="md:col-span-2 bg-slate-900 border border-emerald-900/40 rounded-xl p-5 flex flex-col justify-between space-y-4">
+            <div>
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <span id="drill-phase" class="text-[11px] font-radar text-emerald-400 uppercase tracking-wider">Ground / Pushback & Taxi</span>
+                  <h3 id="drill-title" class="text-lg font-bold text-white font-radar">Pushback & Engine Start</h3>
+                </div>
+                <div id="drill-badge" class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-xs font-radar text-slate-300">
+                  GIA123 (B738)
+                </div>
+              </div>
+
+              <!-- Context situation -->
+              <div class="mt-4 bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div class="text-[11px] text-slate-400 font-semibold mb-1"><i class="fa-solid fa-circle-info text-emerald-500 mr-1"></i> Skenario:</div>
+                <p id="drill-situation" class="text-xs text-slate-300 leading-relaxed">
+                  Pesawat siap pushback dan engine start, menghadap ke arah Barat.
+                </p>
+              </div>
+
+              <!-- Target Phraseology -->
+              <div class="mt-4">
+                <div class="text-[11px] font-radar text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Standard Phraseology to Speak:</span>
+                  <button onclick="playExampleSpeech()" class="text-slate-400 hover:text-emerald-300 text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-volume-high"></i> Contoh Suara
+                  </button>
+                </div>
+                <div id="drill-target" class="font-radar text-base font-bold text-emerald-300 bg-slate-950 border border-emerald-900/60 p-3.5 rounded-lg select-text">
+                  Garuda 123 push and start approved, facing west
+                </div>
+              </div>
+
+              <!-- Phonetic Tips -->
+              <div class="mt-3 bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-lg flex items-start space-x-2">
+                <i class="fa-solid fa-lightbulb text-amber-400 text-xs mt-0.5"></i>
+                <div class="text-[11px] text-amber-200" id="drill-tips">
+                  Jelas dan tegas: PUSH AND START APPROVED, FACING WEST.
+                </div>
+              </div>
+            </div>
+
+            <!-- Voice Interaction Section -->
+            <div class="border-t border-slate-800 pt-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                  <button id="academy-mic-btn" class="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-lg shadow transition active:scale-95 border-2 border-emerald-400">
+                    <i class="fa-solid fa-microphone"></i>
+                  </button>
+                  <div>
+                    <div class="text-xs font-bold text-white">Tekan & Tahan Mic untuk Bicara</div>
+                    <div class="text-[11px] text-slate-400" id="academy-rec-status">Gunakan Spacebar atau tahan tombol hijau</div>
+                  </div>
+                </div>
+
+                <div class="text-right">
+                  <div class="text-xs text-slate-400">Score Hasil:</div>
+                  <div class="text-xl font-radar font-bold text-emerald-400" id="drill-score">--</div>
+                </div>
+              </div>
+
+              <!-- Transcript Feedback Box -->
+              <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                <div class="text-[10px] text-slate-500 uppercase font-radar">Whisper Speech Result:</div>
+                <div id="academy-transcript" class="text-xs font-radar text-slate-300 italic min-h-[20px] mt-0.5">
+                  Belum ada transmisi...
+                </div>
+              </div>
+
+              <!-- Pilot Readback Output -->
+              <div id="readback-container" class="hidden bg-emerald-950/30 border border-emerald-900/50 rounded-lg p-3">
+                <div class="flex items-center justify-between text-[10px] font-radar text-emerald-400 uppercase">
+                  <span><i class="fa-solid fa-radio mr-1"></i> Pilot VHF Radio Readback:</span>
+                  <span class="text-emerald-500 animate-pulse">TRANSMITTING</span>
+                </div>
+                <div id="pilot-readback-text" class="text-xs font-radar text-emerald-200 mt-1 font-semibold">
+                  --
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
