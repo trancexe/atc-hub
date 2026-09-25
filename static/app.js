@@ -288,6 +288,7 @@ async function setupRecording() {
   } catch (err) {
     console.warn("Microphone access error:", err);
     updateMicStatusWarning("Mic permission denied or not found");
+    alert("Detail error microphone: " + (err.name || err.message || err));
     throw err;
   }
 }
