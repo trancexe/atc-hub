@@ -14,9 +14,9 @@ const tmaCtx = tmaCanvas ? tmaCanvas.getContext('2d') : null;
 // View states for both screens
 const viewState = {
   ground: {
-    panX: -280, // Center on Terminal 2 / 3 gate concourses
+    panX: -280,
     panY: -120,
-    zoom: 4.5, // Crisp gate-level view
+    zoom: 6.5, // Crisp, close-up tactical view for small displays & laptop screens
     isDragging: false,
     startX: 0,
     startY: 0,
@@ -265,7 +265,7 @@ function cyclePrompterAircraft() {
   selectedAircraftIndex = (selectedAircraftIndex + 1) % aircraft.length;
   const ac = aircraft[selectedAircraftIndex];
   if (ac) {
-    focusAircraftOnGround(ac, 3.8);
+    focusAircraftOnGround(ac, 6.5);
   }
   updateEasyModePrompter();
   renderFlightStrips();
@@ -1108,7 +1108,7 @@ function resetScreen(screenKey) {
   const st = viewState[screenKey];
   st.panX = 0;
   st.panY = 0;
-  st.zoom = screenKey === 'ground' ? 2.8 : 0.16;
+  st.zoom = screenKey === 'ground' ? 6.5 : 0.16;
   renderAllScreens();
 }
 
@@ -1136,7 +1136,7 @@ function renderFlightStrips() {
   document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
 }
 
-function focusAircraftOnGround(ac, optimalZoom = 3.8) {
+function focusAircraftOnGround(ac, optimalZoom = 6.5) {
   if (!ac) return;
   const st = viewState.ground;
   st.zoom = optimalZoom;
@@ -1150,9 +1150,9 @@ function selectAircraft(idx) {
   selectedAircraftIndex = idx;
   const ac = aircraft[idx];
 
-  // If selecting aircraft, smoothly focus ground radar on this aircraft with clear viewing distance
+  // If selecting aircraft, smoothly focus ground radar on this aircraft with clear close-up distance
   if (ac) {
-    focusAircraftOnGround(ac, 3.8);
+    focusAircraftOnGround(ac, 6.5);
   }
 
   renderFlightStrips();
