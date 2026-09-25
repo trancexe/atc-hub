@@ -1336,9 +1336,12 @@ function executeTaxiMovement(ac) {
 
   function moveNextTaxiNode() {
     if (ptIdx >= points.length) {
-      // Arrived precisely at Holding Point 25R!
+      // Arrived precisely at Holding Point 25R! Stop bar lock.
       ac.groundSpeed = 0;
-      ac.heading = 250;
+      // Exact stop coordinates at HP 25R (-6.110065, 106.669746)
+      ac.lat = points[points.length - 1].lat;
+      ac.lon = points[points.length - 1].lon;
+      ac.heading = 250; // Aligned towards Runway 25R threshold
       ac.state = "HOLDING";
       ac.hasCheckedIn = false;
       ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, holding point runway two five right, ready for departure.";
