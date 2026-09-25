@@ -67148,19 +67148,19 @@
       "id": "DOLTA",
       "lat": -6.345,
       "lon": 106.72,
-      "desc": "South-East STAR/SID"
+      "desc": "South-East Enroute/STAR/SID"
     },
     {
       "id": "BUNTO",
       "lat": -6.12,
       "lon": 106.95,
-      "desc": "East STAR/SID"
+      "desc": "East Enroute/STAR/SID"
     },
     {
       "id": "KRAKE",
       "lat": -6.02,
       "lon": 106.28,
-      "desc": "West STAR/SID"
+      "desc": "West Enroute/STAR/SID"
     },
     {
       "id": "RAKIT",
@@ -67172,7 +67172,269 @@
       "id": "GOMBA",
       "lat": -5.92,
       "lon": 106.75,
-      "desc": "North Approach"
+      "desc": "North Approach Entry"
+    },
+    {
+      "id": "CA",
+      "lat": -6.05,
+      "lon": 106.72,
+      "desc": "North IAF / Hold"
+    },
+    {
+      "id": "TEGID",
+      "lat": -6.1,
+      "lon": 106.85,
+      "desc": "Intermediate Fix RWY 25"
+    },
+    {
+      "id": "CLG",
+      "lat": -6.01,
+      "lon": 106.03,
+      "desc": "Cilegon Fix"
+    },
+    {
+      "id": "TOPIN",
+      "lat": -5.95,
+      "lon": 106.45,
+      "desc": "North-West Transition"
+    },
+    {
+      "id": "IMUBA",
+      "lat": -6.2,
+      "lon": 106.48,
+      "desc": "South Initial Fix"
+    },
+    {
+      "id": "ESLAM",
+      "lat": -6.18,
+      "lon": 106.88,
+      "desc": "South-East Downwind"
+    }
+  ],
+  "sids": [
+    {
+      "id": "DOLTA 1C",
+      "runways": [
+        "25R",
+        "25L"
+      ],
+      "color": "#f59e0b",
+      "waypoints": [
+        "CKG",
+        "IMUBA",
+        "DOLTA"
+      ],
+      "coords": [
+        [
+          -6.1275,
+          106.658
+        ],
+        [
+          -6.2,
+          106.48
+        ],
+        [
+          -6.345,
+          106.72
+        ]
+      ]
+    },
+    {
+      "id": "BUNTO 1C",
+      "runways": [
+        "25R",
+        "25L"
+      ],
+      "color": "#f97316",
+      "waypoints": [
+        "CKG",
+        "CA",
+        "BUNTO"
+      ],
+      "coords": [
+        [
+          -6.1275,
+          106.658
+        ],
+        [
+          -6.05,
+          106.72
+        ],
+        [
+          -6.12,
+          106.95
+        ]
+      ]
+    },
+    {
+      "id": "KRAKE 1C",
+      "runways": [
+        "25R",
+        "25L",
+        "06"
+      ],
+      "color": "#eab308",
+      "waypoints": [
+        "CKG",
+        "TOPIN",
+        "KRAKE"
+      ],
+      "coords": [
+        [
+          -6.1275,
+          106.658
+        ],
+        [
+          -5.95,
+          106.45
+        ],
+        [
+          -6.02,
+          106.28
+        ]
+      ]
+    },
+    {
+      "id": "DOLTA 1D",
+      "runways": [
+        "07L",
+        "07R"
+      ],
+      "color": "#d97706",
+      "waypoints": [
+        "CKG",
+        "ESLAM",
+        "DOLTA"
+      ],
+      "coords": [
+        [
+          -6.1275,
+          106.658
+        ],
+        [
+          -6.18,
+          106.88
+        ],
+        [
+          -6.345,
+          106.72
+        ]
+      ]
+    }
+  ],
+  "stars": [
+    {
+      "id": "DOLTA 1A",
+      "runways": [
+        "25R",
+        "25L"
+      ],
+      "color": "#06b6d4",
+      "waypoints": [
+        "DOLTA",
+        "ESLAM",
+        "TEGID",
+        "CKG"
+      ],
+      "coords": [
+        [
+          -6.345,
+          106.72
+        ],
+        [
+          -6.18,
+          106.88
+        ],
+        [
+          -6.1,
+          106.85
+        ],
+        [
+          -6.1275,
+          106.658
+        ]
+      ]
+    },
+    {
+      "id": "BUNTO 1A",
+      "runways": [
+        "25R",
+        "25L"
+      ],
+      "color": "#3b82f6",
+      "waypoints": [
+        "BUNTO",
+        "TEGID",
+        "CKG"
+      ],
+      "coords": [
+        [
+          -6.12,
+          106.95
+        ],
+        [
+          -6.1,
+          106.85
+        ],
+        [
+          -6.1275,
+          106.658
+        ]
+      ]
+    },
+    {
+      "id": "KRAKE 1A",
+      "runways": [
+        "07L",
+        "07R"
+      ],
+      "color": "#8b5cf6",
+      "waypoints": [
+        "KRAKE",
+        "RAKIT",
+        "CKG"
+      ],
+      "coords": [
+        [
+          -6.02,
+          106.28
+        ],
+        [
+          -6.25,
+          106.4
+        ],
+        [
+          -6.1275,
+          106.658
+        ]
+      ]
+    },
+    {
+      "id": "GOMBA 1A",
+      "runways": [
+        "25R",
+        "25L"
+      ],
+      "color": "#14b8a6",
+      "waypoints": [
+        "GOMBA",
+        "CA",
+        "TEGID"
+      ],
+      "coords": [
+        [
+          -5.92,
+          106.75
+        ],
+        [
+          -6.05,
+          106.72
+        ],
+        [
+          -6.1,
+          106.85
+        ]
+      ]
     }
   ]
 }

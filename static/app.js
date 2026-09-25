@@ -785,6 +785,54 @@ function drawTmaScreen() {
     drawExtendedCenterline(ctx, rw.coords, st);
   });
 
+  // SIDs (Standard Instrument Departures) - Orange/Amber dashed routes
+  (airportData.sids || []).forEach(sid => {
+    if (!sid.coords || sid.coords.length < 2) return;
+    ctx.beginPath();
+    ctx.strokeStyle = sid.color || "rgba(245, 158, 11, 0.65)";
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([6, 4]);
+    const p0 = latLonToScreenCoord(sid.coords[0][0], sid.coords[0][1], st);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < sid.coords.length; i++) {
+      const pt = latLonToScreenCoord(sid.coords[i][0], sid.coords[i][1], st);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // SID Label
+    const midIdx = Math.floor(sid.coords.length / 2);
+    const pm = latLonToScreenCoord(sid.coords[midIdx][0], sid.coords[midIdx][1], st);
+    ctx.font = "bold 9px 'Share Tech Mono'";
+    ctx.fillStyle = sid.color || "#f59e0b";
+    ctx.fillText(`[SID] ${sid.id}`, pm.x - 15, pm.y - 8);
+  });
+
+  // STARs (Standard Terminal Arrival Routes) - Cyan/Blue dashed routes
+  (airportData.stars || []).forEach(star => {
+    if (!star.coords || star.coords.length < 2) return;
+    ctx.beginPath();
+    ctx.strokeStyle = star.color || "rgba(6, 182, 212, 0.75)";
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([4, 4]);
+    const p0 = latLonToScreenCoord(star.coords[0][0], star.coords[0][1], st);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < star.coords.length; i++) {
+      const pt = latLonToScreenCoord(star.coords[i][0], star.coords[i][1], st);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // STAR Label
+    const midIdx = Math.floor(star.coords.length / 2);
+    const pm = latLonToScreenCoord(star.coords[midIdx][0], star.coords[midIdx][1], st);
+    ctx.font = "bold 9px 'Share Tech Mono'";
+    ctx.fillStyle = star.color || "#06b6d4";
+    ctx.fillText(`[STAR] ${star.id}`, pm.x + 8, pm.y + 12);
+  });
+
   // Waypoints & Navaids
   (airportData.waypoints || []).concat(airportData.navaids || []).forEach(wp => {
     const p = latLonToScreenCoord(wp.lat, wp.lon, st);
