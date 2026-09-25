@@ -785,7 +785,29 @@ function drawTmaScreen() {
     drawExtendedCenterline(ctx, rw.coords, st);
   });
 
-  // SIDs (Standard Instrument Departures) - Orange/Amber dashed routes
+  // 1. Airways (ATS / RNAV Enroute routes - Solid thin lines with airway ID)
+  (airportData.airways || []).forEach(aw => {
+    if (!aw.coords || aw.coords.length < 2) return;
+    ctx.beginPath();
+    ctx.strokeStyle = aw.color || "rgba(148, 163, 184, 0.35)";
+    ctx.lineWidth = 1.0;
+    const p0 = latLonToScreenCoord(aw.coords[0][0], aw.coords[0][1], st);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < aw.coords.length; i++) {
+      const pt = latLonToScreenCoord(aw.coords[i][0], aw.coords[i][1], st);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+
+    // Airway Designator Badge
+    const midIdx = Math.floor(aw.coords.length / 2);
+    const pm = latLonToScreenCoord(aw.coords[midIdx][0], aw.coords[midIdx][1], st);
+    ctx.font = "bold 9px 'Share Tech Mono'";
+    ctx.fillStyle = aw.color || "#94a3b8";
+    ctx.fillText(`${aw.id}`, pm.x - 8, pm.y + 14);
+  });
+
+  // 2. SIDs (Standard Instrument Departures) - Orange/Amber dashed routes
   (airportData.sids || []).forEach(sid => {
     if (!sid.coords || sid.coords.length < 2) return;
     ctx.beginPath();
@@ -833,7 +855,34 @@ function drawTmaScreen() {
     ctx.fillText(`[STAR] ${star.id}`, pm.x + 8, pm.y + 12);
   });
 
-  // Waypoints & Navaids
+  // 4. Center Coordination & Handoff Gateways (Entry / Exit fixes)
+  (airportData.handoff_points || []).forEach(cop => {
+    const p = latLonToScreenCoord(cop.lat, cop.lon, st);
+    
+    // Rotating / Pulsing Diamond Box for Handoff Boundary Gate
+    ctx.strokeStyle = "#a855f7";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.strokeRect(p.x - 7, p.y - 7, 14, 14);
+
+    ctx.fillStyle = "rgba(168, 85, 247, 0.2)";
+    ctx.fillRect(p.x - 7, p.y - 7, 14, 14);
+
+    // Gateway Label
+    ctx.font = "bold 9px 'Share Tech Mono'";
+    ctx.fillStyle = "#c084fc";
+    ctx.fillText(`COP ${cop.id}`, p.x + 10, p.y - 4);
+    
+    if (st.zoom > 0.4) {
+      ctx.font = "8px 'Share Tech Mono'";
+      ctx.fillStyle = "#e9d5ff";
+      ctx.fillText(`${cop.sector}`, p.x + 10, p.y + 5);
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText(`IN: ${cop.inbound_level} | OUT: ${cop.outbound_level}`, p.x + 10, p.y + 14);
+    }
+  });
+
+  // 5. Regular Waypoints & Navaids
   (airportData.waypoints || []).concat(airportData.navaids || []).forEach(wp => {
     const p = latLonToScreenCoord(wp.lat, wp.lon, st);
     ctx.strokeStyle = "#38bdf8";
