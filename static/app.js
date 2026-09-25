@@ -679,12 +679,28 @@ function drawGroundScreen() {
     }
   });
 
-  // 4. Taxiways
+  // 4. Taxiways (Centerlines & High-Visibility Aviation Signboards)
   (airportData.taxiways || []).forEach(tw => {
     if (!tw.coords || tw.coords.length < 2) return;
+    
+    // Physical taxiway pavement underlay when zoomed in
+    if (st.zoom > 1.2) {
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.45)"; // Dark asphalt shoulder
+      ctx.lineWidth = Math.max(3, 4.5 * st.zoom);
+      const p0 = latLonToScreenCoord(tw.coords[0][0], tw.coords[0][1], st);
+      ctx.moveTo(p0.x, p0.y);
+      for (let i = 1; i < tw.coords.length; i++) {
+        const pt = latLonToScreenCoord(tw.coords[i][0], tw.coords[i][1], st);
+        ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+    }
+
+    // High-visibility luminous green taxiway centerline
     ctx.beginPath();
-    ctx.strokeStyle = "rgba(16, 185, 129, 0.55)";
-    ctx.lineWidth = Math.max(1.8, 2.5 * (st.zoom / 2));
+    ctx.strokeStyle = "rgba(16, 185, 129, 0.85)";
+    ctx.lineWidth = Math.max(1.8, 2.2 * (st.zoom / 1.5));
     const p0 = latLonToScreenCoord(tw.coords[0][0], tw.coords[0][1], st);
     ctx.moveTo(p0.x, p0.y);
     for (let i = 1; i < tw.coords.length; i++) {
@@ -693,12 +709,35 @@ function drawGroundScreen() {
     }
     ctx.stroke();
 
-    if (tw.ref && tw.coords.length >= 2 && st.zoom > 1.8) {
+    // High-Visibility ICAO Yellow-on-Black Aviation Taxiway Signboards
+    if (tw.ref && tw.coords.length >= 2 && st.zoom > 0.85) {
       const mid = tw.coords[Math.floor(tw.coords.length / 2)];
       const mp = latLonToScreenCoord(mid[0], mid[1], st);
-      ctx.font = "bold 9px 'Share Tech Mono'";
-      ctx.fillStyle = "#34d399";
-      ctx.fillText(tw.ref, mp.x + 3, mp.y - 3);
+      const text = String(tw.ref).trim();
+      
+      ctx.font = "bold 11px 'Share Tech Mono', monospace";
+      const textWidth = ctx.measureText(text).width;
+      const boxW = Math.max(18, textWidth + 8);
+      const boxH = 14;
+      const boxX = mp.x - boxW / 2;
+      const boxY = mp.y - boxH / 2;
+
+      // Outer badge (Yellow border + Solid Pitch Black fill like real airport airfield guidance sign)
+      ctx.fillStyle = "rgba(5, 5, 8, 0.92)";
+      ctx.fillRect(boxX, boxY, boxW, boxH);
+      ctx.strokeStyle = "#fbbf24"; // Aviation yellow border
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+      // Yellow signage text
+      ctx.fillStyle = "#fef08a";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, mp.x, mp.y + 0.5);
+
+      // Reset text alignment
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
     }
   });
 
