@@ -1449,27 +1449,35 @@ function executeTaxiMovement(ac) {
 }
 
 function executeLineUpMovement(ac) {
-  // Continuous, unbroken lead-in curve from HP N2 across Way 747840866 into Runway 25R threshold
-  const entryNodes = (airportData && airportData.routes && airportData.routes.runway_25r_entry_lineup)
-    ? airportData.routes.runway_25r_entry_lineup.map(p => ({ lat: p[0], lon: p[1] }))
-    : [
-        { lat: -6.110490, lon: 106.667968 },
-        { lat: -6.109798, lon: 106.667797 },
-        { lat: -6.109270, lon: 106.668258 },
-        { lat: -6.108959, lon: 106.669062 }
-      ];
+  const rwyKey = ac.clearedRwy || "25R";
+  const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
+    ? airportData.runway_mechanisms[rwyKey]
+    : null;
 
+  // Continuous, unbroken lead-in curve into Runway threshold
+  const entryNodes = mech && mech.lineup_path
+    ? mech.lineup_path.map(p => ({ lat: p[0], lon: p[1] }))
+    : ((airportData && airportData.routes && airportData.routes.runway_25r_entry_lineup)
+        ? airportData.routes.runway_25r_entry_lineup.map(p => ({ lat: p[0], lon: p[1] }))
+        : [
+            { lat: -6.110490, lon: 106.667968 },
+            { lat: -6.109798, lon: 106.667797 },
+            { lat: -6.109270, lon: 106.668258 },
+            { lat: -6.108959, lon: 106.669062 }
+          ]);
+
+  const targetHeading = mech ? mech.heading : 250;
   let eIdx = 1;
   ac.groundSpeed = 10;
 
   function moveNextEntryNode() {
     if (eIdx >= entryNodes.length) {
-      // Perfectly lined up on Runway 25R centerline threshold!
+      // Perfectly lined up on Runway centerline threshold!
       ac.groundSpeed = 0;
       const lastPt = entryNodes[entryNodes.length - 1];
       ac.lat = lastPt.lat;
       ac.lon = lastPt.lon;
-      ac.heading = 250; // Aligned perfectly down the runway
+      ac.heading = targetHeading; // Aligned perfectly down the runway
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
@@ -1518,16 +1526,24 @@ function executeLineUpMovement(ac) {
 }
 
 function executeTakeoffMovement(ac) {
-  // Continuous real runway centerline roll along Runway 25R (Way 28141931)
-  const rollNodes = (airportData && airportData.routes && airportData.routes.runway_25r_takeoff_roll)
-    ? airportData.routes.runway_25r_takeoff_roll.map(p => ({ lat: p[0], lon: p[1] }))
-    : [
-        { lat: -6.108959, lon: 106.669062 },
-        { lat: -6.113463, lon: 106.657748 },
-        { lat: -6.117106, lon: 106.648619 },
-        { lat: -6.120986, lon: 106.638883 }
-      ];
+  const rwyKey = ac.clearedRwy || "25R";
+  const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
+    ? airportData.runway_mechanisms[rwyKey]
+    : null;
 
+  // Continuous real runway centerline roll along designated Runway direction
+  const rollNodes = mech && mech.takeoff_roll_path
+    ? mech.takeoff_roll_path.map(p => ({ lat: p[0], lon: p[1] }))
+    : ((airportData && airportData.routes && airportData.routes.runway_25r_takeoff_roll)
+        ? airportData.routes.runway_25r_takeoff_roll.map(p => ({ lat: p[0], lon: p[1] }))
+        : [
+            { lat: -6.108959, lon: 106.669062 },
+            { lat: -6.113463, lon: 106.657748 },
+            { lat: -6.117106, lon: 106.648619 },
+            { lat: -6.120986, lon: 106.638883 }
+          ]);
+
+  const targetHeading = mech ? mech.heading : 250;
   let rIdx = 1;
   const totalRollPoints = rollNodes.length;
 
@@ -1537,7 +1553,7 @@ function executeTakeoffMovement(ac) {
       ac.hasCheckedIn = false;
       ac.groundSpeed = 185;
       ac.altitude = 1500;
-      ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, airborne runway two five right passing one thousand five hundred feet.";
+      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, airborne runway ${rwyKey} passing one thousand five hundred feet.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
@@ -1575,7 +1591,7 @@ function executeTakeoffMovement(ac) {
       const prog = step / totalSteps;
       ac.lat = startLat + (targetPt.lat - startLat) * prog;
       ac.lon = startLon + (targetPt.lon - startLon) * prog;
-      ac.heading = 250;
+      ac.heading = targetHeading;
 
       renderAllScreens();
 
