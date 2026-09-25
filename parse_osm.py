@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 import json
 
-print("Parsing XML...")
+print("Extracting full vector data for WIII from OSM XML...")
 tree = ET.parse('/home/bmnrtkgto/project/atc-hub/wiii_osm.xml')
 root = tree.getroot()
 
@@ -11,68 +11,95 @@ for node in root.findall('node'):
     lat_str = node.get('lat')
     lon_str = node.get('lon')
     if nid and lat_str and lon_str:
-        lat = float(lat_str)
-        lon = float(lon_str)
-        tags = {tag.get('k'): tag.get('v') for tag in node.findall('tag') if tag.get('k')}
-        nodes[nid] = {'lat': lat, 'lon': lon, 'tags': tags}
+        nodes[nid] = (round(float(lat_str), 6), round(float(lon_str), 6))
 
 runways = []
 taxiways = []
 aprons = []
-holding_positions = []
-parking_positions = []
+parking_stands = []
+terminals = []
 
 for way in root.findall('way'):
     wid = way.get('id')
-    tags = {tag.get('k'): tag.get('v') for tag in way.findall('tag') if tag.get('k')}
+    tags = {t.get('k'): t.get('v') for t in way.findall('tag') if t.get('k')}
+    aero = tags.get('aeroway')
+    building = tags.get('building')
     nd_refs = [nd.get('ref') for nd in way.findall('nd') if nd.get('ref')]
-    coords = []
-    for ref in nd_refs:
-        if ref in nodes:
-            coords.append([nodes[ref]['lat'], nodes[ref]['lon']])
-            
-    aeroway = tags.get('aeroway')
-    if aeroway == 'runway':
+    coords = [nodes[ref] for ref in nd_refs if ref in nodes]
+    if not coords:
+        continue
+
+    if aero == 'runway':
         runways.append({
             'id': wid,
             'ref': tags.get('ref', 'RWY'),
-            'width': tags.get('width', 45),
+            'width': float(tags.get('width', 60)),
+            'length': tags.get('length', '3600'),
             'surface': tags.get('surface', 'asphalt'),
             'coords': coords
         })
-    elif aeroway == 'taxiway':
+    elif aero == 'taxiway':
         taxiways.append({
             'id': wid,
-            'ref': tags.get('ref', tags.get('name', 'TWY')),
-            'width': tags.get('width', 23),
+            'ref': tags.get('ref') or tags.get('name') or '',
+            'width': float(tags.get('width', 23)),
             'coords': coords
         })
-    elif aeroway == 'apron':
+    elif aero == 'apron':
         aprons.append({
             'id': wid,
-            'ref': tags.get('ref', tags.get('name', 'Apron')),
+            'ref': tags.get('ref') or tags.get('name') or 'Apron',
+            'coords': coords
+        })
+    elif aero == 'parking_position':
+        cen_lat = round(sum(c[0] for c in coords) / len(coords), 6)
+        cen_lon = round(sum(c[1] for c in coords) / len(coords), 6)
+        parking_stands.append({
+            'id': wid,
+            'ref': tags.get('ref') or tags.get('name') or '',
+            'coords': coords,
+            'lat': cen_lat,
+            'lon': cen_lon
+        })
+    elif aero == 'terminal' or building in ('terminal', 'hangar', 'yes'):
+        terminals.append({
+            'id': wid,
+            'ref': tags.get('name') or tags.get('ref') or 'Building',
             'coords': coords
         })
 
-for nid, n in nodes.items():
-    aero = n['tags'].get('aeroway')
-    if aero == 'holding_position':
+gates = []
+holding_positions = []
+for node in root.findall('node'):
+    nid = node.get('id')
+    tags = {t.get('k'): t.get('v') for t in node.findall('tag') if t.get('k')}
+    aero = tags.get('aeroway')
+    if nid not in nodes:
+        continue
+    lat, lon = nodes[nid]
+    if aero == 'gate':
+        gates.append({
+            'id': nid,
+            'ref': tags.get('ref') or tags.get('name') or 'G',
+            'lat': lat,
+            'lon': lon
+        })
+    elif aero == 'holding_position':
         holding_positions.append({
             'id': nid,
-            'ref': n['tags'].get('ref', 'HP'),
-            'lat': n['lat'],
-            'lon': n['lon']
-        })
-    elif aero in ('parking_position', 'gate'):
-        parking_positions.append({
-            'id': nid,
-            'ref': n['tags'].get('ref', n['tags'].get('name', 'GATE')),
-            'lat': n['lat'],
-            'lon': n['lon'],
-            'type': aero
+            'ref': tags.get('ref') or 'HP',
+            'lat': lat,
+            'lon': lon
         })
 
-print(f"Parsed: {len(runways)} runways, {len(taxiways)} taxiways, {len(aprons)} aprons, {len(holding_positions)} holding positions, {len(parking_positions)} parking positions/gates")
+print(f"Extraction summary:")
+print(f"  Runways: {len(runways)}")
+print(f"  Taxiways: {len(taxiways)}")
+print(f"  Aprons: {len(aprons)}")
+print(f"  Parking Stands: {len(parking_stands)}")
+print(f"  Gates: {len(gates)}")
+print(f"  Holding Positions: {len(holding_positions)}")
+print(f"  Terminals: {len(terminals)}")
 
 wiii_data = {
     'icao': 'WIII',
@@ -82,8 +109,10 @@ wiii_data = {
     'runways': runways,
     'taxiways': taxiways,
     'aprons': aprons,
+    'parking_stands': parking_stands,
+    'gates': gates,
     'holding_positions': holding_positions,
-    'parking_positions': parking_positions,
+    'terminals': terminals,
     'navaids': [
         {'id': 'CKG', 'name': 'CENGKARENG VOR-DME', 'freq': '115.6', 'lat': -6.1275, 'lon': 106.658},
         {'id': 'DKI', 'name': 'JAKARTA VOR-DME', 'freq': '114.7', 'lat': -6.115, 'lon': 106.960},
@@ -102,4 +131,4 @@ wiii_data = {
 with open('/home/bmnrtkgto/project/atc-hub/wiii_data.json', 'w') as f:
     json.dump(wiii_data, f, indent=2)
 
-print("Saved to wiii_data.json successfully!")
+print("Saved complete WIII vector data to /home/bmnrtkgto/project/atc-hub/wiii_data.json successfully!")
