@@ -1252,7 +1252,8 @@ function handleRadarVoiceCommand(text, parsedData) {
 // Autonomous Flight Movement Sequences for GIA502
 function executePushbackMovement(ac) {
   let step = 0;
-  const totalSteps = 30;
+  // Realistic pushback speed: ~4 kts, smooth tug progression
+  const totalSteps = 100;
   const startLat = ac.lat;
   const startLon = ac.lon;
   const target = (airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r)
@@ -1264,7 +1265,7 @@ function executePushbackMovement(ac) {
     const progress = step / totalSteps;
     ac.lat = startLat + (target.lat - startLat) * progress;
     ac.lon = startLon + (target.lon - startLon) * progress;
-    ac.groundSpeed = 6;
+    ac.groundSpeed = 4;
     ac.heading = 250;
     renderAllScreens();
 
@@ -1284,7 +1285,7 @@ function executePushbackMovement(ac) {
         triggerPilotCheckIn(ac);
       }, 1000);
     }
-  }, 60);
+  }, 80);
 }
 
 function executeTaxiMovement(ac) {
@@ -1320,29 +1321,40 @@ function executeTaxiMovement(ac) {
     // Calculate heading towards next taxiway point
     const dLat = targetPt.lat - startLat;
     const dLon = targetPt.lon - startLon;
+    let targetHdg = ac.heading;
     if (Math.abs(dLat) > 0.000001 || Math.abs(dLon) > 0.000001) {
       const angleRad = Math.atan2(dLat, dLon * Math.cos(startLat * Math.PI / 180));
-      let hdgDeg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
-      ac.heading = hdgDeg;
+      targetHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
     }
 
-    ac.groundSpeed = 18;
+    // Realistic taxi speed: straight 18-20 kts, turns 8-10 kts
+    const hdgDiff = Math.abs((targetHdg - ac.heading + 540) % 360 - 180);
+    ac.groundSpeed = hdgDiff > 25 ? 9 : 17;
+
+    // Distance-based step timing for smooth realistic glide (~35-45 seconds full taxi roll)
+    const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
+    const totalSteps = Math.max(6, Math.round(distDeg * 45000));
     let step = 0;
-    const totalSteps = 4; // Fast fluid interpolation between dense taxiway nodes
 
     const stepInterval = setInterval(() => {
       step++;
       const prog = step / totalSteps;
       ac.lat = startLat + (targetPt.lat - startLat) * prog;
       ac.lon = startLon + (targetPt.lon - startLon) * prog;
+
+      // Smooth heading turn
+      const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
+      ac.heading = Math.round((ac.heading + angleDelta * 0.18 + 360) % 360);
+
       renderAllScreens();
 
       if (step >= totalSteps) {
         clearInterval(stepInterval);
+        ac.heading = targetHdg;
         ptIdx++;
         moveNextTaxiNode();
       }
-    }, 40);
+    }, 60);
   }
 
   moveNextTaxiNode();
@@ -1350,7 +1362,7 @@ function executeTaxiMovement(ac) {
 
 function executeLineUpMovement(ac) {
   let step = 0;
-  const totalSteps = 25;
+  const totalSteps = 80;
   const startLat = ac.lat;
   const startLon = ac.lon;
   const target = flightRouteMission.runwayLineUp;
@@ -1376,7 +1388,8 @@ function executeLineUpMovement(ac) {
 
 function executeTakeoffMovement(ac) {
   let step = 0;
-  const totalSteps = 60;
+  // Realistic takeoff roll on 3,600m runway: ~22-25 seconds to reach Vr (150 kts)
+  const totalSteps = 220;
   const startLat = ac.lat;
   const startLon = ac.lon;
   const target = flightRouteMission.runwayRollEnd;
@@ -1384,17 +1397,24 @@ function executeTakeoffMovement(ac) {
   const rollInterval = setInterval(() => {
     step++;
     const prog = step / totalSteps;
-    ac.lat = startLat + (target.lat - startLat) * prog;
-    ac.lon = startLon + (target.lon - startLon) * prog;
-    ac.groundSpeed = Math.round(10 + prog * 160);
-    ac.altitude = Math.round(prog * 500);
+    const accelProg = Math.pow(prog, 1.4);
+    ac.lat = startLat + (target.lat - startLat) * accelProg;
+    ac.lon = startLon + (target.lon - startLon) * accelProg;
+    ac.groundSpeed = Math.round(5 + accelProg * 155);
+    
+    if (prog > 0.65) {
+      const climbProg = (prog - 0.65) / 0.35;
+      ac.altitude = Math.round(climbProg * 1200);
+    } else {
+      ac.altitude = 0;
+    }
     renderAllScreens();
 
     if (step >= totalSteps) {
       clearInterval(rollInterval);
       ac.state = "AIRBORNE";
       ac.hasCheckedIn = false;
-      ac.groundSpeed = 190;
+      ac.groundSpeed = 185;
       ac.altitude = 1200;
       ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, airborne runway two five right passing one thousand two hundred feet.";
       renderFlightStrips();
@@ -1424,32 +1444,40 @@ function executeClimbEnroute(ac) {
 
       setTimeout(() => {
         triggerPilotCheckIn(ac);
-      }, 1200);
+      }, 1000);
       return;
     }
 
-    const legTarget = points[ptIdx];
+    const leg = points[ptIdx];
     const startLat = ac.lat;
     const startLon = ac.lon;
     const startAlt = ac.altitude;
     const startSpd = ac.groundSpeed;
-    ac.heading = legTarget.hdg;
-    let step = 0;
-    const totalSteps = 60;
+    const targetAlt = leg.alt;
+    const targetSpd = leg.spd;
+    const targetHdg = leg.hdg;
 
-    const climbInterval = setInterval(() => {
+    const totalSteps = 180;
+    let step = 0;
+
+    const legInterval = setInterval(() => {
       step++;
       const prog = step / totalSteps;
-      ac.lat = startLat + (legTarget.lat - startLat) * prog;
-      ac.lon = startLon + (legTarget.lon - startLon) * prog;
-      ac.altitude = Math.round(startAlt + (legTarget.alt - startAlt) * prog);
-      ac.groundSpeed = Math.round(startSpd + (legTarget.spd - startSpd) * prog);
+      ac.lat = startLat + (leg.lat - startLat) * prog;
+      ac.lon = startLon + (leg.lon - startLon) * prog;
+      ac.altitude = Math.round(startAlt + (targetAlt - startAlt) * prog);
+      ac.groundSpeed = Math.round(startSpd + (targetSpd - startSpd) * prog);
+
+      const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
+      ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
+
       renderAllScreens();
 
       if (step >= totalSteps) {
-        clearInterval(climbInterval);
+        clearInterval(legInterval);
+        ac.heading = targetHdg;
         ptIdx++;
-        setTimeout(moveNextClimbLeg, 200);
+        moveNextClimbLeg();
       }
     }, 100);
   }
