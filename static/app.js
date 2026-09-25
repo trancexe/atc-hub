@@ -231,22 +231,36 @@ let isRecording = false;
 async function setupRecording() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     console.warn("navigator.mediaDevices.getUserMedia not available");
-    updateMicStatusWarning("Browser requires HTTPS for Mic. Access via https:// or localhost");
+    updateMicStatusWarning("Browser requires HTTPS or localhost for Mic");
     return;
   }
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    // Choose best mime type supported by Firefox/Chrome
+    let mimeType = 'audio/webm';
+    if (!MediaRecorder.isTypeSupported('audio/webm')) {
+      if (MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
+        mimeType = 'audio/ogg; codecs=opus';
+      } else {
+        mimeType = ''; // browser default
+      }
+    }
+
+    mediaRecorder = mimeType ? new MediaRecorder(micStream, { mimeType }) : new MediaRecorder(micStream);
 
     mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
+      if (e.data && e.data.size > 0) audioChunks.push(e.data);
     };
 
     mediaRecorder.onstop = async () => {
-      const mimeType = mediaRecorder.mimeType || 'audio/webm';
-      const ext = mimeType.includes('webm') ? 'webm' : 'wav';
-      const audioBlob = new Blob(audioChunks, { type: mimeType });
+      const type = mediaRecorder.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunks, { type });
+      let ext = 'webm';
+      if (type.includes('ogg')) ext = 'ogg';
+      else if (type.includes('wav')) ext = 'wav';
+
       audioChunks = [];
       await sendAudioToWhisper(audioBlob, ext);
     };
@@ -255,6 +269,7 @@ async function setupRecording() {
   } catch (err) {
     console.warn("Microphone access error:", err);
     updateMicStatusWarning("Mic permission denied or not found");
+    throw err;
   }
 }
 
