@@ -1233,10 +1233,12 @@ function handleRadarVoiceCommand(text, parsedData) {
 // Autonomous Flight Movement Sequences for GIA502
 function executePushbackMovement(ac) {
   let step = 0;
-  const totalSteps = 40;
+  const totalSteps = 30;
   const startLat = ac.lat;
   const startLon = ac.lon;
-  const target = flightRouteMission.pushbackEnd;
+  const target = (airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r)
+    ? { lat: airportData.routes.gate_e1_to_rwy25r[0][0], lon: airportData.routes.gate_e1_to_rwy25r[0][1] }
+    : flightRouteMission.pushbackEnd;
 
   const pushInterval = setInterval(() => {
     step++;
@@ -1261,19 +1263,24 @@ function executePushbackMovement(ac) {
       // Trigger Pilot Request to Taxi
       setTimeout(() => {
         triggerPilotCheckIn(ac);
-      }, 1500);
+      }, 1000);
     }
-  }, 100);
+  }, 60);
 }
 
 function executeTaxiMovement(ac) {
-  const points = flightRouteMission.taxiwayPoints;
+  // Use exact real taxiway centerline points from OSM graph
+  const points = (airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r) 
+    ? airportData.routes.gate_e1_to_rwy25r.map(p => ({ lat: p[0], lon: p[1] }))
+    : flightRouteMission.taxiwayPoints;
+
   let ptIdx = 0;
 
-  function moveNextTaxiLeg() {
+  function moveNextTaxiNode() {
     if (ptIdx >= points.length) {
-      // Arrived at Holding Point 25R!
+      // Arrived precisely at Holding Point 25R!
       ac.groundSpeed = 0;
+      ac.heading = 250;
       ac.state = "HOLDING";
       ac.hasCheckedIn = false;
       ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, holding point runway two five right, ready for departure.";
@@ -1283,34 +1290,43 @@ function executeTaxiMovement(ac) {
 
       setTimeout(() => {
         triggerPilotCheckIn(ac);
-      }, 1200);
+      }, 1000);
       return;
     }
 
-    const legTarget = points[ptIdx];
+    const targetPt = points[ptIdx];
     const startLat = ac.lat;
     const startLon = ac.lon;
-    ac.heading = legTarget.hdg;
+
+    // Calculate heading towards next taxiway point
+    const dLat = targetPt.lat - startLat;
+    const dLon = targetPt.lon - startLon;
+    if (Math.abs(dLat) > 0.000001 || Math.abs(dLon) > 0.000001) {
+      const angleRad = Math.atan2(dLat, dLon * Math.cos(startLat * Math.PI / 180));
+      let hdgDeg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
+      ac.heading = hdgDeg;
+    }
+
     ac.groundSpeed = 18;
     let step = 0;
-    const totalSteps = 35;
+    const totalSteps = 4; // Fast fluid interpolation between dense taxiway nodes
 
-    const legInterval = setInterval(() => {
+    const stepInterval = setInterval(() => {
       step++;
       const prog = step / totalSteps;
-      ac.lat = startLat + (legTarget.lat - startLat) * prog;
-      ac.lon = startLon + (legTarget.lon - startLon) * prog;
+      ac.lat = startLat + (targetPt.lat - startLat) * prog;
+      ac.lon = startLon + (targetPt.lon - startLon) * prog;
       renderAllScreens();
 
       if (step >= totalSteps) {
-        clearInterval(legInterval);
+        clearInterval(stepInterval);
         ptIdx++;
-        setTimeout(moveNextTaxiLeg, 100);
+        moveNextTaxiNode();
       }
-    }, 100);
+    }, 40);
   }
 
-  moveNextTaxiLeg();
+  moveNextTaxiNode();
 }
 
 function executeLineUpMovement(ac) {
