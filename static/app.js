@@ -314,11 +314,18 @@ function updateMicStatusWarning(msg) {
 async function startRecording() {
   if (isRecording) return;
   if (!mediaRecorder) {
-    await setupRecording();
+    try {
+      await setupRecording();
+    } catch (e) {
+      console.error("Mic setup failed:", e);
+    }
   }
 
   if (!mediaRecorder) {
-    alert("Microphone tidak dapat diakses! Buka lewat HTTPS: https://100.75.217.97:8011 dan izinkan akses microphone.");
+    const pttStatus = document.getElementById('ptt-status');
+    if (pttStatus) {
+      pttStatus.innerHTML = `<span class="text-amber-400 font-bold">KLIK TOMBOL MIC DI BAWAH DULU UNTUK IZIN MIC!</span>`;
+    }
     return;
   }
 
@@ -916,18 +923,23 @@ function bindPTT() {
   addListeners(acadMicBtn);
 
   window.addEventListener('keydown', (e) => {
+    const isTyping = document.activeElement && (
+      document.activeElement.tagName === 'INPUT' || 
+      document.activeElement.tagName === 'TEXTAREA' || 
+      document.activeElement.isContentEditable
+    );
     if (e.code === 'Tab' && currentTab === 'radar') {
       e.preventDefault();
       cyclePrompterAircraft();
     }
-    if (e.code === 'Space' && !e.repeat && document.activeElement.tagName !== 'INPUT') {
+    if ((e.code === 'Space' || e.key === ' ') && !e.repeat && !isTyping) {
       e.preventDefault();
       startRecording();
     }
   });
 
   window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space') {
+    if (e.code === 'Space' || e.key === ' ') {
       e.preventDefault();
       stopRecording();
     }
