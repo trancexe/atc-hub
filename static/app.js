@@ -48,12 +48,12 @@ let aircraft = [
     callsign: "INDONESIA 502",
     airline: "Garuda Indonesia",
     type: "B738",
-    lat: -6.121483,
-    lon: 106.651348,
-    heading: 250,
+    lat: -6.121757,
+    lon: 106.651077,
+    heading: 70, // Parked facing concourse Gate E1 (east-northeast)
     altitude: 0,
     groundSpeed: 0,
-    targetHeading: 250,
+    targetHeading: 70,
     state: "GATE",
     clearedRwy: "25R",
     squawk: "4215",
@@ -1251,28 +1251,24 @@ function handleRadarVoiceCommand(text, parsedData) {
 
 // Autonomous Flight Movement Sequences for GIA502
 function executePushbackMovement(ac) {
-  let step = 0;
-  // Realistic pushback speed: ~4 kts, smooth tug progression
-  const totalSteps = 100;
-  const startLat = ac.lat;
-  const startLon = ac.lon;
-  const target = (airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r)
-    ? { lat: airportData.routes.gate_e1_to_rwy25r[0][0], lon: airportData.routes.gate_e1_to_rwy25r[0][1] }
-    : flightRouteMission.pushbackEnd;
+  // Use exact OSM lead-in line from Gate E1 stand to Taxiway NC6
+  const pushNodes = (airportData && airportData.routes && airportData.routes.pushback_gate_e1)
+    ? airportData.routes.pushback_gate_e1.map(p => ({ lat: p[0], lon: p[1] }))
+    : [
+        { lat: -6.121757, lon: 106.651077 },
+        { lat: -6.121647, lon: 106.505053 },
+        { lat: -6.121543, lon: 106.650260 },
+        { lat: -6.121354, lon: 106.650043 }
+      ];
 
-  const pushInterval = setInterval(() => {
-    step++;
-    const progress = step / totalSteps;
-    ac.lat = startLat + (target.lat - startLat) * progress;
-    ac.lon = startLon + (target.lon - startLon) * progress;
-    ac.groundSpeed = 4;
-    ac.heading = 250;
-    renderAllScreens();
+  let nodeIdx = 0;
+  ac.groundSpeed = 4;
 
-    if (step >= totalSteps) {
-      clearInterval(pushInterval);
+  function moveNextPushNode() {
+    if (nodeIdx >= pushNodes.length) {
+      // Reached centerline of Taxiway NC6!
       ac.groundSpeed = 0;
-      ac.heading = 70;
+      ac.heading = 330; // Facing northwest along Taxiway NC6 towards Runway 25R
       ac.state = "READY_TAXI";
       ac.hasCheckedIn = false;
       ac.checkInPhrase = "Ground, INDONESIA 502, ready to taxi, request clearance.";
@@ -1284,15 +1280,57 @@ function executePushbackMovement(ac) {
       setTimeout(() => {
         triggerPilotCheckIn(ac);
       }, 1000);
+      return;
     }
-  }, 80);
+
+    const targetPt = pushNodes[nodeIdx];
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+
+    // Pushback heading: airplane moves backward (tail first), heading stays facing terminal or curves as tug turns it
+    const dLat = targetPt.lat - startLat;
+    const dLon = targetPt.lon - startLon;
+    let pushHdg = ac.heading;
+    if (Math.abs(dLat) > 0.000001 || Math.abs(dLon) > 0.000001) {
+      const angleRad = Math.atan2(dLat, dLon * Math.cos(startLat * Math.PI / 180));
+      // Reverse vector because aircraft is being pushed tail-first:
+      pushHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 180 + 360) % 360);
+    }
+
+    const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
+    const totalSteps = Math.max(6, Math.round(distDeg * 50000));
+    let step = 0;
+
+    const pushStepInterval = setInterval(() => {
+      step++;
+      const prog = step / totalSteps;
+      ac.lat = startLat + (targetPt.lat - startLat) * prog;
+      ac.lon = startLon + (targetPt.lon - startLon) * prog;
+
+      // Smooth nose rotation during pushback turn
+      const angleDelta = ((pushHdg - ac.heading + 540) % 360) - 180;
+      ac.heading = Math.round((ac.heading + angleDelta * 0.15 + 360) % 360);
+
+      renderAllScreens();
+
+      if (step >= totalSteps) {
+        clearInterval(pushStepInterval);
+        nodeIdx++;
+        moveNextPushNode();
+      }
+    }, 70);
+  }
+
+  moveNextPushNode();
 }
 
 function executeTaxiMovement(ac) {
-  // Use exact real taxiway centerline points from OSM graph
-  const points = (airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r) 
-    ? airportData.routes.gate_e1_to_rwy25r.map(p => ({ lat: p[0], lon: p[1] }))
-    : flightRouteMission.taxiwayPoints;
+  // Use exact real taxiway centerline points from OSM graph (NC6 to HP 25R)
+  const points = (airportData && airportData.routes && airportData.routes.taxi_nc6_to_rwy25r) 
+    ? airportData.routes.taxi_nc6_to_rwy25r.map(p => ({ lat: p[0], lon: p[1] }))
+    : ((airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r)
+        ? airportData.routes.gate_e1_to_rwy25r.map(p => ({ lat: p[0], lon: p[1] }))
+        : flightRouteMission.taxiwayPoints);
 
   let ptIdx = 0;
 
