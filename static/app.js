@@ -741,6 +741,37 @@ function drawGroundScreen() {
     }
   });
 
+  // 4c. Macro Taxiway Signboards (Always Visible at ALL Zoom Levels, including Scale 1.0 & Overview)
+  const twLabels = airportData.taxiway_labels || [];
+  twLabels.forEach(lbl => {
+    const p = latLonToScreenCoord(lbl.lat, lbl.lon, st);
+    const text = lbl.ref;
+
+    // Fixed readable typography regardless of scale
+    ctx.font = "900 12px 'Share Tech Mono', monospace";
+    const textWidth = ctx.measureText(text).width;
+    const boxW = Math.max(22, textWidth + 10);
+    const boxH = 16;
+    const boxX = p.x - boxW / 2;
+    const boxY = p.y - boxH / 2;
+
+    // High contrast black pill with neon aviation yellow border
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = "#facc15"; // Neon Amber Yellow
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    // Glowing yellow letters
+    ctx.fillStyle = "#fef08a";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, p.x, p.y + 0.5);
+
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+  });
+
   // 4b. Pushback Waypoints & Release Point Indicator (Debug / Operational)
   if (airportData.routes && airportData.routes.pushback_waypoints) {
     const pts = airportData.routes.pushback_waypoints;
