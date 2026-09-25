@@ -116,61 +116,113 @@ function speakPilotReadback(text) {
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
+let micPermissionGranted = false;
 
 async function setupRecording() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.warn("navigator.mediaDevices.getUserMedia not available (needs HTTPS or localhost)");
+    updateMicStatusWarning("Browser requires HTTPS for Mic. Access via https:// or localhost");
+    return;
+  }
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
+    micPermissionGranted = true;
 
     mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) audioChunks.push(e.data);
     };
 
     mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const mimeType = mediaRecorder.mimeType || 'audio/webm';
+      const ext = mimeType.includes('webm') ? 'webm' : 'wav';
+      const audioBlob = new Blob(audioChunks, { type: mimeType });
       audioChunks = [];
-      await sendAudioToWhisper(audioBlob);
+      await sendAudioToWhisper(audioBlob, ext);
     };
+
+    updateMicStatusWarning(null);
   } catch (err) {
-    console.warn("Microphone access:", err.message);
+    console.warn("Microphone access error:", err);
+    updateMicStatusWarning("Mic permission denied or not found");
   }
 }
 
-function startRecording() {
-  if (isRecording || !mediaRecorder) return;
-  isRecording = true;
-  audioChunks = [];
-  mediaRecorder.start();
-  playRadioChirp();
-
-  // Update UI
+function updateMicStatusWarning(msg) {
   const pttStatus = document.getElementById('ptt-status');
-  if (pttStatus) {
-    pttStatus.textContent = "TRANSMITTING ON 118.10 MHz...";
-    pttStatus.classList.add('bg-red-950', 'text-red-400', 'border-red-700');
+  const whisperStatus = document.getElementById('whisper-status');
+  if (msg) {
+    if (pttStatus) {
+      pttStatus.innerHTML = `<span class="text-amber-400 font-bold">${msg}</span>`;
+    }
+    if (whisperStatus) {
+      whisperStatus.textContent = "MIC NEEDED";
+      whisperStatus.classList.add('text-amber-400');
+    }
+  } else {
+    if (whisperStatus) {
+      whisperStatus.textContent = "WHISPER READY";
+      whisperStatus.classList.remove('text-amber-400');
+    }
   }
-  const acadRecStatus = document.getElementById('academy-rec-status');
-  if (acadRecStatus) acadRecStatus.textContent = "Merekam suara... Lepas untuk kirim.";
+}
+
+async function startRecording() {
+  if (isRecording) return;
+
+  // If mic not initialized yet, try request again
+  if (!mediaRecorder) {
+    await setupRecording();
+  }
+
+  if (!mediaRecorder) {
+    alert("Microphone tidak dapat diakses! Pastikan membuka via HTTPS (contoh: https://100.75.217.97:8011) atau berikan izin mikrofon pada browser.");
+    return;
+  }
+
+  try {
+    isRecording = true;
+    audioChunks = [];
+    mediaRecorder.start();
+    playRadioChirp();
+
+    // Update UI
+    const pttStatus = document.getElementById('ptt-status');
+    if (pttStatus) {
+      pttStatus.textContent = "TRANSMITTING ON 118.10 MHz...";
+      pttStatus.className = "text-xs font-radar mb-2 px-3 py-1 rounded border transition-all bg-red-950 text-red-400 border-red-700 animate-pulse";
+    }
+    const acadRecStatus = document.getElementById('academy-rec-status');
+    if (acadRecStatus) acadRecStatus.textContent = "Merekam suara... Lepas SPACEBAR untuk kirim.";
+  } catch (e) {
+    console.error("Start recording failed:", e);
+    isRecording = false;
+  }
 }
 
 function stopRecording() {
   if (!isRecording || !mediaRecorder) return;
   isRecording = false;
-  mediaRecorder.stop();
-  playRadioChirp();
+  try {
+    mediaRecorder.stop();
+    playRadioChirp();
 
-  const pttStatus = document.getElementById('ptt-status');
-  if (pttStatus) {
-    pttStatus.textContent = "PROCESSING WHISPER STT...";
-    pttStatus.classList.remove('bg-red-950', 'text-red-400', 'border-red-700');
+    const pttStatus = document.getElementById('ptt-status');
+    if (pttStatus) {
+      pttStatus.textContent = "PROCESSING WHISPER STT...";
+      pttStatus.className = "text-xs font-radar mb-2 px-3 py-1 rounded border transition-all bg-slate-900 border-emerald-800 text-emerald-400";
+    }
+    const acadRecStatus = document.getElementById('academy-rec-status');
+    if (acadRecStatus) acadRecStatus.textContent = "Memproses Whisper AI...";
+  } catch (e) {
+    console.error("Stop recording failed:", e);
   }
-  const acadRecStatus = document.getElementById('academy-rec-status');
-  if (acadRecStatus) acadRecStatus.textContent = "Memproses Whisper AI...";
 }
 
-async function sendAudioToWhisper(blob) {
+async function sendAudioToWhisper(blob, ext) {
   const formData = new FormData();
-  formData.append('file', blob, 'speech.wav');
+  formData.append('file', blob, `speech.${ext}`);
 
   let targetText = "";
   if (currentTab === 'academy' && activeLesson) {
@@ -193,10 +245,12 @@ async function sendAudioToWhisper(blob) {
       } else {
         handleAcademyResult(res);
       }
+    } else {
+      document.getElementById('ptt-status').textContent = `Error: ${res.error || 'STT failed'}`;
     }
   } catch (e) {
     console.error("Transcribe error:", e);
-    document.getElementById('ptt-status').textContent = "Voice Error / Check Mic";
+    document.getElementById('ptt-status').textContent = "Voice Error / Check Server";
   }
 }
 
@@ -220,7 +274,7 @@ function latLonToScreen(lat, lon) {
 function drawRadar() {
   ctx.clearRect(0, 0, width, height);
 
-  // Draw Range Rings (TMA mode or Ground mode)
+  // Draw Range Rings
   ctx.strokeStyle = "rgba(16, 185, 129, 0.12)";
   ctx.lineWidth = 1;
   const center = latLonToScreen(refLat, refLon);
@@ -526,7 +580,7 @@ function handleAcademyResult(res) {
   lessonScores[activeLesson.id] = res.score;
   renderLessonList();
 
-  // Show readback if score >= 60%
+  // Show readback if score >= 55%
   if (res.score >= 55) {
     const rbCont = document.getElementById('readback-container');
     const rbText = document.getElementById('pilot-readback-text');
@@ -575,8 +629,8 @@ function bindPTT() {
 
   const addListeners = (el) => {
     if (!el) return;
-    el.addEventListener('mousedown', startRecording);
-    el.addEventListener('mouseup', stopRecording);
+    el.addEventListener('mousedown', (e) => { e.preventDefault(); startRecording(); });
+    el.addEventListener('mouseup', (e) => { e.preventDefault(); stopRecording(); });
     el.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
     el.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
   };
@@ -609,7 +663,6 @@ setInterval(() => {
 
 // Init
 window.addEventListener('DOMContentLoaded', async () => {
-  await setupRecording();
   bindPTT();
   window.addEventListener('resize', resizeCanvas);
   
@@ -623,4 +676,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   resetRadarView();
   renderFlightStrips();
   resizeCanvas();
+
+  // Try initial setup of recording
+  setupRecording();
 });

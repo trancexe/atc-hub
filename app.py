@@ -5,12 +5,21 @@ import tempfile
 import asyncio
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
-app = FastAPI(title="ATC Hub", version="1.0.0")
+# Initialize Faster-Whisper
+whisper_model = None
+try:
+    from faster_whisper import WhisperModel
+    print("Loading Faster-Whisper tiny.en on CPU (int8)...")
+    whisper_model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
+    print("Faster-Whisper loaded successfully!")
+except Exception as e:
+    print(f"Failed to load Faster-Whisper: {e}")
+
+app = FastAPI(title="ATC Hub Simulator", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,230 +31,206 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
-STATIC_DIR.mkdir(exist_ok=True)
-
-# Lazy-loaded faster-whisper model
-whisper_model = None
-
-def get_whisper():
-    global whisper_model
-    if whisper_model is None:
-        from faster_whisper import WhisperModel
-        print("Loading Whisper base.en model...")
-        # Using base.en on CPU with INT8 compute for ultra-fast, lightweight inference
-        whisper_model = WhisperModel("base.en", device="cpu", compute_type="int8")
-        print("Whisper base.en loaded!")
-    return whisper_model
-
-# Load airport dataset
-AIRPORT_DATA_PATH = BASE_DIR / "wiii_data.json"
-airport_data = {}
-if AIRPORT_DATA_PATH.exists():
-    with open(AIRPORT_DATA_PATH, "r") as f:
-        airport_data = json.load(f)
+DATA_FILE = BASE_DIR / "wiii_data.json"
 
 @app.get("/api/airport/wiii")
-async def get_airport_wiii():
-    return airport_data
+async def get_airport_data():
+    if not DATA_FILE.exists():
+        raise HTTPException(status_code=404, detail="Airport data not found")
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
 
-# Phraseology lessons & training academy data
-TRAINING_LESSONS = [
+# Aviation Training Lessons
+LESSONS = [
     {
         "id": "del-1",
         "phase": "Delivery / IFR Clearance",
         "title": "IFR Clearance Depature",
-        "aircraft": {"callsign": "GIA123", "airline": "Garuda", "type": "B738", "gate": "Gate E1"},
-        "situation": "Garuda 123 bersiap di Gate E1 tujuan Bali (WADD). Pilot meminta IFR clearance rute DOLTA departure.",
-        "target_text": "Garuda 123 cleared to Denpasar via DOLTA 1 departure, climb and maintain 4000 feet, squawk 4215",
-        "phonetic_tips": "Angka dibaca terpisah: 4000 = FOW-er THOU-sand, squawk 4215 = FOW-er TOO WUN FIFE.",
-        "pilot_readback": "Cleared to Denpasar via DOLTA 1 departure, climb and maintain 4000 feet, squawk 4215, Garuda 123."
+        "aircraft": {
+            "callsign": "GIA123",
+            "airline": "Garuda",
+            "type": "B738",
+            "gate": "Gate E1"
+        },
+        "situation": "Garuda 123 bersiap di Gate E1 meminta IFR clearance tujuan Surabaya (WARR) via DOLTA 1C departure, initial climb FL140, squawk 4521.",
+        "target_text": "Garuda 123 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521",
+        "phonetic_tips": "Ucapkan: 'Garuda one two three, cleared to Surabaya via DOLTA one Charlie departure, climb flight level one four zero, squawk four five two one'",
+        "keywords": ["garuda", "123", "surabaya", "dolta", "140", "4521"],
+        "pilot_readback": "Cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521, Garuda 123."
     },
     {
         "id": "gnd-1",
         "phase": "Ground / Pushback & Taxi",
         "title": "Pushback & Engine Start",
-        "aircraft": {"callsign": "GIA123", "airline": "Garuda", "type": "B738", "gate": "Gate E1"},
-        "situation": "Pesawat siap pushback dan engine start, menghadap ke arah Barat.",
+        "aircraft": {
+            "callsign": "GIA123",
+            "airline": "Garuda",
+            "type": "B738",
+            "gate": "Gate E1"
+        },
+        "situation": "Pesawat siap pushback dan start engine di apron Terminal 3, menghadap ke arah Barat.",
         "target_text": "Garuda 123 push and start approved, facing west",
-        "phonetic_tips": "Jelas dan tegas: PUSH AND START APPROVED, FACING WEST.",
+        "phonetic_tips": "Ucapkan: 'Garuda one two three, push and start approved, facing west'",
+        "keywords": ["garuda", "123", "push", "start", "approved", "west"],
         "pilot_readback": "Push and start approved, facing west, Garuda 123."
     },
     {
         "id": "gnd-2",
-        "phase": "Ground / Taxi to Runway",
-        "title": "Taxi to Holding Point",
-        "aircraft": {"callsign": "GIA123", "airline": "Garuda", "type": "B738", "gate": "Gate E1"},
-        "situation": "Pesawat sudah selesai pushback, berikan instruksi taxi ke runway 25R lewat taxiway NC1.",
-        "target_text": "Garuda 123 taxi to holding point runway 25 right via North Charlie 1",
-        "phonetic_tips": "25 Right = TOO FIFE RIGHT. North Charlie 1 = NORTH CHAR-lee WUN.",
-        "pilot_readback": "Taxi to holding point runway 25 right via North Charlie 1, Garuda 123."
+        "phase": "Ground / Taxi to Holding Point",
+        "title": "Taxi to Runway 25R via NC1",
+        "aircraft": {
+            "callsign": "GIA123",
+            "airline": "Garuda",
+            "type": "B738",
+            "gate": "Apron T3"
+        },
+        "situation": "Pesawat sudah selesai pushback, instruksikan taxi ke holding point Runway 25R lewat taxiway North Cross 1 dan North 2.",
+        "target_text": "Garuda 123 taxi to holding point runway 25R via NC1, N2",
+        "phonetic_tips": "Ucapkan: 'Garuda one two three, taxi to holding point runway two five right via North Charlie one, November two'",
+        "keywords": ["garuda", "123", "taxi", "holding point", "25r", "nc1"],
+        "pilot_readback": "Taxi to holding point runway 25R via NC1 and N2, Garuda 123."
     },
     {
         "id": "twr-1",
-        "phase": "Tower / Departure",
-        "title": "Line Up and Wait",
-        "aircraft": {"callsign": "GIA123", "airline": "Garuda", "type": "B738", "pos": "Holding Point 25R"},
-        "situation": "Trafik runway sebelumnya sudah lewat, instruksikan Garuda 123 masuk ke runway dan siap-siap.",
-        "target_text": "Garuda 123 line up and wait runway 25 right",
-        "phonetic_tips": "LINE UP AND WAIT RUNWAY TOO FIFE RIGHT.",
-        "pilot_readback": "Line up and wait runway 25 right, Garuda 123."
+        "phase": "Tower / Line Up & Takeoff",
+        "title": "Line Up & Wait",
+        "aircraft": {
+            "callsign": "GIA123",
+            "airline": "Garuda",
+            "type": "B738",
+            "gate": "Holding Point 25R"
+        },
+        "situation": "Ada pesawat mendarat di runway, instruksikan Garuda 123 untuk masuk runway dan tunggu (Line up and wait).",
+        "target_text": "Garuda 123 line up and wait runway 25R",
+        "phonetic_tips": "Ucapkan: 'Garuda one two three, line up and wait runway two five right'",
+        "keywords": ["garuda", "123", "line up", "wait", "25r"],
+        "pilot_readback": "Line up and wait runway 25R, Garuda 123."
     },
     {
         "id": "twr-2",
-        "phase": "Tower / Takeoff",
-        "title": "Takeoff Clearance",
-        "aircraft": {"callsign": "GIA123", "airline": "Garuda", "type": "B738", "pos": "Runway 25R"},
-        "situation": "Angin 250 derajat 8 knots, runway clear. Berikan izin lepas landas.",
-        "target_text": "Garuda 123 wind 250 at 8 knots runway 25 right cleared for takeoff",
-        "phonetic_tips": "WIND TOO FIFE ZERO AT EIGHT KNOTS, RUNWAY TOO FIFE RIGHT CLEARED FOR TAKEOFF.",
-        "pilot_readback": "Runway 25 right cleared for takeoff, Garuda 123."
+        "phase": "Tower / Takeoff Clearance",
+        "title": "Cleared for Takeoff",
+        "aircraft": {
+            "callsign": "GIA123",
+            "airline": "Garuda",
+            "type": "B738",
+            "gate": "Runway 25R"
+        },
+        "situation": "Runway sudah bebas, angin 250 derajat 8 knot. Berikan izin lepas landas.",
+        "target_text": "Garuda 123 wind 250 at 8 knots, runway 25R cleared for takeoff",
+        "phonetic_tips": "Ucapkan: 'Garuda one two three, wind two five zero at eight knots, runway two five right cleared for takeoff'",
+        "keywords": ["garuda", "123", "wind", "cleared for takeoff", "25r"],
+        "pilot_readback": "Runway 25R cleared for takeoff, Garuda 123."
     },
     {
         "id": "app-1",
-        "phase": "Approach / Inbound STAR",
-        "title": "Arrival Clearance & Descent",
-        "aircraft": {"callsign": "LNI456", "airline": "Lion Air", "type": "A333", "pos": "Over BUNTO FL180"},
-        "situation": "Lion 456 datang dari arah Timur di atas waypoint BUNTO, turunkan ke FL 100 via BUNTO 1A arrival.",
-        "target_text": "Lion 456 cleared BUNTO 1 arrival descend and maintain flight level 100",
-        "phonetic_tips": "Flight Level 100 = FLIGHT LEVEL WUN HUN-dred.",
-        "pilot_readback": "Cleared BUNTO 1 arrival, descend and maintain flight level 100, Lion 456."
-    },
-    {
-        "id": "app-2",
-        "phase": "Approach / ILS Intercept",
+        "phase": "Approach / Inbound Vectoring",
         "title": "ILS Approach Clearance",
-        "aircraft": {"callsign": "LNI456", "airline": "Lion Air", "type": "A333", "pos": "Base Leg 3000ft"},
-        "situation": "Pesawat mengarah ke localizer Runway 25L pada ketinggian 3000 kaki. Berikan izin ILS approach.",
-        "target_text": "Lion 456 turn left heading 280 cleared ILS runway 25 left approach",
-        "phonetic_tips": "HEADING TOO EIGHT ZERO, CLEARED EYE-ELL-ESS RUNWAY TOO FIFE LEFT APPROACH.",
-        "pilot_readback": "Turn left heading 280, cleared ILS runway 25 left, Lion 456."
+        "aircraft": {
+            "callsign": "LNI456",
+            "airline": "Lion Air",
+            "type": "A333",
+            "gate": "TMA Inbound"
+        },
+        "situation": "Lion 456 mendekati bandara via DOLTA 1A. Berikan izin ILS approach Runway 25L dan instruksi descend ke 3000 feet.",
+        "target_text": "Lion 456 descend to 3000 feet, cleared ILS runway 25L",
+        "phonetic_tips": "Ucapkan: 'Lion four five six, descend and maintain three thousand feet, cleared ILS runway two five left'",
+        "keywords": ["lion", "456", "descend", "3000", "cleared", "ils", "25l"],
+        "pilot_readback": "Descend to 3000 feet, cleared ILS runway 25L, Lion 456."
     },
     {
         "id": "twr-3",
-        "phase": "Tower / Landing",
-        "title": "Landing Clearance",
-        "aircraft": {"callsign": "LNI456", "airline": "Lion Air", "type": "A333", "pos": "Final 4 NM"},
-        "situation": "Lion 456 di final approach runway 25L, angin tenang. Berikan izin mendarat.",
-        "target_text": "Lion 456 wind calm runway 25 left cleared to land",
-        "phonetic_tips": "WIND CALM, RUNWAY TOO FIFE LEFT CLEARED TO LAND.",
-        "pilot_readback": "Runway 25 left cleared to land, Lion 456."
-    },
-    {
-        "id": "gnd-3",
-        "phase": "Ground / Taxi to Gate",
-        "title": "Vacate Runway and Taxi to Gate",
-        "aircraft": {"callsign": "LNI456", "airline": "Lion Air", "type": "A333", "pos": "Vacated 25L on NP2"},
-        "situation": "Pesawat sudah mendarat dan keluar dari runway. Arahkan taxi ke Terminal 1 Gate A3 via NP2.",
-        "target_text": "Lion 456 taxi to gate A3 via November Papa 2",
-        "phonetic_tips": "GATE ALPHA THREE VIA NO-VEM-BER PAH-PAH TOO.",
-        "pilot_readback": "Taxi to gate A3 via November Papa 2, Lion 456."
+        "phase": "Tower / Final & Landing",
+        "title": "Cleared to Land & Vacate",
+        "aircraft": {
+            "callsign": "LNI456",
+            "airline": "Lion Air",
+            "type": "A333",
+            "gate": "Final Approach"
+        },
+        "situation": "Lion 456 sudah di final 3 mile. Berikan izin mendarat di Runway 25L, angin tenang.",
+        "target_text": "Lion 456 runway 25L cleared to land, wind 250 at 6",
+        "phonetic_tips": "Ucapkan: 'Lion four five six, runway two five left cleared to land, wind two five zero at six knots'",
+        "keywords": ["lion", "456", "cleared to land", "25l"],
+        "pilot_readback": "Runway 25L cleared to land, Lion 456."
     }
 ]
 
 @app.get("/api/academy/lessons")
-async def get_academy_lessons():
-    return TRAINING_LESSONS
-
-class EvaluationRequest(BaseModel):
-    transcription: str
-    target_text: str
-
-def score_phraseology(spoken: str, target: str):
-    import re
-    def normalize(t):
-        t = t.lower()
-        t = re.sub(r'[^a-z0-9\s]', ' ', t)
-        # Aviation phonetic substitutions
-        rep = {
-            "two five right": "25 right",
-            "two five left": "25 left",
-            "two four": "24",
-            "zero seven left": "07 left",
-            "zero seven right": "07 right",
-            "zero six": "06",
-            "tree": "3",
-            "fife": "5",
-            "niner": "9",
-            "too": "2",
-            "to": "2",
-            "four": "4",
-            "for": "4",
-            "one": "1",
-            "north charlie": "north charlie",
-            "november papa": "november papa",
-        }
-        for k, v in rep.items():
-            t = t.replace(k, v)
-        return [w for w in t.split() if w]
-
-    words_spoken = normalize(spoken)
-    words_target = normalize(target)
-    
-    if not words_target:
-        return 100, []
-
-    matched = []
-    missing = []
-    
-    for wt in words_target:
-        if wt in words_spoken:
-            matched.append(wt)
-        else:
-            missing.append(wt)
-
-    score = int((len(matched) / len(words_target)) * 100)
-    return score, missing
+async def get_lessons():
+    return LESSONS
 
 @app.post("/api/stt/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(...),
-    target_text: str = Form("")
+    target_text: str = Form(None)
 ):
     try:
-        model = get_whisper()
-        audio_bytes = await file.read()
-        
-        # Save temporary wav
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp.write(audio_bytes)
+        content = await file.read()
+        suffix = Path(file.filename).suffix if file.filename else ".wav"
+        if not suffix:
+            suffix = ".wav"
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(content)
             tmp_path = tmp.name
 
-        initial_prompt = "Garuda, Lion, Batik, Citilink, runway 25R, 25L, 07L, 07R, 06, 24, taxiway NC1, NP2, hold short, cleared for takeoff, descend, climb, flight level 100, DOLTA, BUNTO, CKG, squawk, ILS approach."
-        
-        segments, info = model.transcribe(
-            tmp_path,
-            beam_size=3,
-            language="en",
-            initial_prompt=initial_prompt
+        initial_prompt = (
+            "Garuda, Lion, Batik, Citilink, Sriwijaya, Super Air Jet, "
+            "one, two, tree, four, fife, six, seven, eight, niner, zero, "
+            "runway 25R, 07L, 25L, 07R, 06, 24, taxiway NC1, NC2, NC3, N1, N2, NP1, "
+            "push and start approved, taxi to holding point, cleared for takeoff, "
+            "climb and maintain flight level, descend, cleared ILS approach, cleared to land, "
+            "line up and wait, squawk, QNH, DOLTA, BUNTO, KRAKE, CKG, DKI"
         )
-        
-        transcribed_text = " ".join([seg.text.strip() for seg in segments]).strip()
-        
-        # Clean up temp
-        try:
+
+        transcript = ""
+        duration = 0.0
+
+        if whisper_model:
+            segments, info = whisper_model.transcribe(
+                tmp_path,
+                beam_size=3,
+                language="en",
+                initial_prompt=initial_prompt,
+                vad_filter=True
+            )
+            transcript = " ".join([seg.text.strip() for seg in segments])
+            duration = round(info.duration, 2)
+        else:
+            transcript = "Speech model unavailable."
+
+        # Remove temp file
+        if os.path.exists(tmp_path):
             os.remove(tmp_path)
-        except Exception:
-            pass
 
-        score = 0
-        missing = []
-        if target_text:
-            score, missing = score_phraseology(transcribed_text, target_text)
+        score = calculate_score(transcript, target_text) if target_text else 100
 
-        return {
+        return JSONResponse({
             "success": True,
-            "text": transcribed_text,
-            "score": score,
-            "missing_keywords": missing,
-            "duration": round(info.duration, 2)
-        }
+            "text": transcript.strip(),
+            "duration": duration,
+            "score": score
+        })
+
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Transcribe error: {e}")
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
-app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+def calculate_score(transcript: str, target: str) -> int:
+    if not transcript or not target:
+        return 0
+    t_words = [w.lower().strip(".,!?") for w in transcript.split()]
+    target_words = [w.lower().strip(".,!?") for w in target.split()]
+    
+    # Check keyword overlap
+    matches = 0
+    for tw in target_words:
+        if any(tw in w or w in tw for w in t_words):
+            matches += 1
+            
+    accuracy = int((matches / len(target_words)) * 100)
+    return min(100, max(0, accuracy))
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8010, reload=True)
+# Serve static frontend
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
