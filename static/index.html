@@ -34,19 +34,25 @@
       </div>
     </div>
 
-    <!-- Navigation & View Modes -->
+    <!-- Center Control Bar -->
     <div class="flex items-center space-x-3">
+      
+      <!-- EASY MODE TOGGLE -->
+      <button id="easy-mode-btn" onclick="toggleEasyMode()" class="px-3 py-1.5 rounded-lg border font-radar text-xs font-bold flex items-center gap-1.5 transition bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-lg">
+        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+        <span>EASY MODE: <span id="easy-mode-label">ON</span></span>
+      </button>
+
       <!-- Layout Switcher -->
       <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 font-radar text-xs">
-        <span class="text-slate-500 px-2 text-[10px] uppercase font-bold">Layout:</span>
         <button id="view-split-btn" onclick="setLayout('split')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white">
-          <i class="fa-solid fa-columns"></i> Split View
+          <i class="fa-solid fa-columns"></i> Split
         </button>
         <button id="view-ground-btn" onclick="setLayout('ground')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white">
-          <i class="fa-solid fa-road"></i> Ground Only
+          <i class="fa-solid fa-road"></i> Ground
         </button>
         <button id="view-tma-btn" onclick="setLayout('tma')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white">
-          <i class="fa-solid fa-satellite-dish"></i> TMA Only
+          <i class="fa-solid fa-satellite-dish"></i> TMA
         </button>
       </div>
 
@@ -56,7 +62,7 @@
           <i class="fa-solid fa-crosshairs"></i> Radar Ops
         </button>
         <button id="tab-academy-btn" onclick="switchTab('academy')" class="px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
-          <i class="fa-solid fa-graduation-cap"></i> Voice Academy
+          <i class="fa-solid fa-graduation-cap"></i> Academy
         </button>
       </div>
     </div>
@@ -130,6 +136,40 @@
         </div>
       </div>
 
+      <!-- EASY MODE ATC ASSISTANT PROMPTER (FLOATING CARD) -->
+      <div id="easy-mode-prompter" class="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 w-[540px] max-w-[90vw] bg-slate-900/95 backdrop-blur-md border border-amber-500/60 rounded-xl p-3.5 shadow-2xl transition-all font-radar">
+        <div class="flex items-center justify-between border-b border-amber-500/30 pb-2 mb-2">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+            <span class="text-xs font-bold text-amber-400 tracking-wider flex items-center gap-1">
+              <i class="fa-solid fa-headset"></i> ATC COPILOT SUGGESTION
+            </span>
+            <span id="prompt-ac-badge" class="px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-600/50 text-[10px] text-amber-200">
+              GIA123 (GATE)
+            </span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="cyclePrompterAircraft()" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+              Ganti Pesawat (Tab)
+            </button>
+            <button onclick="playCurrentPromptAudio()" class="text-xs text-amber-400 hover:text-amber-200" title="Dengarkan contoh suara">
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="text-[11px] text-slate-300 mb-1" id="prompt-context">
+          Skenario: Garuda 123 siap di Gate meminta izin pushback dan start engine.
+        </div>
+
+        <div class="bg-slate-950 border border-amber-500/40 p-2.5 rounded-lg">
+          <div class="text-[10px] uppercase text-amber-500 font-bold mb-0.5">Ucapkan ke Mic (Tahan SPACEBAR):</div>
+          <div id="prompt-speech-text" class="text-sm font-bold text-amber-300 leading-snug select-text">
+            "Garuda one two three, push and start approved, facing west"
+          </div>
+        </div>
+      </div>
+
       <!-- Bottom Push-to-Talk Bar -->
       <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
         <div id="ptt-status" class="text-xs font-radar text-slate-400 mb-1.5 px-3 py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow">
@@ -172,15 +212,12 @@
 
         <!-- Lessons Container -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <!-- Lesson List (Left column) -->
           <div class="space-y-2">
             <h3 class="text-xs font-radar uppercase text-slate-400 font-bold px-1">Phase Syllabus</h3>
-            <div id="lesson-list" class="space-y-1.5">
-              <!-- Dynamically populated -->
-            </div>
+            <div id="lesson-list" class="space-y-1.5"></div>
           </div>
 
-          <!-- Active Drill Card (Right columns) -->
+          <!-- Active Drill Card -->
           <div class="md:col-span-2 bg-slate-900 border border-emerald-900/40 rounded-xl p-5 flex flex-col justify-between space-y-4">
             <div>
               <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -193,7 +230,6 @@
                 </div>
               </div>
 
-              <!-- Context situation -->
               <div class="mt-4 bg-slate-950 p-3 rounded-lg border border-slate-800">
                 <div class="text-[11px] text-slate-400 font-semibold mb-1"><i class="fa-solid fa-circle-info text-emerald-500 mr-1"></i> Skenario:</div>
                 <p id="drill-situation" class="text-xs text-slate-300 leading-relaxed">
@@ -201,7 +237,6 @@
                 </p>
               </div>
 
-              <!-- Target Phraseology -->
               <div class="mt-4">
                 <div class="text-[11px] font-radar text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                   <span>Standard Phraseology to Speak:</span>
@@ -214,7 +249,6 @@
                 </div>
               </div>
 
-              <!-- Phonetic Tips -->
               <div class="mt-3 bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-lg flex items-start space-x-2">
                 <i class="fa-solid fa-lightbulb text-amber-400 text-xs mt-0.5"></i>
                 <div class="text-[11px] text-amber-200" id="drill-tips">
@@ -242,7 +276,6 @@
                 </div>
               </div>
 
-              <!-- Transcript Feedback Box -->
               <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
                 <div class="text-[10px] text-slate-500 uppercase font-radar">Whisper Speech Result:</div>
                 <div id="academy-transcript" class="text-xs font-radar text-slate-300 italic min-h-[20px] mt-0.5">
@@ -250,7 +283,6 @@
                 </div>
               </div>
 
-              <!-- Pilot Readback Output -->
               <div id="readback-container" class="hidden bg-emerald-950/30 border border-emerald-900/50 rounded-lg p-3">
                 <div class="flex items-center justify-between text-[10px] font-radar text-emerald-400 uppercase">
                   <span><i class="fa-solid fa-radio mr-1"></i> Pilot VHF Radio Readback:</span>

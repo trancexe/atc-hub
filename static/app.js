@@ -1,8 +1,9 @@
-// ATC HUB - Client logic & Web Audio / Multi-Canvas Engine
+// ATC HUB - Client logic & Web Audio / Multi-Canvas Engine + Easy Mode Copilot
 
 let airportData = null;
 let currentTab = 'radar';
 let currentLayout = 'split'; // 'split', 'ground', 'tma'
+let isEasyMode = true; // Easy mode ON by default
 
 // Canvases
 const groundCanvas = document.getElementById('ground-canvas');
@@ -72,6 +73,103 @@ let aircraft = [
     squawk: "5521"
   }
 ];
+
+let selectedAircraftIndex = 0;
+
+// Easy Mode Dynamic Prompts by Aircraft State
+const stateInstructions = {
+  "GATE": {
+    context: "Pesawat parkir di Terminal 3, siap pushback dan engine start.",
+    speech: "Garuda 123 push and start approved, facing west",
+    actionDesc: "Pushback & Start Approved"
+  },
+  "PUSHBACK": {
+    context: "Pesawat selesai pushback, meminta izin taxi menuju Runway 25R.",
+    speech: "Garuda 123 taxi to holding point runway 25R via NC1",
+    actionDesc: "Taxi Clearance via NC1"
+  },
+  "TAXI": {
+    context: "Pesawat tiba di holding point Runway 25R, runway sedang ada traffic mendarat.",
+    speech: "Garuda 123 line up and wait runway 25R",
+    actionDesc: "Line up and wait"
+  },
+  "LINE_UP": {
+    context: "Runway sudah bebas dan aman untuk keberangkatan, angin 250 derajat 8 knot.",
+    speech: "Garuda 123 wind 250 at 8 knots, runway 25R cleared for takeoff",
+    actionDesc: "Cleared for Takeoff"
+  },
+  "DEPARTURE": {
+    context: "Pesawat sudah airborne, kontak Jakarta Radar untuk climb cruise.",
+    speech: "Garuda 123 contact Jakarta Radar 125 decimal 1",
+    actionDesc: "Contact Radar"
+  },
+  "APPROACH": {
+    context: "Lion 456 mendekat via STAR DOLTA 1A, arahkan intercept localizer ILS 25L.",
+    speech: "Lion 456 descend to 3000 feet, cleared ILS runway 25L",
+    actionDesc: "Descend & Cleared ILS"
+  },
+  "FINAL": {
+    context: "Lion 456 sudah di short final 3 mile, runway 25L clear.",
+    speech: "Lion 456 runway 25L cleared to land, wind 250 at 6",
+    actionDesc: "Cleared to Land"
+  },
+  "LANDED": {
+    context: "Pesawat sudah mendarat dan memperlambat laju, arahkan keluar via exit taxiway.",
+    speech: "Lion 456 vacate runway via taxiway South Charlie, taxi to Terminal 2",
+    actionDesc: "Vacate & Taxi to Gate"
+  }
+};
+
+function updateEasyModePrompter() {
+  const prompter = document.getElementById('easy-mode-prompter');
+  if (!prompter) return;
+
+  if (!isEasyMode || currentTab !== 'radar') {
+    prompter.classList.add('hidden');
+    return;
+  }
+  prompter.classList.remove('hidden');
+
+  if (aircraft.length === 0) return;
+  const ac = aircraft[selectedAircraftIndex % aircraft.length];
+  const info = stateInstructions[ac.state] || {
+    context: `Pesawat sedang dalam status ${ac.state}.`,
+    speech: `${ac.callsign} roger and standby`,
+    actionDesc: "Standby"
+  };
+
+  document.getElementById('prompt-ac-badge').textContent = `${ac.id} (${ac.state})`;
+  document.getElementById('prompt-context').textContent = `Skenario: ${info.context}`;
+  document.getElementById('prompt-speech-text').textContent = `"${info.speech}"`;
+}
+
+function toggleEasyMode() {
+  isEasyMode = !isEasyMode;
+  const btn = document.getElementById('easy-mode-btn');
+  const label = document.getElementById('easy-mode-label');
+  
+  if (isEasyMode) {
+    btn.className = "px-3 py-1.5 rounded-lg border font-radar text-xs font-bold flex items-center gap-1.5 transition bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-lg";
+    label.textContent = "ON";
+  } else {
+    btn.className = "px-3 py-1.5 rounded-lg border font-radar text-xs font-bold flex items-center gap-1.5 transition bg-slate-900 text-slate-400 border-slate-700";
+    label.textContent = "OFF";
+  }
+  updateEasyModePrompter();
+}
+
+function cyclePrompterAircraft() {
+  selectedAircraftIndex = (selectedAircraftIndex + 1) % aircraft.length;
+  updateEasyModePrompter();
+}
+
+function playCurrentPromptAudio() {
+  const textEl = document.getElementById('prompt-speech-text');
+  if (textEl) {
+    const cleanText = textEl.textContent.replace(/"/g, '');
+    speakPilotReadback(cleanText);
+  }
+}
 
 // Audio Context & VHF Radio FX
 let audioCtx = null;
@@ -273,7 +371,6 @@ function setLayout(mode) {
   const btnGround = document.getElementById('view-ground-btn');
   const btnTma = document.getElementById('view-tma-btn');
 
-  // Reset button styles
   [btnSplit, btnGround, btnTma].forEach(b => {
     b.className = "px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white";
   });
@@ -300,7 +397,6 @@ function setLayout(mode) {
   }, 50);
 }
 
-// Canvas Helpers
 function resizeCanvases() {
   if (groundCanvas && !groundCanvas.parentElement.classList.contains('hidden')) {
     const rect = groundCanvas.parentElement.getBoundingClientRect();
@@ -329,14 +425,12 @@ function latLonToScreenCoord(lat, lon, st) {
   return { x, y };
 }
 
-// Draw Ground Radar (ASDE)
 function drawGroundScreen() {
   if (!groundCtx || !viewState.ground.width) return;
   const st = viewState.ground;
   const ctx = groundCtx;
   ctx.clearRect(0, 0, st.width, st.height);
 
-  // Range rings
   ctx.strokeStyle = "rgba(16, 185, 129, 0.12)";
   ctx.lineWidth = 1;
   const c = latLonToScreenCoord(refLat, refLon, st);
@@ -380,7 +474,6 @@ function drawGroundScreen() {
     }
     ctx.stroke();
 
-    // Taxiway label
     if (tw.ref && tw.coords.length > 2 && st.zoom > 1.8) {
       const mid = tw.coords[Math.floor(tw.coords.length / 2)];
       const mp = latLonToScreenCoord(mid[0], mid[1], st);
@@ -417,7 +510,6 @@ function drawGroundScreen() {
     }
     ctx.stroke();
 
-    // Centerline dashed
     ctx.setLineDash([5 * st.zoom, 3 * st.zoom]);
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1;
@@ -432,29 +524,37 @@ function drawGroundScreen() {
   });
 
   // Aircraft on ground
-  aircraft.forEach(ac => {
+  aircraft.forEach((ac, idx) => {
     const p = latLonToScreenCoord(ac.lat, ac.lon, st);
-    ctx.fillStyle = "#22c55e";
+    const isSel = idx === selectedAircraftIndex;
+
+    ctx.fillStyle = isSel ? "#f59e0b" : "#22c55e";
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, isSel ? 6 : 4.5, 0, Math.PI * 2);
     ctx.fill();
 
+    if (isSel) {
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     ctx.font = "10px 'Share Tech Mono'";
-    ctx.fillStyle = "#4ade80";
+    ctx.fillStyle = isSel ? "#fbbf24" : "#4ade80";
     ctx.fillText(ac.id, p.x + 10, p.y - 10);
     ctx.fillStyle = "#94a3b8";
     ctx.fillText(`${ac.state} [${ac.squawk}]`, p.x + 10, p.y + 2);
   });
 }
 
-// Draw TMA Radar (Approach / Departure)
 function drawTmaScreen() {
   if (!tmaCtx || !viewState.tma.width) return;
   const st = viewState.tma;
   const ctx = tmaCtx;
   ctx.clearRect(0, 0, st.width, st.height);
 
-  // Range rings (10, 20, 40, 60 NM)
   ctx.strokeStyle = "rgba(56, 189, 248, 0.15)";
   ctx.lineWidth = 1;
   const c = latLonToScreenCoord(refLat, refLon, st);
@@ -483,7 +583,6 @@ function drawTmaScreen() {
     }
     ctx.stroke();
 
-    // ILS Feather lines (Extended centerlines)
     drawExtendedCenterline(ctx, rw.coords, st);
   });
 
@@ -506,27 +605,26 @@ function drawTmaScreen() {
   });
 
   // Aircraft targets
-  aircraft.forEach(ac => {
+  aircraft.forEach((ac, idx) => {
     const p = latLonToScreenCoord(ac.lat, ac.lon, st);
+    const isSel = idx === selectedAircraftIndex;
 
-    ctx.fillStyle = "#38bdf8";
+    ctx.fillStyle = isSel ? "#f59e0b" : "#38bdf8";
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, isSel ? 6 : 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Velocity vector line
     const rad = (ac.heading - 90) * (Math.PI / 180);
     const leaderLen = (ac.groundSpeed || 50) * 0.18;
-    ctx.strokeStyle = "#38bdf8";
+    ctx.strokeStyle = isSel ? "#f59e0b" : "#38bdf8";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
     ctx.lineTo(p.x + Math.cos(rad) * leaderLen, p.y + Math.sin(rad) * leaderLen);
     ctx.stroke();
 
-    // Data Tag
     ctx.font = "10px 'Share Tech Mono'";
-    ctx.fillStyle = "#bae6fd";
+    ctx.fillStyle = isSel ? "#fbbf24" : "#bae6fd";
     ctx.fillText(ac.id, p.x + 12, p.y - 10);
     
     ctx.fillStyle = "#94a3b8";
@@ -553,7 +651,6 @@ function drawExtendedCenterline(ctx, coords, st) {
   ctx.setLineDash([4, 4]);
   ctx.lineWidth = 1;
 
-  // Extends backward 10NM for ILS
   ctx.beginPath();
   ctx.moveTo(p0.x, p0.y);
   ctx.lineTo(p0.x - ux * 180, p0.y - uy * 180);
@@ -567,7 +664,6 @@ function renderAllScreens() {
   drawTmaScreen();
 }
 
-// Attach Pan & Zoom for a canvas
 function setupCanvasInteraction(cElem, screenKey) {
   const st = viewState[screenKey];
   if (!cElem) return;
@@ -610,13 +706,12 @@ function resetScreen(screenKey) {
   renderAllScreens();
 }
 
-// Flight Strips UI
 function renderFlightStrips() {
   const container = document.getElementById('flight-strips');
   if (!container) return;
-  container.innerHTML = aircraft.map(ac => `
-    <div class="bg-slate-950 border border-emerald-950 p-2 rounded text-xs">
-      <div class="flex justify-between items-center text-emerald-400 font-bold">
+  container.innerHTML = aircraft.map((ac, idx) => `
+    <div onclick="selectAircraft(${idx})" class="p-2 rounded text-xs cursor-pointer border transition ${idx === selectedAircraftIndex ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'}">
+      <div class="flex justify-between items-center ${idx === selectedAircraftIndex ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
         <span>${ac.id} (${ac.type})</span>
         <span class="text-[10px] text-slate-400">${ac.airline}</span>
       </div>
@@ -629,7 +724,13 @@ function renderFlightStrips() {
   document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
 }
 
-// Navigation Tabs
+function selectAircraft(idx) {
+  selectedAircraftIndex = idx;
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+}
+
 function switchTab(tab) {
   currentTab = tab;
   const radarView = document.getElementById('radar-view');
@@ -643,6 +744,7 @@ function switchTab(tab) {
     radarBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white";
     acadBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
     resizeCanvases();
+    updateEasyModePrompter();
   } else {
     radarView.classList.add('hidden');
     academyView.classList.remove('hidden');
@@ -743,6 +845,9 @@ function handleRadarVoiceCommand(text) {
     } else if (lower.includes("taxi")) {
       matchedAc.state = "TAXI";
       readback = "Taxi to holding point runway 25R via NC1, " + matchedAc.callsign;
+    } else if (lower.includes("line up") || lower.includes("wait")) {
+      matchedAc.state = "LINE_UP";
+      readback = "Line up and wait runway 25R, " + matchedAc.callsign;
     } else if (lower.includes("cleared for takeoff")) {
       matchedAc.state = "DEPARTURE";
       matchedAc.groundSpeed = 160;
@@ -754,6 +859,8 @@ function handleRadarVoiceCommand(text) {
       readback = "Roger instructions, " + matchedAc.callsign;
     }
     renderFlightStrips();
+    updateEasyModePrompter();
+    renderAllScreens();
     speakPilotReadback(readback);
   }
 }
@@ -775,6 +882,10 @@ function bindPTT() {
   addListeners(acadMicBtn);
 
   window.addEventListener('keydown', (e) => {
+    if (e.code === 'Tab' && currentTab === 'radar') {
+      e.preventDefault();
+      cyclePrompterAircraft();
+    }
     if (e.code === 'Space' && !e.repeat && document.activeElement.tagName !== 'INPUT') {
       e.preventDefault();
       startRecording();
@@ -813,5 +924,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   setLayout('split');
   renderFlightStrips();
+  updateEasyModePrompter();
   setupRecording();
 });
