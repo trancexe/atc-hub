@@ -26,7 +26,7 @@ const viewState = {
   tma: {
     panX: 0,
     panY: 0,
-    zoom: 0.35,
+    zoom: 0.16, // Optimal default to display full 80 NM TMA + SIDs, STARs, and Center Gateway fixes
     isDragging: false,
     startX: 0,
     startY: 0,
@@ -756,14 +756,18 @@ function drawTmaScreen() {
 
   ctx.strokeStyle = "rgba(56, 189, 248, 0.15)";
   ctx.lineWidth = 1;
+  // Range Rings (15NM, 30NM, 45NM, 60NM, 80NM, 100NM)
   const c = latLonToScreenCoord(refLat, refLon, st);
-  [80, 160, 240, 320].forEach((r, idx) => {
+  [15, 30, 45, 60, 80, 100].forEach((nm) => {
+    // 1 deg lat is approx 60 NM, BASE_SCALE = 60000
+    // Radius in screen pixels for nm nautical miles:
+    const rPixels = (nm / 60) * BASE_SCALE * st.zoom;
     ctx.beginPath();
-    ctx.arc(c.x, c.y, r * (st.zoom / 0.35), 0, Math.PI * 2);
+    ctx.arc(c.x, c.y, rPixels, 0, Math.PI * 2);
     ctx.stroke();
     ctx.font = "9px 'Share Tech Mono'";
     ctx.fillStyle = "rgba(56, 189, 248, 0.4)";
-    ctx.fillText(`${(idx + 1) * 15}NM`, c.x + r * (st.zoom / 0.35) + 3, c.y - 3);
+    ctx.fillText(`${nm}NM`, c.x + rPixels + 3, c.y - 3);
   });
 
   if (!airportData) return;
@@ -990,7 +994,8 @@ function setupCanvasInteraction(cElem, screenKey) {
 
 function zoomScreen(screenKey, factor) {
   const st = viewState[screenKey];
-  st.zoom = Math.max(0.05, Math.min(25.0, st.zoom * factor));
+  const minZoom = screenKey === 'tma' ? 0.01 : 0.05;
+  st.zoom = Math.max(minZoom, Math.min(25.0, st.zoom * factor));
   renderAllScreens();
 }
 
@@ -998,7 +1003,7 @@ function resetScreen(screenKey) {
   const st = viewState[screenKey];
   st.panX = 0;
   st.panY = 0;
-  st.zoom = screenKey === 'ground' ? 2.8 : 0.35;
+  st.zoom = screenKey === 'ground' ? 2.8 : 0.16;
   renderAllScreens();
 }
 
