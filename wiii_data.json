@@ -68372,5 +68372,601 @@
       "taxiway": "NC6",
       "heading": 355
     }
+  },
+  "pushback_release_points": {
+    "1": {
+      "gate_lat": -6.11834,
+      "gate_lon": 106.65904,
+      "release_lat": -6.117866,
+      "release_lon": 106.660143,
+      "distance_m": 132.7,
+      "taxiway": "NC2",
+      "heading_deg": 151
+    },
+    "10": {
+      "gate_lat": -6.118062,
+      "gate_lon": 106.665165,
+      "release_lat": -6.116476,
+      "release_lon": 106.664526,
+      "distance_m": 189.6,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "11": {
+      "gate_lat": -6.1178,
+      "gate_lon": 106.665822,
+      "release_lat": -6.116212,
+      "release_lon": 106.665182,
+      "distance_m": 189.8,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "12": {
+      "gate_lat": -6.117504,
+      "gate_lon": 106.66657,
+      "release_lat": -6.115915,
+      "release_lon": 106.665929,
+      "distance_m": 190.0,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "13": {
+      "gate_lat": -6.117207,
+      "gate_lon": 106.6673,
+      "release_lat": -6.115623,
+      "release_lon": 106.666661,
+      "distance_m": 189.4,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "14": {
+      "gate_lat": -6.116914,
+      "gate_lon": 106.668033,
+      "release_lat": -6.115331,
+      "release_lon": 106.667394,
+      "distance_m": 189.3,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "15": {
+      "gate_lat": -6.116612,
+      "gate_lon": 106.66879,
+      "release_lat": -6.115029,
+      "release_lon": 106.668151,
+      "distance_m": 189.4,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "16": {
+      "gate_lat": -6.116303,
+      "gate_lon": 106.669554,
+      "release_lat": -6.114724,
+      "release_lon": 106.668916,
+      "distance_m": 188.8,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "1A": {
+      "gate_lat": -6.117214,
+      "gate_lon": 106.657441,
+      "release_lat": -6.1166,
+      "release_lon": 106.657193,
+      "distance_m": 73.4,
+      "taxiway": "NP1",
+      "heading_deg": 68
+    },
+    "1B": {
+      "gate_lat": -6.117827,
+      "gate_lon": 106.657685,
+      "release_lat": -6.116601,
+      "release_lon": 106.65719,
+      "distance_m": 146.7,
+      "taxiway": "NP1",
+      "heading_deg": 68
+    },
+    "1C": {
+      "gate_lat": -6.118499,
+      "gate_lon": 106.657952,
+      "release_lat": -6.119004,
+      "release_lon": 106.656665,
+      "distance_m": 152.6,
+      "taxiway": "NC5",
+      "heading_deg": 338
+    },
+    "1D": {
+      "gate_lat": -6.119173,
+      "gate_lon": 106.65822,
+      "release_lat": -6.119678,
+      "release_lon": 106.656933,
+      "distance_m": 152.7,
+      "taxiway": "NC5",
+      "heading_deg": 338
+    },
+    "2": {
+      "gate_lat": -6.118674,
+      "gate_lon": 106.659178,
+      "release_lat": -6.117931,
+      "release_lon": 106.66018,
+      "distance_m": 138.0,
+      "taxiway": "NC2",
+      "heading_deg": 136
+    },
+    "2A": {
+      "gate_lat": -6.119867,
+      "gate_lon": 106.658496,
+      "release_lat": -6.1204,
+      "release_lon": 106.657225,
+      "distance_m": 152.3,
+      "taxiway": "NC5",
+      "heading_deg": 339
+    },
+    "2B": {
+      "gate_lat": -6.120464,
+      "gate_lon": 106.658734,
+      "release_lat": -6.120976,
+      "release_lon": 106.657449,
+      "distance_m": 152.8,
+      "taxiway": "NC5",
+      "heading_deg": 338
+    },
+    "2C": {
+      "gate_lat": -6.121068,
+      "gate_lon": 106.658976,
+      "release_lat": -6.121386,
+      "release_lon": 106.657565,
+      "distance_m": 159.6,
+      "taxiway": "NC5",
+      "heading_deg": 347
+    },
+    "2D": {
+      "gate_lat": -6.121583,
+      "gate_lon": 106.659179,
+      "release_lat": -6.121625,
+      "release_lon": 106.657593,
+      "distance_m": 175.1,
+      "taxiway": "NC5",
+      "heading_deg": 2
+    },
+    "3": {
+      "gate_lat": -6.119014,
+      "gate_lon": 106.659313,
+      "release_lat": -6.117975,
+      "release_lon": 106.660222,
+      "distance_m": 152.9,
+      "taxiway": "NC2",
+      "heading_deg": 124
+    },
+    "4": {
+      "gate_lat": -6.119355,
+      "gate_lon": 106.659435,
+      "release_lat": -6.118012,
+      "release_lon": 106.660277,
+      "distance_m": 175.7,
+      "taxiway": "NC2",
+      "heading_deg": 113
+    },
+    "5": {
+      "gate_lat": -6.119633,
+      "gate_lon": 106.66124,
+      "release_lat": -6.118034,
+      "release_lon": 106.660608,
+      "distance_m": 190.7,
+      "taxiway": "NC2",
+      "heading_deg": 74
+    },
+    "6": {
+      "gate_lat": -6.119304,
+      "gate_lon": 106.662083,
+      "release_lat": -6.117704,
+      "release_lon": 106.661439,
+      "distance_m": 191.3,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "7": {
+      "gate_lat": -6.119,
+      "gate_lon": 106.662828,
+      "release_lat": -6.117406,
+      "release_lon": 106.662187,
+      "distance_m": 190.5,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "8": {
+      "gate_lat": -6.118672,
+      "gate_lon": 106.663655,
+      "release_lat": -6.117077,
+      "release_lon": 106.663014,
+      "distance_m": 190.6,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "9": {
+      "gate_lat": -6.118367,
+      "gate_lon": 106.664415,
+      "release_lat": -6.116775,
+      "release_lon": 106.663774,
+      "distance_m": 190.3,
+      "taxiway": "NC2",
+      "heading_deg": 68
+    },
+    "A1": {
+      "gate_lat": -6.12793,
+      "gate_lon": 106.658754,
+      "release_lat": -6.12691,
+      "release_lon": 106.659621,
+      "distance_m": 148.3,
+      "taxiway": "SC4",
+      "heading_deg": 128
+    },
+    "A2": {
+      "gate_lat": -6.128139,
+      "gate_lon": 106.659238,
+      "release_lat": -6.127203,
+      "release_lon": 106.659993,
+      "distance_m": 133.2,
+      "taxiway": "SC4",
+      "heading_deg": 129
+    },
+    "A3": {
+      "gate_lat": -6.128406,
+      "gate_lon": 106.659571,
+      "release_lat": -6.127472,
+      "release_lon": 106.66033,
+      "distance_m": 133.3,
+      "taxiway": "SC4",
+      "heading_deg": 129
+    },
+    "A4": {
+      "gate_lat": -6.128987,
+      "gate_lon": 106.659797,
+      "release_lat": -6.129158,
+      "release_lon": 106.660986,
+      "distance_m": 132.6,
+      "taxiway": "TWY",
+      "heading_deg": 8
+    },
+    "A5": {
+      "gate_lat": -6.129479,
+      "gate_lon": 106.659419,
+      "release_lat": -6.130576,
+      "release_lon": 106.659862,
+      "distance_m": 131.1,
+      "taxiway": "SCX",
+      "heading_deg": 68
+    },
+    "A6": {
+      "gate_lat": -6.12963,
+      "gate_lon": 106.659028,
+      "release_lat": -6.130731,
+      "release_lon": 106.659473,
+      "distance_m": 131.7,
+      "taxiway": "SCX",
+      "heading_deg": 68
+    },
+    "A7": {
+      "gate_lat": -6.129695,
+      "gate_lon": 106.658501,
+      "release_lat": -6.130905,
+      "release_lon": 106.659057,
+      "distance_m": 147.7,
+      "taxiway": "SCX",
+      "heading_deg": 65
+    },
+    "B1": {
+      "gate_lat": -6.131354,
+      "gate_lon": 106.65719,
+      "release_lat": -6.131511,
+      "release_lon": 106.65836,
+      "distance_m": 130.3,
+      "taxiway": "SCX",
+      "heading_deg": 8
+    },
+    "B2": {
+      "gate_lat": -6.131869,
+      "gate_lon": 106.65726,
+      "release_lat": -6.132023,
+      "release_lon": 106.658286,
+      "distance_m": 114.5,
+      "taxiway": "SCX",
+      "heading_deg": 9
+    },
+    "B3": {
+      "gate_lat": -6.132291,
+      "gate_lon": 106.657208,
+      "release_lat": -6.132435,
+      "release_lon": 106.658224,
+      "distance_m": 113.3,
+      "taxiway": "SCX",
+      "heading_deg": 8
+    },
+    "B4": {
+      "gate_lat": -6.132783,
+      "gate_lon": 106.656813,
+      "release_lat": -6.133351,
+      "release_lon": 106.657504,
+      "distance_m": 98.8,
+      "taxiway": "TWY",
+      "heading_deg": 68
+    },
+    "B5": {
+      "gate_lat": -6.132697,
+      "gate_lon": 106.656192,
+      "release_lat": -6.133521,
+      "release_lon": 106.655524,
+      "distance_m": 117.5,
+      "taxiway": "TWY",
+      "heading_deg": 129
+    },
+    "B6": {
+      "gate_lat": -6.132433,
+      "gate_lon": 106.655854,
+      "release_lat": -6.133256,
+      "release_lon": 106.655191,
+      "distance_m": 117.1,
+      "taxiway": "TWY",
+      "heading_deg": 129
+    },
+    "B7": {
+      "gate_lat": -6.132012,
+      "gate_lon": 106.655538,
+      "release_lat": -6.132955,
+      "release_lon": 106.654808,
+      "distance_m": 132.2,
+      "taxiway": "TWY",
+      "heading_deg": 128
+    },
+    "C1": {
+      "gate_lat": -6.131705,
+      "gate_lon": 106.653458,
+      "release_lat": -6.132823,
+      "release_lon": 106.653848,
+      "distance_m": 131.3,
+      "taxiway": "TWY",
+      "heading_deg": 71
+    },
+    "C2": {
+      "gate_lat": -6.132027,
+      "gate_lon": 106.653043,
+      "release_lat": -6.132971,
+      "release_lon": 106.653472,
+      "distance_m": 115.0,
+      "taxiway": "TWY",
+      "heading_deg": 66
+    },
+    "C3": {
+      "gate_lat": -6.132182,
+      "gate_lon": 106.652642,
+      "release_lat": -6.133141,
+      "release_lon": 106.653037,
+      "distance_m": 115.1,
+      "taxiway": "TWY",
+      "heading_deg": 68
+    },
+    "C4": {
+      "gate_lat": -6.132089,
+      "gate_lon": 106.652021,
+      "release_lat": -6.132911,
+      "release_lon": 106.651353,
+      "distance_m": 117.4,
+      "taxiway": "TWY",
+      "heading_deg": 309
+    },
+    "C5": {
+      "gate_lat": -6.131502,
+      "gate_lon": 106.651788,
+      "release_lat": -6.131939,
+      "release_lon": 106.650657,
+      "distance_m": 133.9,
+      "taxiway": "TWY",
+      "heading_deg": 339
+    },
+    "C6": {
+      "gate_lat": -6.131088,
+      "gate_lon": 106.651843,
+      "release_lat": -6.131617,
+      "release_lon": 106.650529,
+      "distance_m": 156.4,
+      "taxiway": "TWY",
+      "heading_deg": 338
+    },
+    "C7": {
+      "gate_lat": -6.130611,
+      "gate_lon": 106.652054,
+      "release_lat": -6.131294,
+      "release_lon": 106.650399,
+      "distance_m": 197.7,
+      "taxiway": "TWY",
+      "heading_deg": 338
+    },
+    "D1": {
+      "gate_lat": -6.124352,
+      "gate_lon": 106.649957,
+      "release_lat": -6.124988,
+      "release_lon": 106.648337,
+      "distance_m": 192.2,
+      "taxiway": "NPW",
+      "heading_deg": 158
+    },
+    "D2": {
+      "gate_lat": -6.124103,
+      "gate_lon": 106.649495,
+      "release_lat": -6.124617,
+      "release_lon": 106.64819,
+      "distance_m": 155.0,
+      "taxiway": "NPW",
+      "heading_deg": 158
+    },
+    "D3": {
+      "gate_lat": -6.123813,
+      "gate_lon": 106.649194,
+      "release_lat": -6.124263,
+      "release_lon": 106.648049,
+      "distance_m": 135.9,
+      "taxiway": "NPW",
+      "heading_deg": 158
+    },
+    "D4": {
+      "gate_lat": -6.123201,
+      "gate_lon": 106.649001,
+      "release_lat": -6.123675,
+      "release_lon": 106.647813,
+      "distance_m": 141.2,
+      "taxiway": "NPW",
+      "heading_deg": 158
+    },
+    "D5": {
+      "gate_lat": -6.122742,
+      "gate_lon": 106.649439,
+      "release_lat": -6.12162,
+      "release_lon": 106.648988,
+      "distance_m": 134.1,
+      "taxiway": "NC6",
+      "heading_deg": 68
+    },
+    "D6": {
+      "gate_lat": -6.122618,
+      "gate_lon": 106.649839,
+      "release_lat": -6.121467,
+      "release_lon": 106.649375,
+      "distance_m": 137.7,
+      "taxiway": "NC6",
+      "heading_deg": 68
+    },
+    "D7": {
+      "gate_lat": -6.122602,
+      "gate_lon": 106.650374,
+      "release_lat": -6.121308,
+      "release_lon": 106.649764,
+      "distance_m": 158.6,
+      "taxiway": "NC6",
+      "heading_deg": 65
+    },
+    "E1": {
+      "gate_lat": -6.121483,
+      "gate_lon": 106.651348,
+      "release_lat": -6.121022,
+      "release_lon": 106.650009,
+      "distance_m": 156.4,
+      "taxiway": "NC6",
+      "heading_deg": 19
+    },
+    "E2": {
+      "gate_lat": -6.120937,
+      "gate_lon": 106.651272,
+      "release_lat": -6.120762,
+      "release_lon": 106.650052,
+      "distance_m": 136.1,
+      "taxiway": "NC6",
+      "heading_deg": 8
+    },
+    "E3": {
+      "gate_lat": -6.120533,
+      "gate_lon": 106.651333,
+      "release_lat": -6.120358,
+      "release_lon": 106.65011,
+      "distance_m": 136.3,
+      "taxiway": "NC6",
+      "heading_deg": 8
+    },
+    "E4": {
+      "gate_lat": -6.120037,
+      "gate_lon": 106.651734,
+      "release_lat": -6.118951,
+      "release_lon": 106.651295,
+      "distance_m": 130.0,
+      "taxiway": "NP1",
+      "heading_deg": 68
+    },
+    "E5": {
+      "gate_lat": -6.120133,
+      "gate_lon": 106.652351,
+      "release_lat": -6.11917,
+      "release_lon": 106.653123,
+      "distance_m": 136.7,
+      "taxiway": "NCY",
+      "heading_deg": 129
+    },
+    "E6": {
+      "gate_lat": -6.1204,
+      "gate_lon": 106.652685,
+      "release_lat": -6.119436,
+      "release_lon": 106.653458,
+      "distance_m": 136.9,
+      "taxiway": "NCY",
+      "heading_deg": 129
+    },
+    "E7": {
+      "gate_lat": -6.120824,
+      "gate_lon": 106.652999,
+      "release_lat": -6.119587,
+      "release_lon": 106.653662,
+      "distance_m": 155.6,
+      "taxiway": "NCY",
+      "heading_deg": 113
+    },
+    "F1": {
+      "gate_lat": -6.120974,
+      "gate_lon": 106.654469,
+      "release_lat": -6.119618,
+      "release_lon": 106.654003,
+      "distance_m": 159.1,
+      "taxiway": "NCY",
+      "heading_deg": 71
+    },
+    "F2": {
+      "gate_lat": -6.120608,
+      "gate_lon": 106.654871,
+      "release_lat": -6.119461,
+      "release_lon": 106.654406,
+      "distance_m": 137.2,
+      "taxiway": "NCY",
+      "heading_deg": 68
+    },
+    "F3": {
+      "gate_lat": -6.120422,
+      "gate_lon": 106.655242,
+      "release_lat": -6.119308,
+      "release_lon": 106.65479,
+      "distance_m": 133.3,
+      "taxiway": "NCY",
+      "heading_deg": 68
+    },
+    "F4": {
+      "gate_lat": -6.12046,
+      "gate_lon": 106.655879,
+      "release_lat": -6.120004,
+      "release_lon": 106.657061,
+      "distance_m": 140.0,
+      "taxiway": "NC5",
+      "heading_deg": 339
+    },
+    "F5": {
+      "gate_lat": -6.121024,
+      "gate_lon": 106.656155,
+      "release_lat": -6.120584,
+      "release_lon": 106.657296,
+      "distance_m": 135.1,
+      "taxiway": "NC5",
+      "heading_deg": 339
+    },
+    "F6": {
+      "gate_lat": -6.121438,
+      "gate_lon": 106.656127,
+      "release_lat": -6.12092,
+      "release_lon": 106.657427,
+      "distance_m": 154.5,
+      "taxiway": "NC5",
+      "heading_deg": 338
+    },
+    "F7": {
+      "gate_lat": -6.121953,
+      "gate_lon": 106.655965,
+      "release_lat": -6.122028,
+      "release_lon": 106.657569,
+      "distance_m": 177.2,
+      "taxiway": "NC5",
+      "heading_deg": 3
+    }
   }
 }
