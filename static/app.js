@@ -88,6 +88,7 @@ const flightRouteMission = {
 
 let missionLegIndex = 0;
 let flightTickTimer = null;
+let isDebugMuted = true; // DEBUG MODE: Suara di-mute & bypass audio wait
 
 // Trigger pilot initial check-in transmission
 async function triggerPilotCheckIn(ac) {
@@ -98,16 +99,16 @@ async function triggerPilotCheckIn(ac) {
   // Visual notify in PTT banner & strips
   const pttStatus = document.getElementById('ptt-status');
   if (pttStatus) {
-    pttStatus.innerHTML = `<span class="text-amber-400 font-bold animate-pulse"><i class="fa-solid fa-volume-high"></i> INCOMING: ${ac.callsign}</span>`;
+    pttStatus.innerHTML = `<span class="text-amber-400 font-bold animate-pulse"><i class="fa-solid fa-volume-high"></i> PILOT CALL: ${ac.callsign}</span>`;
   }
   renderFlightStrips();
   updateEasyModePrompter();
 
-  // Speak pilot check-in via radio
+  // Speak pilot check-in via radio (skipped instantly in debug mode)
   await speakPilotTransmission(ac.checkInPhrase);
   
   if (pttStatus) {
-    pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-microphone"></i> ATC TRANSMIT READY (SPACEBAR)</span>`;
+    pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> INSTRUKSI ATC SIAP DIKIRIM (KLIK TOMBOL / MIC)</span>`;
   }
   isRadioTransmitting = false;
   renderFlightStrips();
@@ -115,6 +116,12 @@ async function triggerPilotCheckIn(ac) {
 }
 
 async function speakPilotTransmission(text) {
+  if (isDebugMuted) {
+    // Tampilkan transkrip tanpa putar audio
+    const recEl = document.getElementById('recognized-text');
+    if (recEl) recEl.textContent = `[PILOT]: "${text}"`;
+    return new Promise(r => setTimeout(r, 600));
+  }
   playRadioChirp();
   try {
     const audioUrl = `/api/audio/tts?text=${encodeURIComponent(text)}&voice=en-US-GuyNeural`;
@@ -124,18 +131,37 @@ async function speakPilotTransmission(text) {
         playRadioChirp();
         resolve();
       };
-      audio.onerror = () => {
-        fallbackBrowserSpeech(text);
-        resolve();
-      };
-      audio.play().catch(() => {
-        fallbackBrowserSpeech(text);
-        resolve();
-      });
+      audio.onerror = () => { resolve(); };
+      audio.play().catch(() => { resolve(); });
     });
   } catch (e) {
-    fallbackBrowserSpeech(text);
   }
+}
+
+async function speakPilotReadback(text) {
+  const recEl = document.getElementById('recognized-text');
+  if (recEl) recEl.textContent = `[READBACK]: "${text}"`;
+  if (isDebugMuted) {
+    return new Promise(r => setTimeout(r, 500));
+  }
+  try {
+    const audioUrl = `/api/audio/tts?text=${encodeURIComponent(text)}&voice=en-US-GuyNeural`;
+    const audio = new Audio(audioUrl);
+    await audio.play().catch(() => {});
+  } catch (e) {}
+}
+
+function executeDebugCommand() {
+  const ac = aircraft[0];
+  if (!ac) return;
+  const promptEl = document.getElementById('prompt-speech-text');
+  const text = promptEl ? promptEl.textContent.trim().replace(/^"|"$/g, '') : '';
+  
+  const recEl = document.getElementById('recognized-text');
+  if (recEl) recEl.textContent = `[ATC]: "${text}"`;
+  
+  // Forward to command handler
+  handleRadarVoiceCommand(text, {});
 }
 
 // Easy Mode Dynamic Prompts by Aircraft State (Strict ICAO Standard Telephony)
