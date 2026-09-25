@@ -569,9 +569,27 @@ function drawGroundScreen() {
 
   if (!airportData) return;
 
+  // 0. Terminals & Buildings footprint
+  ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+  ctx.strokeStyle = "rgba(71, 85, 105, 0.45)";
+  ctx.lineWidth = 1;
+  (airportData.terminals || []).forEach(tm => {
+    if (!tm.coords || tm.coords.length < 3) return;
+    ctx.beginPath();
+    const p0 = latLonToScreenCoord(tm.coords[0][0], tm.coords[0][1], st);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < tm.coords.length; i++) {
+      const pt = latLonToScreenCoord(tm.coords[i][0], tm.coords[i][1], st);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  });
+
   // 1. Aprons
-  ctx.fillStyle = "rgba(30, 41, 59, 0.5)";
-  ctx.strokeStyle = "rgba(51, 65, 85, 0.7)";
+  ctx.fillStyle = "rgba(30, 41, 59, 0.4)";
+  ctx.strokeStyle = "rgba(51, 65, 85, 0.6)";
   ctx.lineWidth = 1;
   (airportData.aprons || []).forEach(ap => {
     if (!ap.coords || ap.coords.length < 3) return;
@@ -587,12 +605,52 @@ function drawGroundScreen() {
     ctx.stroke();
   });
 
-  // 2. Taxiways
+  // 2. Parking Positions / Aircraft Stands (Centroids & Lines)
+  if (st.zoom > 1.8) {
+    (airportData.parking_stands || []).forEach(ps => {
+      if (ps.coords && ps.coords.length >= 2) {
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(100, 116, 139, 0.4)";
+        ctx.lineWidth = 1;
+        const p0 = latLonToScreenCoord(ps.coords[0][0], ps.coords[0][1], st);
+        ctx.moveTo(p0.x, p0.y);
+        for (let i = 1; i < ps.coords.length; i++) {
+          const pt = latLonToScreenCoord(ps.coords[i][0], ps.coords[i][1], st);
+          ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+      }
+
+      if (ps.ref && st.zoom > 3.0) {
+        const p = latLonToScreenCoord(ps.lat, ps.lon, st);
+        ctx.font = "7px 'Share Tech Mono'";
+        ctx.fillStyle = "rgba(148, 163, 184, 0.6)";
+        ctx.fillText(ps.ref, p.x - 6, p.y + 2);
+      }
+    });
+  }
+
+  // 3. Passenger Gates (Terminal 1, 2, 3)
+  (airportData.gates || []).forEach(gt => {
+    const p = latLonToScreenCoord(gt.lat, gt.lon, st);
+    ctx.fillStyle = "#38bdf8";
+    ctx.beginPath();
+    ctx.rect(p.x - 2, p.y - 2, 4, 4);
+    ctx.fill();
+
+    if (st.zoom > 2.2 && gt.ref) {
+      ctx.font = "bold 8px 'Share Tech Mono'";
+      ctx.fillStyle = "#7dd3fc";
+      ctx.fillText(gt.ref, p.x + 4, p.y + 3);
+    }
+  });
+
+  // 4. Taxiways
   (airportData.taxiways || []).forEach(tw => {
     if (!tw.coords || tw.coords.length < 2) return;
     ctx.beginPath();
-    ctx.strokeStyle = "rgba(16, 185, 129, 0.4)";
-    ctx.lineWidth = Math.max(2, 2.5 * (st.zoom / 2));
+    ctx.strokeStyle = "rgba(16, 185, 129, 0.55)";
+    ctx.lineWidth = Math.max(1.8, 2.5 * (st.zoom / 2));
     const p0 = latLonToScreenCoord(tw.coords[0][0], tw.coords[0][1], st);
     ctx.moveTo(p0.x, p0.y);
     for (let i = 1; i < tw.coords.length; i++) {
@@ -601,34 +659,40 @@ function drawGroundScreen() {
     }
     ctx.stroke();
 
-    if (tw.ref && tw.coords.length > 2 && st.zoom > 1.8) {
+    if (tw.ref && tw.coords.length >= 2 && st.zoom > 1.8) {
       const mid = tw.coords[Math.floor(tw.coords.length / 2)];
       const mp = latLonToScreenCoord(mid[0], mid[1], st);
-      ctx.font = "9px 'Share Tech Mono'";
-      ctx.fillStyle = "rgba(52, 211, 153, 0.75)";
+      ctx.font = "bold 9px 'Share Tech Mono'";
+      ctx.fillStyle = "#34d399";
       ctx.fillText(tw.ref, mp.x + 3, mp.y - 3);
     }
   });
 
-  // 3. Holding Points
+  // 5. Holding Positions (Stop Bars)
   (airportData.holding_positions || []).forEach(hp => {
     const p = latLonToScreenCoord(hp.lat, hp.lon, st);
     ctx.fillStyle = "#f59e0b";
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 3 * (st.zoom / 2), 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, Math.max(3, 3.5 * (st.zoom / 2)), 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
     if (st.zoom > 2.0) {
-      ctx.font = "8px 'Share Tech Mono'";
-      ctx.fillText(hp.ref, p.x + 5, p.y + 3);
+      ctx.font = "bold 9px 'Share Tech Mono'";
+      ctx.fillStyle = "#fde68a";
+      ctx.fillText(`HOLD ${hp.ref || ''}`, p.x + 5, p.y + 3);
     }
   });
 
-  // 4. Runways
+  // 6. Runways
   (airportData.runways || []).forEach(rw => {
     if (!rw.coords || rw.coords.length < 2) return;
     ctx.beginPath();
-    ctx.strokeStyle = "#10b981";
-    ctx.lineWidth = Math.max(4, (rw.width || 45) * 0.12 * st.zoom);
+    ctx.strokeStyle = "#059669";
+    ctx.lineWidth = Math.max(6, (rw.width || 60) * 0.16 * st.zoom);
     const p0 = latLonToScreenCoord(rw.coords[0][0], rw.coords[0][1], st);
     ctx.moveTo(p0.x, p0.y);
     for (let i = 1; i < rw.coords.length; i++) {
@@ -637,17 +701,25 @@ function drawGroundScreen() {
     }
     ctx.stroke();
 
-    ctx.setLineDash([5 * st.zoom, 3 * st.zoom]);
+    // Centerline dashed marking
+    ctx.beginPath();
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = Math.max(1.5, 1.2 * (st.zoom / 2));
+    ctx.setLineDash([8 * st.zoom, 5 * st.zoom]);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < rw.coords.length; i++) {
+      const pt = latLonToScreenCoord(rw.coords[i][0], rw.coords[i][1], st);
+      ctx.lineTo(pt.x, pt.y);
+    }
     ctx.stroke();
     ctx.setLineDash([]);
 
+    // Runway Designator Badges
     const pEnd = latLonToScreenCoord(rw.coords[rw.coords.length - 1][0], rw.coords[rw.coords.length - 1][1], st);
-    ctx.font = "bold 11px 'Share Tech Mono'";
+    ctx.font = "bold 13px 'Share Tech Mono'";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(rw.ref, p0.x - 12, p0.y - 6);
-    ctx.fillText(rw.ref, pEnd.x + 6, pEnd.y + 6);
+    ctx.fillText(rw.ref, p0.x - 14, p0.y - 8);
+    ctx.fillText(rw.ref, pEnd.x + 8, pEnd.y + 8);
   });
 
   // Aircraft on ground
