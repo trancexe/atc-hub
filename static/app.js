@@ -2195,11 +2195,17 @@ function executeHandoffComplete(ac) {
 }
 
 // Inbound Arrival Flight Planning and Smooth STAR Descent Engine
-function calculateStarArrivalPath(starCoords, rwyThreshold, rwyHeading) {
+function calculateStarArrivalPath(starCoords, rwyKey) {
+  const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
+    ? airportData.runway_mechanisms[rwyKey]
+    : null;
+  const threshold = mech ? [mech.threshold.lat, mech.threshold.lon] : [-6.108959, 106.669062];
+  const rwyHeading = mech ? mech.heading : 250;
+
   const rad = (90 - rwyHeading) * (Math.PI / 180);
   const fafDist = 0.08; // ~4.8 NM final
-  const fafLat = rwyThreshold[0] - Math.sin(rad) * fafDist;
-  const fafLon = rwyThreshold[1] - Math.cos(rad) * fafDist;
+  const fafLat = threshold[0] - Math.sin(rad) * fafDist;
+  const fafLon = threshold[1] - Math.cos(rad) * fafDist;
 
   const lastStar = starCoords[starCoords.length - 1];
   const ctrl1Lat = lastStar[0];
@@ -2235,15 +2241,36 @@ function calculateStarArrivalPath(starCoords, rwyThreshold, rwyHeading) {
   // 4. Glideslope 3-degree descent to threshold
   for (let i = 1; i <= 4; i++) {
     const t = i / 5.0;
-    const pLat = fafLat + (rwyThreshold[0] - fafLat) * t;
-    const pLon = fafLon + (rwyThreshold[1] - fafLon) * t;
+    const pLat = fafLat + (threshold[0] - fafLat) * t;
+    const pLon = fafLon + (threshold[1] - fafLon) * t;
     const alt = Math.round(2500 * (1 - t) + 50);
     const spd = Math.round(160 - t * 20);
     path.push({ lat: pLat, lon: pLon, alt: alt, spd: spd, desc: `FINAL ${i}` });
   }
 
   // 5. Touchdown threshold
-  path.push({ lat: rwyThreshold[0], lon: rwyThreshold[1], alt: 0, spd: 135, desc: "TOUCHDOWN" });
+  path.push({ lat: threshold[0], lon: threshold[1], alt: 0, spd: 135, desc: "TOUCHDOWN" });
+
+  // 6. Realistic Landing Rollout on Runway Centerline (Touchdown 135 kts -> Decel to 60 kts exit speed)
+  const rollPath = mech && mech.takeoff_roll_path ? mech.takeoff_roll_path : [];
+  if (rollPath && rollPath.length > 2) {
+    // Traverse down 60% of runway length to rapid exit taxiway
+    const exitNodeCount = Math.min(rollPath.length - 1, Math.max(3, Math.floor(rollPath.length * 0.65)));
+    for (let r = 1; r <= exitNodeCount; r++) {
+      const prog = r / exitNodeCount;
+      const rollPt = rollPath[r];
+      // Decelerate smoothly from 135 knots touchdown to 60 knots taxi exit speed
+      const rollSpd = Math.round(135 - (135 - 60) * prog);
+      path.push({
+        lat: rollPt[0],
+        lon: rollPt[1],
+        alt: 0,
+        spd: rollSpd,
+        desc: `LANDING ROLLOUT ${Math.round(prog * 100)}%`
+      });
+    }
+  }
+
   return path;
 }
 
@@ -2306,7 +2333,7 @@ function executeApproachMovement(ac) {
   const starObj = allStars.find(s => s.id === ac.clearedStar) || allStars[0];
   const starCoords = starObj ? starObj.coords : [[-6.345, 106.72], [-6.18, 106.88], [-6.1, 106.85]];
 
-  const fullPath = calculateStarArrivalPath(starCoords, threshold, rwyHeading);
+  const fullPath = calculateStarArrivalPath(starCoords, rwyKey);
   let ptIdx = 0;
 
   function moveNextArrivalLeg() {
@@ -2316,10 +2343,10 @@ function executeApproachMovement(ac) {
         ac._approachInterval = null;
       }
       ac.state = "LANDED";
-      ac.groundSpeed = 40;
+      ac.groundSpeed = 60;
       ac.altitude = 0;
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, runway vacated at November four.`;
+      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, slowed to sixty knots, runway vacated at November four.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
