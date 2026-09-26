@@ -2024,6 +2024,18 @@ function executeTakeoffMovement(ac) {
   moveNextRollNode();
 }
 
+function calculateDistanceNm(lat1, lon1, lat2, lon2) {
+  const R = 3440.065; // Earth radius in NM
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const dPhi = (lat2 - lat1) * Math.PI / 180;
+  const dLam = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
+            Math.cos(phi1) * Math.cos(phi2) *
+            Math.sin(dLam / 2) * Math.sin(dLam / 2);
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function calculateDepartureClimbPath(startLat, startLon, startHdg, sidPoints) {
   if (!sidPoints || sidPoints.length === 0) return [];
   const firstFix = sidPoints[0];
@@ -2138,7 +2150,15 @@ function executeClimbEnroute(ac) {
     const targetSpd = leg.spd;
     const targetHdg = leg.hdg;
 
-    const totalSteps = 180;
+    const legDistNm = calculateDistanceNm(startLat, startLon, leg.lat, leg.lon);
+    const avgSpeedKts = (startSpd + targetSpd) / 2;
+    // Time in seconds: (dist / speed) * 3600.
+    // In simulator game-time, we apply a consistent simulation speed ratio (e.g. 1 real sec = 4 sim sec)
+    // Duration (seconds) = (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT)
+    const SIM_SPEED_MULT = 4.0;
+    const legDurationSec = Math.max(2.5, (legDistNm / Math.max(120, avgSpeedKts)) * (3600 / SIM_SPEED_MULT));
+    const stepIntervalMs = 50;
+    const totalSteps = Math.max(20, Math.round((legDurationSec * 1000) / stepIntervalMs));
     let step = 0;
 
     ac._climbInterval = setInterval(() => {
@@ -2161,7 +2181,7 @@ function executeClimbEnroute(ac) {
         ptIdx++;
         moveNextClimbLeg();
       }
-    }, 100);
+    }, stepIntervalMs);
   }
 
   moveNextClimbLeg();
@@ -2339,7 +2359,13 @@ function executeApproachMovement(ac) {
       }, 500);
     }
 
-    const totalSteps = 160;
+    const legDistNm = calculateDistanceNm(startLat, startLon, leg.lat, leg.lon);
+    const avgSpeedKts = (startSpd + targetSpd) / 2;
+    // Same calibrated physics: simulation multiplier 4x (1 real sec = 4 sim sec)
+    const SIM_SPEED_MULT = 4.0;
+    const legDurationSec = Math.max(2.5, (legDistNm / Math.max(120, avgSpeedKts)) * (3600 / SIM_SPEED_MULT));
+    const stepIntervalMs = 50;
+    const totalSteps = Math.max(20, Math.round((legDurationSec * 1000) / stepIntervalMs));
     let step = 0;
 
     ac._approachInterval = setInterval(() => {
@@ -2364,7 +2390,7 @@ function executeApproachMovement(ac) {
         ptIdx++;
         moveNextArrivalLeg();
       }
-    }, 70);
+    }, stepIntervalMs);
   }
 
   moveNextArrivalLeg();
