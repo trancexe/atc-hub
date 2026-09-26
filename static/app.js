@@ -153,16 +153,46 @@ async function speakPilotReadback(text) {
 }
 
 function executeDebugCommand() {
-  const ac = aircraft[0];
+  const ac = aircraft[selectedAircraftIndex] || aircraft[0];
   if (!ac) return;
-  const promptEl = document.getElementById('prompt-speech-text');
-  const text = promptEl ? promptEl.textContent.trim().replace(/^"|"$/g, '') : '';
   
+  console.log(`[DEBUG ATC] Executing command for ${ac.id}, current state: ${ac.state}`);
+
+  // Determine clearance action directly by current state machine
+  let instructionText = "";
+  if (ac.state === "GATE") {
+    instructionText = "Indonesia 502 push and start approved, facing west";
+  } else if (ac.state === "PUSHBACK") {
+    console.log("[DEBUG ATC] Pushback already in progress...");
+    return;
+  } else if (ac.state === "READY_TAXI") {
+    instructionText = "Indonesia 502 taxi to holding point runway 25R via NC1 and N2";
+  } else if (ac.state === "TAXI") {
+    console.log("[DEBUG ATC] Taxi already in progress...");
+    return;
+  } else if (ac.state === "HOLDING") {
+    instructionText = "Indonesia 502 line up and wait runway 25R";
+  } else if (ac.state === "LINE_UP") {
+    instructionText = "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff";
+  } else if (ac.state === "TAKEOFF") {
+    console.log("[DEBUG ATC] Takeoff roll already in progress...");
+    return;
+  } else if (ac.state === "AIRBORNE") {
+    instructionText = "Indonesia 502 contact Jakarta Approach 119 decimal 75, good day";
+  } else if (ac.state === "CLIMBING" || ac.state === "HANDOFF") {
+    instructionText = "Indonesia 502 contact Jakarta Center 128 decimal 5, good day";
+  } else {
+    instructionText = `${ac.callsign} roger and standby`;
+  }
+
   const recEl = document.getElementById('recognized-text');
-  if (recEl) recEl.textContent = `[ATC]: "${text}"`;
-  
-  // Forward to command handler
-  handleRadarVoiceCommand(text, {});
+  if (recEl) recEl.textContent = `[ATC]: "${instructionText}"`;
+
+  // Always force-release radio transmitting lock on debug command
+  isRadioTransmitting = false;
+
+  // Forward to radar command handler
+  handleRadarVoiceCommand(instructionText, {});
 }
 
 // Easy Mode Dynamic Prompts by Aircraft State (Strict ICAO Standard Telephony)
