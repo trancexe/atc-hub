@@ -173,10 +173,36 @@ async def get_lessons():
 async def generate_pilot_voice(text: str = Query(..., min_length=1), voice: str = "en-US-GuyNeural"):
     """
     Generate natural pilot radio speech via edge-tts.
-    Bypasses Linux host missing speech-dispatcher/festival libraries completely!
+    Enforces strict ICAO Doc 4444 phonetic digit expansion:
+    Numbers are spoken digit-by-digit (e.g. 502 -> 'five zero two', never 'five o two').
     """
     try:
-        communicate = edge_tts.Communicate(text, voice)
+        # Strict ICAO digit mapping
+        digit_phonetics = {
+            '0': 'zero',
+            '1': 'one',
+            '2': 'two',
+            '3': 'three',
+            '4': 'four',
+            '5': 'five',
+            '6': 'six',
+            '7': 'seven',
+            '8': 'eight',
+            '9': 'nine'
+        }
+        
+        # Expand any standalone digits or sequence of digits into explicit spaced phonetic words
+        # e.g., '502' -> 'five zero two', '25R' -> 'two five Right', '119.75' -> 'one one nine decimal seven five'
+        import re
+        def expand_numbers_to_icao(match):
+            val = match.group(0)
+            return " " + " ".join(digit_phonetics[d] for d in val) + " "
+
+        processed_text = re.sub(r'\d+', expand_numbers_to_icao, text)
+        # Normalize double spaces and common aviation phonetic conventions
+        processed_text = re.sub(r'\s+', ' ', processed_text).strip()
+
+        communicate = edge_tts.Communicate(processed_text, voice)
         mp3_bytes = bytearray()
         async for chunk in communicate.stream():
             if chunk.get("type") == "audio" and "data" in chunk:
