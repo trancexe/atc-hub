@@ -1564,6 +1564,12 @@ function executeTaxiMovement(ac) {
 }
 
 function executeLineUpMovement(ac) {
+  // Clear any existing active movement interval to avoid competing position glitches
+  if (ac._activeInterval) {
+    clearInterval(ac._activeInterval);
+    ac._activeInterval = null;
+  }
+
   const rwyKey = ac.clearedRwy || "25R";
   const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
     ? airportData.runway_mechanisms[rwyKey]
@@ -1588,6 +1594,10 @@ function executeLineUpMovement(ac) {
   function moveNextEntryNode() {
     if (eIdx >= entryNodes.length) {
       // Perfectly lined up on Runway centerline threshold!
+      if (ac._activeInterval) {
+        clearInterval(ac._activeInterval);
+        ac._activeInterval = null;
+      }
       ac.groundSpeed = 0;
       const lastPt = entryNodes[entryNodes.length - 1];
       ac.lat = lastPt.lat;
@@ -1615,7 +1625,7 @@ function executeLineUpMovement(ac) {
     const totalSteps = Math.max(12, Math.round(distDeg * 110000));
     let step = 0;
 
-    const entryInterval = setInterval(() => {
+    ac._activeInterval = setInterval(() => {
       step++;
       const prog = step / totalSteps;
       ac.lat = startLat + (targetPt.lat - startLat) * prog;
@@ -1627,7 +1637,8 @@ function executeLineUpMovement(ac) {
       renderAllScreens();
 
       if (step >= totalSteps) {
-        clearInterval(entryInterval);
+        clearInterval(ac._activeInterval);
+        ac._activeInterval = null;
         ac.lat = targetPt.lat;
         ac.lon = targetPt.lon;
         ac.heading = targetHdg;
@@ -1641,6 +1652,12 @@ function executeLineUpMovement(ac) {
 }
 
 function executeTakeoffMovement(ac) {
+  // Clear any active movement interval (such as lineup loop still ticking)
+  if (ac._activeInterval) {
+    clearInterval(ac._activeInterval);
+    ac._activeInterval = null;
+  }
+
   const rwyKey = ac.clearedRwy || "25R";
   const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
     ? airportData.runway_mechanisms[rwyKey]
@@ -1659,11 +1676,22 @@ function executeTakeoffMovement(ac) {
           ]);
 
   const targetHeading = mech ? mech.heading : 250;
+  // Snap smoothly to threshold starting point to prevent any coordinate warp
+  if (rollNodes.length > 0) {
+    ac.lat = rollNodes[0].lat;
+    ac.lon = rollNodes[0].lon;
+    ac.heading = targetHeading;
+  }
+
   let rIdx = 1;
   const totalRollPoints = rollNodes.length;
 
   function moveNextRollNode() {
     if (rIdx >= totalRollPoints) {
+      if (ac._activeInterval) {
+        clearInterval(ac._activeInterval);
+        ac._activeInterval = null;
+      }
       ac.state = "AIRBORNE";
       ac.hasCheckedIn = false;
       ac.groundSpeed = 185;
@@ -1686,8 +1714,8 @@ function executeTakeoffMovement(ac) {
     const progOverall = rIdx / totalRollPoints;
     ac.groundSpeed = Math.round(15 + Math.pow(progOverall, 1.3) * 145);
 
-    if (progOverall > 0.55) {
-      const climbP = (progOverall - 0.55) / 0.45;
+    if (progOverall > 0.60) {
+      const climbP = (progOverall - 0.60) / 0.40;
       ac.altitude = Math.round(climbP * 1500);
     } else {
       ac.altitude = 0;
@@ -1696,12 +1724,11 @@ function executeTakeoffMovement(ac) {
     const dLat = targetPt.lat - startLat;
     const dLon = targetPt.lon - startLon;
     const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
-    // Faster steps as aircraft accelerates down the runway
-    const stepSpeedFactor = Math.max(25000, 90000 - ac.groundSpeed * 400);
-    const totalSteps = Math.max(6, Math.round(distDeg * stepSpeedFactor));
+    // Smooth step interval calculation across segments (minimum 10 steps to avoid jumpy frames)
+    const totalSteps = Math.max(10, Math.round(distDeg * 45000));
     let step = 0;
 
-    const rollStepInterval = setInterval(() => {
+    ac._activeInterval = setInterval(() => {
       step++;
       const prog = step / totalSteps;
       ac.lat = startLat + (targetPt.lat - startLat) * prog;
@@ -1711,7 +1738,8 @@ function executeTakeoffMovement(ac) {
       renderAllScreens();
 
       if (step >= totalSteps) {
-        clearInterval(rollStepInterval);
+        clearInterval(ac._activeInterval);
+        ac._activeInterval = null;
         ac.lat = targetPt.lat;
         ac.lon = targetPt.lon;
         rIdx++;
