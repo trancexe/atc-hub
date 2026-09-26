@@ -14,9 +14,9 @@ const tmaCtx = tmaCanvas ? tmaCanvas.getContext('2d') : null;
 // View states for both screens
 const viewState = {
   ground: {
-    panX: -280,
-    panY: -120,
-    zoom: 6.5, // Crisp, close-up tactical view for small displays & laptop screens
+    panX: 0,
+    panY: 0,
+    zoom: 1.0, // Clean 1x full-overview default for touchpad / mouse-free convenience
     isDragging: false,
     startX: 0,
     startY: 0,
@@ -364,7 +364,7 @@ function cyclePrompterAircraft() {
   selectedAircraftIndex = (selectedAircraftIndex + 1) % aircraft.length;
   const ac = aircraft[selectedAircraftIndex];
   if (ac) {
-    focusAircraftOnGround(ac, 6.5);
+    focusAircraftOnGround(ac);
   }
   updateEasyModePrompter();
   renderFlightStrips();
@@ -1370,7 +1370,7 @@ function changeAircraftSid(idx, newSid) {
 
 let _cameraAnimFrame = null;
 
-function focusAircraftOnGround(ac, optimalZoom = 6.5) {
+function focusAircraftOnGround(ac, optimalZoom = null) {
   if (!ac) return;
   const st = viewState.ground;
 
@@ -1383,11 +1383,12 @@ function focusAircraftOnGround(ac, optimalZoom = 6.5) {
   const startPanX = st.panX;
   const startPanY = st.panY;
 
-  const targetZoom = optimalZoom;
+  // Keep current user zoom level (or default 1.0) so no forced unwanted close-up zoom happens
+  const targetZoom = (optimalZoom !== null) ? optimalZoom : st.zoom;
   const targetPanX = - (ac.lon - refLon) * BASE_SCALE * targetZoom;
   const targetPanY = (ac.lat - refLat) * BASE_SCALE * targetZoom;
 
-  const duration = 500; // ms
+  const duration = 400; // ms
   const startTime = performance.now();
 
   function easeOutCubic(x) {
@@ -1419,9 +1420,9 @@ function selectAircraft(idx) {
   selectedAircraftIndex = idx;
   const ac = aircraft[idx];
 
-  // If selecting aircraft, smoothly focus ground radar on this aircraft with clear close-up distance
+  // Center smoothly on selected aircraft without modifying current zoom scale (stays 1.0)
   if (ac) {
-    focusAircraftOnGround(ac, 6.5);
+    focusAircraftOnGround(ac);
   }
 
   renderFlightStrips();
