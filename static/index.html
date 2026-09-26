@@ -130,7 +130,12 @@
       <div class="absolute top-3 right-3 z-10 w-72 bg-slate-900/95 backdrop-blur border border-emerald-900/80 rounded-lg p-3 font-radar shadow-xl">
         <div class="text-xs font-bold text-emerald-400 border-b border-emerald-900/40 pb-1.5 mb-2 flex justify-between items-center">
           <span>ACTIVE FLIGHT STRIPS</span>
-          <span id="aircraft-count" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">2 In Flight</span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="spawnInboundArrival()" class="text-[9px] px-1.5 py-0.5 rounded bg-sky-900 hover:bg-sky-800 text-sky-200 border border-sky-600 transition" title="Spawn Pesawat Masuk Inbound STAR / ILS">
+              + Inbound
+            </button>
+            <span id="aircraft-count" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">1 In Flight</span>
+          </div>
         </div>
         <div id="flight-strips" class="space-y-2 max-h-80 overflow-y-auto pr-1">
           <!-- Strips rendered here -->

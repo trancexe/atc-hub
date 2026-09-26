@@ -67458,8 +67458,7 @@
       "waypoints": [
         "DOLTA",
         "ESLAM",
-        "TEGID",
-        "CKG"
+        "TEGID"
       ],
       "coords": [
         [
@@ -67473,12 +67472,9 @@
         [
           -6.1,
           106.85
-        ],
-        [
-          -6.1275,
-          106.658
         ]
-      ]
+      ],
+      "desc": "STAR 25R/L: From DOLTA via ESLAM to TEGID, descent to 3000ft, intercept ILS 25R/L."
     },
     {
       "id": "BUNTO 1A",
@@ -67489,8 +67485,7 @@
       "color": "#3b82f6",
       "waypoints": [
         "BUNTO",
-        "TEGID",
-        "CKG"
+        "TEGID"
       ],
       "coords": [
         [
@@ -67500,39 +67495,9 @@
         [
           -6.1,
           106.85
-        ],
-        [
-          -6.1275,
-          106.658
         ]
-      ]
-    },
-    {
-      "id": "KRAKE 1A",
-      "runways": [
-        "07L",
-        "07R"
       ],
-      "color": "#8b5cf6",
-      "waypoints": [
-        "KRAKE",
-        "RAKIT",
-        "CKG"
-      ],
-      "coords": [
-        [
-          -6.02,
-          106.28
-        ],
-        [
-          -6.25,
-          106.4
-        ],
-        [
-          -6.1275,
-          106.658
-        ]
-      ]
+      "desc": "STAR 25R/L: From BUNTO direct TEGID, descent to 3000ft, intercept ILS 25R/L."
     },
     {
       "id": "GOMBA 1A",
@@ -67559,7 +67524,120 @@
           -6.1,
           106.85
         ]
-      ]
+      ],
+      "desc": "STAR 25R/L: From GOMBA via CA to TEGID, intercept ILS 25R/L."
+    },
+    {
+      "id": "KRAKE 1A",
+      "runways": [
+        "07L",
+        "07R"
+      ],
+      "color": "#8b5cf6",
+      "waypoints": [
+        "KRAKE",
+        "RAKIT"
+      ],
+      "coords": [
+        [
+          -6.02,
+          106.28
+        ],
+        [
+          -6.25,
+          106.4
+        ]
+      ],
+      "desc": "STAR 07L/R: From KRAKE via RAKIT, descent to 3000ft, intercept ILS 07L/R."
+    },
+    {
+      "id": "DOLTA 1B",
+      "runways": [
+        "07L",
+        "07R"
+      ],
+      "color": "#a855f7",
+      "waypoints": [
+        "DOLTA",
+        "RAKIT"
+      ],
+      "coords": [
+        [
+          -6.345,
+          106.72
+        ],
+        [
+          -6.25,
+          106.4
+        ]
+      ],
+      "desc": "STAR 07L/R: From DOLTA via RAKIT, descent to 3000ft, intercept ILS 07L/R."
+    },
+    {
+      "id": "GOMBA 2M",
+      "runways": [
+        "24"
+      ],
+      "color": "#14b8a6",
+      "waypoints": [
+        "GOMBA",
+        "CA"
+      ],
+      "coords": [
+        [
+          -5.92,
+          106.75
+        ],
+        [
+          -6.05,
+          106.72
+        ]
+      ],
+      "desc": "STAR 24: From GOMBA via CA, intercept ILS 24."
+    },
+    {
+      "id": "BUNTO 2M",
+      "runways": [
+        "24"
+      ],
+      "color": "#3b82f6",
+      "waypoints": [
+        "BUNTO",
+        "CA"
+      ],
+      "coords": [
+        [
+          -6.12,
+          106.95
+        ],
+        [
+          -6.05,
+          106.72
+        ]
+      ],
+      "desc": "STAR 24: From BUNTO via CA, intercept ILS 24."
+    },
+    {
+      "id": "KRAKE 2M",
+      "runways": [
+        "06"
+      ],
+      "color": "#8b5cf6",
+      "waypoints": [
+        "KRAKE",
+        "TOPIN"
+      ],
+      "coords": [
+        [
+          -6.02,
+          106.28
+        ],
+        [
+          -5.95,
+          106.45
+        ]
+      ],
+      "desc": "STAR 06: From KRAKE via TOPIN, intercept ILS 06."
     }
   ],
   "airways": [

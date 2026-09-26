@@ -200,6 +200,12 @@ function executeDebugCommand() {
   } else if (ac.state === "TAKEOFF") {
     console.log("[DEBUG ATC] Takeoff roll already in progress...");
     return;
+  } else if (ac.state === "APPROACH") {
+    instructionText = `${ac.callsign} descend and maintain 3000 feet, cleared ILS approach runway ${rwyKey}`;
+  } else if (ac.state === "FINAL") {
+    instructionText = `${ac.callsign} wind 250 at 8 knots, runway ${rwyKey} cleared to land`;
+  } else if (ac.state === "LANDED") {
+    instructionText = `${ac.callsign} vacate runway via November 4, contact Ground 121 decimal 6`;
   } else if (ac.state === "AIRBORNE") {
     instructionText = `${ac.callsign} contact Jakarta Approach 119 decimal 75, good day`;
   } else if (ac.state === "CLIMBING" || ac.state === "HANDOFF") {
@@ -263,7 +269,22 @@ const stateInstructions = {
   "TAKEOFF": {
     context: "Pesawat akselerasi dan lepas landas dari runway 25R...",
     speech: "Airborne climb out",
-    actionDesc: "Takeoff roll"
+    actionDesc: "Takeoff Roll"
+  },
+  "APPROACH": {
+    context: "Pesawat inbound pada rute kedatangan STAR menuju final intercept ILS.",
+    speech: "Supergreen 123 descend and maintain 3000 feet, cleared ILS approach runway 25R",
+    actionDesc: "Cleared ILS Approach"
+  },
+  "FINAL": {
+    context: "Pesawat di final approach 5 NM siap mendarat di runway.",
+    speech: "Supergreen 123 wind 250 at 8 knots, runway 25R cleared to land",
+    actionDesc: "Cleared to Land"
+  },
+  "LANDED": {
+    context: "Pesawat telah mendarat dan memperlambat laju di runway.",
+    speech: "Supergreen 123 vacate runway via November 4, contact Ground 121 decimal 6",
+    actionDesc: "Vacate Runway"
   },
   "AIRBORNE": {
     context: "Pesawat airborne passing 2000ft, transfer kendali dari Tower ke Jakarta Approach.",
@@ -1513,6 +1534,13 @@ function handleRadarVoiceCommand(text, parsedData) {
         matchedAc.state = "TAKEOFF";
         executeTakeoffMovement(matchedAc);
       }
+    } else if (matchedAc.state === "APPROACH" && (norm.includes("ils") || norm.includes("descend") || norm.includes("approach") || norm.includes("cleared"))) {
+      readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwyKey}, ${matchedAc.callsign}`;
+    } else if (matchedAc.state === "FINAL" && (norm.includes("land") || norm.includes("cleared"))) {
+      readback = `Runway ${rwyKey} cleared to land, ${matchedAc.callsign}`;
+    } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121"))) {
+      matchedAc.state = "TAXI_IN";
+      readback = `Vacating runway via November 4, contacting Ground 121 decimal 6, good day, ${matchedAc.callsign}`;
     } else if (matchedAc.state === "AIRBORNE" && (norm.includes("approach") || norm.includes("radar") || norm.includes("119") || norm.includes("125"))) {
       matchedAc.state = "CLIMBING";
       readback = "Contact Jakarta Approach 119 decimal 75, good day, " + matchedAc.callsign;
@@ -2091,6 +2119,202 @@ function executeHandoffComplete(ac) {
   if (pttStatus) {
     pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check"></i> HANDOFF COMPLETE - CRUISE ENROUTE JAKARTA CENTER</span>`;
   }
+}
+
+// Inbound Arrival Flight Planning and Smooth STAR Descent Engine
+function calculateStarArrivalPath(starCoords, rwyThreshold, rwyHeading) {
+  const rad = (90 - rwyHeading) * (Math.PI / 180);
+  const fafDist = 0.08; // ~4.8 NM final
+  const fafLat = rwyThreshold[0] - Math.sin(rad) * fafDist;
+  const fafLon = rwyThreshold[1] - Math.cos(rad) * fafDist;
+
+  const lastStar = starCoords[starCoords.length - 1];
+  const ctrl1Lat = lastStar[0];
+  const ctrl1Lon = lastStar[1];
+  const ctrl2Lat = fafLat - Math.sin(rad) * 0.035;
+  const ctrl2Lon = fafLon - Math.cos(rad) * 0.035;
+
+  const path = [];
+  // 1. STAR enroute waypoints
+  for (let i = 0; i < starCoords.length; i++) {
+    const alt = Math.max(4000, 10000 - i * 3000);
+    const spd = Math.max(190, 250 - i * 20);
+    path.push({ lat: starCoords[i][0], lon: starCoords[i][1], alt: alt, spd: spd, desc: `STAR WP ${i}` });
+  }
+
+  // 2. Smooth cubic Bezier intercept arc onto ILS localizer
+  for (let i = 1; i <= 5; i++) {
+    const t = i / 6.0;
+    const b0 = Math.pow(1 - t, 3);
+    const b1 = 3 * Math.pow(1 - t, 2) * t;
+    const b2 = 3 * (1 - t) * Math.pow(t, 2);
+    const b3 = Math.pow(t, 3);
+    const pLat = b0 * lastStar[0] + b1 * ctrl1Lat + b2 * ctrl2Lat + b3 * fafLat;
+    const pLon = b0 * lastStar[1] + b1 * ctrl1Lon + b2 * ctrl2Lon + b3 * fafLon;
+    const alt = Math.round(4000 - t * 1500);
+    const spd = Math.round(190 - t * 25);
+    path.push({ lat: pLat, lon: pLon, alt: alt, spd: spd, desc: `ILS INTERCEPT ARC ${i}` });
+  }
+
+  // 3. Final Approach Fix (FAF)
+  path.push({ lat: fafLat, lon: fafLon, alt: 2500, spd: 160, desc: "FAF ILS GLIDESLOPE" });
+
+  // 4. Glideslope 3-degree descent to threshold
+  for (let i = 1; i <= 4; i++) {
+    const t = i / 5.0;
+    const pLat = fafLat + (rwyThreshold[0] - fafLat) * t;
+    const pLon = fafLon + (rwyThreshold[1] - fafLon) * t;
+    const alt = Math.round(2500 * (1 - t) + 50);
+    const spd = Math.round(160 - t * 20);
+    path.push({ lat: pLat, lon: pLon, alt: alt, spd: spd, desc: `FINAL ${i}` });
+  }
+
+  // 5. Touchdown threshold
+  path.push({ lat: rwyThreshold[0], lon: rwyThreshold[1], alt: 0, spd: 135, desc: "TOUCHDOWN" });
+  return path;
+}
+
+function spawnInboundArrival() {
+  const arrivalCallsigns = [
+    { id: "CTV123", callsign: "SUPERGREEN 123", airline: "Citilink", type: "A320" },
+    { id: "LNI712", callsign: "LION INTER 712", airline: "Lion Air", type: "B739" },
+    { id: "BTK650", callsign: "BATIK 650", airline: "Batik Air", type: "A320" }
+  ];
+  const chosen = arrivalCallsigns[aircraft.length % arrivalCallsigns.length];
+  const targetRwy = "25R";
+  const defaultStar = "DOLTA 1A";
+
+  const allStars = (airportData && airportData.stars) ? airportData.stars : [];
+  const starObj = allStars.find(s => s.id === defaultStar) || allStars[0];
+  const starCoords = starObj ? starObj.coords : [[-6.345, 106.72], [-6.18, 106.88], [-6.1, 106.85]];
+
+  const newAc = {
+    id: chosen.id,
+    callsign: chosen.callsign,
+    airline: chosen.airline,
+    type: chosen.type,
+    lat: starCoords[0][0],
+    lon: starCoords[0][1],
+    heading: 320,
+    altitude: 10000,
+    groundSpeed: 250,
+    state: "APPROACH",
+    clearedRwy: targetRwy,
+    clearedStar: defaultStar,
+    squawk: String(Math.floor(1000 + Math.random() * 8000)),
+    hasCheckedIn: false,
+    checkInPhrase: `Jakarta Approach, ${chosen.callsign}, inbound via ${defaultStar}, descending through flight level one zero zero.`
+  };
+
+  aircraft.push(newAc);
+  selectedAircraftIndex = aircraft.length - 1;
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+
+  setTimeout(() => {
+    triggerPilotCheckIn(newAc);
+  }, 1000);
+
+  executeApproachMovement(newAc);
+}
+
+function executeApproachMovement(ac) {
+  if (ac._approachInterval) return;
+
+  const rwyKey = ac.clearedRwy || "25R";
+  const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
+    ? airportData.runway_mechanisms[rwyKey]
+    : null;
+  const threshold = mech ? [mech.threshold.lat, mech.threshold.lon] : [-6.108959, 106.669062];
+  const rwyHeading = mech ? mech.heading : 250;
+
+  const allStars = (airportData && airportData.stars) ? airportData.stars : [];
+  const starObj = allStars.find(s => s.id === ac.clearedStar) || allStars[0];
+  const starCoords = starObj ? starObj.coords : [[-6.345, 106.72], [-6.18, 106.88], [-6.1, 106.85]];
+
+  const fullPath = calculateStarArrivalPath(starCoords, threshold, rwyHeading);
+  let ptIdx = 0;
+
+  function moveNextArrivalLeg() {
+    if (ptIdx >= fullPath.length) {
+      if (ac._approachInterval) {
+        clearInterval(ac._approachInterval);
+        ac._approachInterval = null;
+      }
+      ac.state = "LANDED";
+      ac.groundSpeed = 40;
+      ac.altitude = 0;
+      ac.hasCheckedIn = false;
+      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, runway vacated at November four.`;
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 1000);
+      return;
+    }
+
+    const leg = fullPath[ptIdx];
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+    const startAlt = ac.altitude;
+    const startSpd = ac.groundSpeed;
+    const targetAlt = leg.alt;
+    const targetSpd = leg.spd;
+
+    // Calculate heading towards target fix
+    const dLat = leg.lat - startLat;
+    const dLon = leg.lon - startLon;
+    let targetHdg = ac.heading;
+    if (Math.abs(dLat) > 0.000001 || Math.abs(dLon) > 0.000001) {
+      const angleRad = Math.atan2(dLat, dLon * Math.cos(startLat * Math.PI / 180));
+      targetHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
+    }
+
+    // When near final glideslope, trigger tower check-in
+    if (leg.desc.includes("FAF") && ac.state !== "FINAL") {
+      ac.state = "FINAL";
+      ac.hasCheckedIn = false;
+      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, established ILS runway ${rwyKey}.`;
+      renderFlightStrips();
+      updateEasyModePrompter();
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 500);
+    }
+
+    const totalSteps = 160;
+    let step = 0;
+
+    ac._approachInterval = setInterval(() => {
+      step++;
+      const prog = step / totalSteps;
+      ac.lat = startLat + (leg.lat - startLat) * prog;
+      ac.lon = startLon + (leg.lon - startLon) * prog;
+      ac.altitude = Math.round(startAlt + (targetAlt - startAlt) * prog);
+      ac.groundSpeed = Math.round(startSpd + (targetSpd - startSpd) * prog);
+
+      const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
+      ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
+
+      renderAllScreens();
+
+      if (step >= totalSteps) {
+        clearInterval(ac._approachInterval);
+        ac._approachInterval = null;
+        ac.lat = leg.lat;
+        ac.lon = leg.lon;
+        ac.heading = targetHdg;
+        ptIdx++;
+        moveNextArrivalLeg();
+      }
+    }, 70);
+  }
+
+  moveNextArrivalLeg();
 }
 
 // Push to talk event bindings
