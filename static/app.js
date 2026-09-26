@@ -188,6 +188,8 @@ function executeDebugCommand() {
     return;
   } else if (ac.state === "READY_TAXI") {
     instructionText = `${ac.callsign} taxi to holding point runway ${rwyKey} via ${hpName}`;
+  } else if (ac.state === "HOLD_SHORT_CROSS") {
+    instructionText = `${ac.callsign} cross runway 25R at November cross, report vacated`;
   } else if (ac.state === "TAXI") {
     console.log("[DEBUG ATC] Taxi already in progress...");
     return;
@@ -232,6 +234,11 @@ const stateInstructions = {
     context: "Pesawat selesai pushback di NC1, pilot check-in meminta clearance taxi menuju Runway 25R.",
     speech: "Indonesia 502 taxi to holding point runway 25R via NC1, N2",
     actionDesc: "Taxi to Holding Point 25R"
+  },
+  "HOLD_SHORT_CROSS": {
+    context: "Pesawat berhenti di Stop Bar sebelum menyeberangi runway aktif! Wajib berikan izin cross runway.",
+    speech: "Indonesia 502 cross runway 25R at November cross, report vacated",
+    actionDesc: "Cross Runway Clearance"
   },
   "TAXI": {
     context: "Pesawat sedang taxi menuju holding point 25R...",
@@ -853,6 +860,23 @@ function drawGroundScreen() {
     }
   }
 
+  // 4d. Runway Crossing Stop Bar Indicator (Visible if route crosses North Runway)
+  const selAc = aircraft[selectedAircraftIndex] || aircraft[0];
+  if (selAc && (selAc.clearedRwy === "25L" || selAc.clearedRwy === "07R")) {
+    const crossPt = latLonToScreenCoord(-6.1220515, 106.6481632, st);
+    ctx.beginPath();
+    ctx.arc(crossPt.x, crossPt.y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = selAc.state === "HOLD_SHORT_CROSS" ? "rgba(239, 68, 68, 0.85)" : "rgba(245, 158, 11, 0.75)";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.font = "bold 10px 'Share Tech Mono', monospace";
+    ctx.fillStyle = "#fef08a";
+    ctx.fillText("STOP BAR: CROSS 25R/07L", crossPt.x + 12, crossPt.y + 3);
+  }
+
   // 5. Holding Positions (Stop Bars)
   (airportData.holding_positions || []).forEach(hp => {
     const p = latLonToScreenCoord(hp.lat, hp.lon, st);
@@ -1454,7 +1478,13 @@ function handleRadarVoiceCommand(text, parsedData) {
       executePushbackMovement(matchedAc);
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
+      matchedAc._runwayCrossCleared = false;
       readback = `Taxi to holding point runway ${rwyKey} via ${hpName}, ${matchedAc.callsign}`;
+      executeTaxiMovement(matchedAc);
+    } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
+      matchedAc.state = "TAXI";
+      matchedAc._runwayCrossCleared = true;
+      readback = `Cross runway two five right at November cross, report vacated, ${matchedAc.callsign}`;
       executeTaxiMovement(matchedAc);
     } else if ((matchedAc.state === "HOLDING" || matchedAc.state === "TAXI") && (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait"))) {
       matchedAc.state = "LINE_UP";
@@ -1594,9 +1624,30 @@ function executeTaxiMovement(ac) {
         ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
         : flightRouteMission.taxiwayPoints);
 
-  let ptIdx = 0;
+  let ptIdx = (ac._crossSavedIndex !== undefined && ac._crossSavedIndex !== null) ? ac._crossSavedIndex : 0;
+  ac._crossSavedIndex = null;
 
   function moveNextTaxiNode() {
+    // Check if crossing runway stop bar (e.g. going south towards 25L or 07R)
+    if ((rwyKey === "25L" || rwyKey === "07R") && !ac._runwayCrossCleared && ptIdx === 22) {
+      // Reached holding stop bar before crossing North Runway 25R/07L!
+      ac.groundSpeed = 0;
+      ac.lat = points[ptIdx].lat;
+      ac.lon = points[ptIdx].lon;
+      ac.state = "HOLD_SHORT_CROSS";
+      ac._crossSavedIndex = ptIdx;
+      ac.hasCheckedIn = false;
+      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, holding short runway two five right at November cross.`;
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 800);
+      return;
+    }
+
     if (ptIdx >= points.length) {
       // Arrived precisely at designated Runway Holding Point!
       ac.groundSpeed = 0;
