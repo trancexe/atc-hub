@@ -206,6 +206,10 @@ function executeDebugCommand() {
     instructionText = `${ac.callsign} wind 250 at 8 knots, runway ${rwyKey} cleared to land`;
   } else if (ac.state === "LANDED") {
     instructionText = `${ac.callsign} vacate runway via November 4, contact Ground 121 decimal 6`;
+  } else if (ac.state === "TAXI_IN") {
+    instructionText = `${ac.callsign} taxi to Gate Echo 1 via November Charlie`;
+  } else if (ac.state === "PARKED") {
+    instructionText = `${ac.callsign} shutdown approved, have a good day`;
   } else if (ac.state === "AIRBORNE") {
     instructionText = `${ac.callsign} contact Jakarta Approach 119 decimal 75, good day`;
   } else if (ac.state === "CLIMBING" || ac.state === "HANDOFF") {
@@ -282,9 +286,19 @@ const stateInstructions = {
     actionDesc: "Cleared to Land"
   },
   "LANDED": {
-    context: "Pesawat telah mendarat dan memperlambat laju di runway.",
+    context: "Pesawat telah mendarat dan melambat di runway. Berikan izin vacate runway menuju apron.",
     speech: "Supergreen 123 vacate runway via November 4, contact Ground 121 decimal 6",
     actionDesc: "Vacate Runway"
+  },
+  "TAXI_IN": {
+    context: "Pesawat sedang taxi masuk (taxi in) menyusuri taxiway menuju apron stand/gate.",
+    speech: "Supergreen 123 taxi to Gate Echo 1 via November Charlie",
+    actionDesc: "Taxi to Gate"
+  },
+  "PARKED": {
+    context: "Pesawat telah parkir sempurna di gate stand, mesin dimatikan.",
+    speech: "Supergreen 123 gate arrival confirmed, shutdown approved, good day",
+    actionDesc: "At Gate / Shutdown"
   },
   "AIRBORNE": {
     context: "Pesawat airborne passing 2000ft, transfer kendali dari Tower ke Jakarta Approach.",
@@ -1591,9 +1605,13 @@ function handleRadarVoiceCommand(text, parsedData) {
       readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwyKey}, ${matchedAc.callsign}`;
     } else if (matchedAc.state === "FINAL" && (norm.includes("land") || norm.includes("cleared"))) {
       readback = `Runway ${rwyKey} cleared to land, ${matchedAc.callsign}`;
-    } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121"))) {
+    } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121") || norm.includes("taxi"))) {
       matchedAc.state = "TAXI_IN";
-      readback = `Vacating runway via November 4, contacting Ground 121 decimal 6, good day, ${matchedAc.callsign}`;
+      readback = `Vacating runway via November 4, contacting Ground 121 decimal 6, ${matchedAc.callsign}`;
+      executeTaxiInMovement(matchedAc);
+    } else if (matchedAc.state === "TAXI_IN" && (norm.includes("gate") || norm.includes("stand") || norm.includes("taxi") || norm.includes("continue"))) {
+      readback = `Taxi to Gate Echo 1 via November Charlie, ${matchedAc.callsign}`;
+      executeTaxiInMovement(matchedAc);
     } else if (matchedAc.state === "AIRBORNE" && (norm.includes("approach") || norm.includes("radar") || norm.includes("119") || norm.includes("125"))) {
       matchedAc.state = "CLIMBING";
       readback = "Contact Jakarta Approach 119 decimal 75, good day, " + matchedAc.callsign;
@@ -2421,6 +2439,98 @@ function executeApproachMovement(ac) {
   }
 
   moveNextArrivalLeg();
+}
+
+function executeTaxiInMovement(ac) {
+  if (ac._taxiInInterval) return;
+
+  // Extract reverse route from runway exit point into Gate E1 Stand
+  const fullTwy = (airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r)
+    ? airportData.routes.gate_e1_to_rwy25r
+    : [];
+
+  // Index 33 down to 0 leads smoothly from North taxiway NC6 into Gate Stand E1
+  const taxiInPoints = (fullTwy.length > 34)
+    ? fullTwy.slice(0, 34).reverse().map(p => ({ lat: p[0], lon: p[1] }))
+    : [
+        { lat: -6.118502, lon: 106.652425 },
+        { lat: -6.121013, lon: 106.650012 },
+        { lat: -6.121480, lon: 106.650280 },
+        { lat: -6.121757, lon: 106.651077 }
+      ];
+
+  let nodeIdx = 0;
+  ac.groundSpeed = 15;
+
+  function moveNextTaxiInNode() {
+    if (nodeIdx >= taxiInPoints.length) {
+      if (ac._taxiInInterval) {
+        clearInterval(ac._taxiInInterval);
+        ac._taxiInInterval = null;
+      }
+      ac.state = "PARKED";
+      ac.groundSpeed = 0;
+      ac.altitude = 0;
+      ac.hasCheckedIn = false;
+      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, parked at Gate Echo 1, engines shutdown, good day.`;
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 1000);
+      return;
+    }
+
+    const targetNode = taxiInPoints[nodeIdx];
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+
+    const dLat = targetNode.lat - startLat;
+    const dLon = targetNode.lon - startLon;
+    let targetHdg = ac.heading;
+    if (Math.abs(dLat) > 0.000001 || Math.abs(dLon) > 0.000001) {
+      const angleRad = Math.atan2(dLat, dLon * Math.cos(startLat * Math.PI / 180));
+      targetHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
+    }
+
+    const distNm = calculateDistanceNm(startLat, startLon, targetNode.lat, targetNode.lon);
+    // At stand entry (<3 nodes from gate), slow to 6 knots
+    const targetSpd = (nodeIdx >= taxiInPoints.length - 3) ? 6 : 14;
+    ac.groundSpeed = targetSpd;
+
+    // Simulation multiplier 4x
+    const SIM_SPEED_MULT = 4.0;
+    const durationSec = Math.max(0.1, (distNm / targetSpd) * (3600 / SIM_SPEED_MULT));
+    const stepIntervalMs = 50;
+    const totalSteps = Math.max(2, Math.round((durationSec * 1000) / stepIntervalMs));
+    let step = 0;
+
+    ac._taxiInInterval = setInterval(() => {
+      step++;
+      const prog = step / totalSteps;
+      ac.lat = startLat + (targetNode.lat - startLat) * prog;
+      ac.lon = startLon + (targetNode.lon - startLon) * prog;
+
+      const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
+      ac.heading = Math.round((ac.heading + angleDelta * 0.12 + 360) % 360);
+
+      renderAllScreens();
+
+      if (step >= totalSteps) {
+        clearInterval(ac._taxiInInterval);
+        ac._taxiInInterval = null;
+        ac.lat = targetNode.lat;
+        ac.lon = targetNode.lon;
+        ac.heading = targetHdg;
+        nodeIdx++;
+        moveNextTaxiInNode();
+      }
+    }, stepIntervalMs);
+  }
+
+  moveNextTaxiInNode();
 }
 
 // Push to talk event bindings
