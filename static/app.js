@@ -1409,9 +1409,14 @@ function handleRadarVoiceCommand(text, parsedData) {
       readback = "Line up and wait runway 25R, " + matchedAc.callsign;
       executeLineUpMovement(matchedAc);
     } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "LINING_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
-      matchedAc.state = "TAKEOFF";
       readback = "Runway 25R cleared for takeoff, " + matchedAc.callsign;
-      executeTakeoffMovement(matchedAc);
+      if (matchedAc.state === "LINING_UP") {
+        // Pilot acknowledges clearance, completes the lineup curve first to runway threshold, then rolls!
+        matchedAc.takeoffQueued = true;
+      } else {
+        matchedAc.state = "TAKEOFF";
+        executeTakeoffMovement(matchedAc);
+      }
     } else if (matchedAc.state === "AIRBORNE" && (norm.includes("approach") || norm.includes("radar") || norm.includes("119") || norm.includes("125"))) {
       matchedAc.state = "CLIMBING";
       readback = "Contact Jakarta Approach 119 decimal 75, good day, " + matchedAc.callsign;
@@ -1638,11 +1643,23 @@ function executeLineUpMovement(ac) {
         clearInterval(ac._activeInterval);
         ac._activeInterval = null;
       }
-      ac.groundSpeed = 0;
       const lastPt = entryNodes[entryNodes.length - 1];
       ac.lat = lastPt.lat;
       ac.lon = lastPt.lon;
       ac.heading = targetHeading; // Aligned perfectly down the runway
+
+      if (ac.takeoffQueued) {
+        // Clearance was given while lining up; now that alignment is 100% complete at threshold, start takeoff roll!
+        ac.takeoffQueued = false;
+        ac.state = "TAKEOFF";
+        renderFlightStrips();
+        updateEasyModePrompter();
+        renderAllScreens();
+        executeTakeoffMovement(ac);
+        return;
+      }
+
+      ac.groundSpeed = 0;
       ac.state = "LINE_UP";
       ac.hasCheckedIn = false;
       ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, runway ${rwyKey} lined up and ready for departure.`;
