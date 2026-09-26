@@ -142,14 +142,29 @@ async function speakPilotTransmission(text) {
 async function speakPilotReadback(text) {
   const recEl = document.getElementById('recognized-text');
   if (recEl) recEl.textContent = `[READBACK]: "${text}"`;
-  if (isDebugMuted) {
-    return new Promise(r => setTimeout(r, 500));
-  }
+  
+  // Pilot audio feedback:
+  playRadioChirp();
   try {
     const audioUrl = `/api/audio/tts?text=${encodeURIComponent(text)}&voice=en-US-GuyNeural`;
     const audio = new Audio(audioUrl);
-    await audio.play().catch(() => {});
-  } catch (e) {}
+    await new Promise((resolve) => {
+      audio.onended = () => {
+        playRadioChirp();
+        resolve();
+      };
+      audio.onerror = () => {
+        fallbackBrowserSpeech(text);
+        resolve();
+      };
+      audio.play().catch(() => {
+        fallbackBrowserSpeech(text);
+        resolve();
+      });
+    });
+  } catch (e) {
+    fallbackBrowserSpeech(text);
+  }
 }
 
 function executeDebugCommand() {
@@ -163,17 +178,9 @@ function executeDebugCommand() {
   if (ac.state === "GATE") {
     instructionText = "Indonesia 502 push and start approved, facing west";
   } else if (ac.state === "PUSHBACK") {
-    // If user clicks while in pushback, fast-forward to release point so simulation doesn't stall
-    ac.lat = -6.121013;
-    ac.lon = 106.650012;
-    ac.heading = 355;
-    ac.state = "READY_TAXI";
-    ac.hasCheckedIn = false;
-    ac.checkInPhrase = "Ground, INDONESIA 502, ready to taxi, request clearance.";
-    renderFlightStrips();
-    updateEasyModePrompter();
-    renderAllScreens();
-    setTimeout(() => { triggerPilotCheckIn(ac); }, 400);
+    // Show clear status feedback if clicked during active pushback
+    const recEl = document.getElementById('recognized-text');
+    if (recEl) recEl.textContent = `[PILOT]: "Pushback in progress, approaching NC6 centerline, INDONESIA 502."`;
     return;
   } else if (ac.state === "READY_TAXI") {
     instructionText = "Indonesia 502 taxi to holding point runway 25R via NC1 and N2";
@@ -1389,6 +1396,9 @@ function handleRadarVoiceCommand(text, parsedData) {
 
 // Autonomous Flight Movement Sequences for GIA502
 function executePushbackMovement(ac) {
+  // Clear any existing interval
+  if (ac._pushInterval) clearInterval(ac._pushInterval);
+
   // Discrete, verifiable pushback points:
   // Waypoint 0: Gate E1 Stand (Parked, lat -6.121757, lon 106.651077)
   // Waypoint 1: Apron Taxilane (Clear of concourse building, lat -6.121650, lon 106.650600)
@@ -1405,7 +1415,7 @@ function executePushbackMovement(ac) {
         { lat: -6.121013, lon: 106.650012 }
       ];
 
-  let nodeIdx = 1; // start from P1
+  let nodeIdx = 1; // start moving to P1
   ac.groundSpeed = 4;
 
   function moveNextPushNode() {
@@ -1425,7 +1435,7 @@ function executePushbackMovement(ac) {
       // Trigger Pilot Request to Taxi
       setTimeout(() => {
         triggerPilotCheckIn(ac);
-      }, 1000);
+      }, 800);
       return;
     }
 
@@ -1433,23 +1443,22 @@ function executePushbackMovement(ac) {
     const startLat = ac.lat;
     const startLon = ac.lon;
 
-    // Pushback heading: airplane moves backward (tail first), heading stays facing terminal or curves as tug turns it
+    // Pushback heading: airplane moves backward (tail first)
     const dLat = targetPt.lat - startLat;
     const dLon = targetPt.lon - startLon;
     let pushHdg = ac.heading;
     if (Math.abs(dLat) > 0.000001 || Math.abs(dLon) > 0.000001) {
       const angleRad = Math.atan2(dLat, dLon * Math.cos(startLat * Math.PI / 180));
-      // Reverse vector because aircraft is being pushed tail-first:
       pushHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 180 + 360) % 360);
     }
 
-    // Dynamic, well-paced pushback: ~18 seconds total maneuver (not 55 seconds dragging)
-    const distM = distDeg * 111000;
-    const durSec = Math.max(3, distM / 8.0);
-    const totalSteps = Math.max(15, Math.round(durSec * 15)); // 15 fps
+    // Full realistic pushback pace: 160m total maneuver (~45 seconds)
+    const distM = Math.sqrt(dLat * dLat + dLon * dLon) * 111000;
+    const durSec = Math.max(6, distM / 3.5);
+    const totalSteps = Math.max(25, Math.round(durSec * 15)); // 15 fps
     let step = 0;
 
-    const pushStepInterval = setInterval(() => {
+    ac._pushInterval = setInterval(() => {
       step++;
       const prog = step / totalSteps;
       ac.lat = startLat + (targetPt.lat - startLat) * prog;
@@ -1462,7 +1471,8 @@ function executePushbackMovement(ac) {
       renderAllScreens();
 
       if (step >= totalSteps) {
-        clearInterval(pushStepInterval);
+        clearInterval(ac._pushInterval);
+        ac._pushInterval = null;
         ac.lat = targetPt.lat;
         ac.lon = targetPt.lon;
         nodeIdx++;
