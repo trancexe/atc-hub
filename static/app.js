@@ -163,7 +163,17 @@ function executeDebugCommand() {
   if (ac.state === "GATE") {
     instructionText = "Indonesia 502 push and start approved, facing west";
   } else if (ac.state === "PUSHBACK") {
-    console.log("[DEBUG ATC] Pushback already in progress...");
+    // If user clicks while in pushback, fast-forward to release point so simulation doesn't stall
+    ac.lat = -6.121013;
+    ac.lon = 106.650012;
+    ac.heading = 355;
+    ac.state = "READY_TAXI";
+    ac.hasCheckedIn = false;
+    ac.checkInPhrase = "Ground, INDONESIA 502, ready to taxi, request clearance.";
+    renderFlightStrips();
+    updateEasyModePrompter();
+    renderAllScreens();
+    setTimeout(() => { triggerPilotCheckIn(ac); }, 400);
     return;
   } else if (ac.state === "READY_TAXI") {
     instructionText = "Indonesia 502 taxi to holding point runway 25R via NC1 and N2";
@@ -345,29 +355,7 @@ function playRadioChirp() {
   }
 }
 
-async function speakPilotReadback(text) {
-  playRadioChirp();
-
-  try {
-    // Primary: High-fidelity natural cockpit voice via Edge-TTS backend
-    // Works flawlessly on Linux/Firefox without speech-dispatcher dependencies!
-    const audioUrl = `/api/audio/tts?text=${encodeURIComponent(text)}&voice=en-US-GuyNeural`;
-    const audio = new Audio(audioUrl);
-    
-    audio.onended = () => {
-      playRadioChirp();
-    };
-
-    audio.onerror = () => {
-      // Fallback to browser speechSynthesis if network fails
-      fallbackBrowserSpeech(text);
-    };
-
-    await audio.play();
-  } catch (err) {
-    fallbackBrowserSpeech(text);
-  }
-}
+// (speakPilotReadback implementation below line 142)
 
 function fallbackBrowserSpeech(text) {
   if (!('speechSynthesis' in window)) return;
@@ -1455,11 +1443,10 @@ function executePushbackMovement(ac) {
       pushHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 180 + 360) % 360);
     }
 
-    // Realistic, unhurried pushback tug speed: ~3 knots (~1.5 m/s)
-    // Takes ~45-55 seconds total to push back 160m to NC6 centerline
+    // Dynamic, well-paced pushback: ~18 seconds total maneuver (not 55 seconds dragging)
     const distM = distDeg * 111000;
-    const durSec = Math.max(8, distM / 3.0); // ~3 m/s scaled
-    const totalSteps = Math.max(30, Math.round(durSec * 15)); // 15 fps
+    const durSec = Math.max(3, distM / 8.0);
+    const totalSteps = Math.max(15, Math.round(durSec * 15)); // 15 fps
     let step = 0;
 
     const pushStepInterval = setInterval(() => {
