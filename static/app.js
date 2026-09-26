@@ -673,6 +673,133 @@ function latLonToScreenCoord(lat, lon, st) {
   return { x, y };
 }
 
+// Aircraft physical dimensions specification (length & wingspan in meters)
+// B738: 39.5m L, 35.8m W
+// A320: 37.6m L, 35.8m W
+// A333 (A330-300): 63.7m L, 60.3m W
+// B777 (B777-300ER): 73.9m L, 64.8m W
+// B747 (B747-400/-8): 70.7m L, 64.4m W (B744) / 76.3m L, 68.4m W (B748)
+const AIRCRAFT_SPECS = {
+  "738": { length: 39.5, span: 35.8, category: "M", label: "B738" },
+  "B738": { length: 39.5, span: 35.8, category: "M", label: "B738" },
+  "320": { length: 37.6, span: 35.8, category: "M", label: "A320" },
+  "A320": { length: 37.6, span: 35.8, category: "M", label: "A320" },
+  "B739": { length: 42.1, span: 35.8, category: "M", label: "B739" },
+  "333": { length: 63.7, span: 60.3, category: "H", label: "A333" },
+  "A333": { length: 63.7, span: 60.3, category: "H", label: "A333" },
+  "777": { length: 73.9, span: 64.8, category: "H", label: "B777" },
+  "B777": { length: 73.9, span: 64.8, category: "H", label: "B777" },
+  "B77W": { length: 73.9, span: 64.8, category: "H", label: "B77W" },
+  "747": { length: 76.3, span: 68.4, category: "H", label: "B747" },
+  "B747": { length: 76.3, span: 68.4, category: "H", label: "B747" },
+  "B744": { length: 70.7, span: 64.4, category: "H", label: "B744" }
+};
+
+function getAircraftSpecs(type) {
+  if (!type) return AIRCRAFT_SPECS["738"];
+  const key = String(type).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (AIRCRAFT_SPECS[key]) return AIRCRAFT_SPECS[key];
+  for (const k in AIRCRAFT_SPECS) {
+    if (key.includes(k)) return AIRCRAFT_SPECS[k];
+  }
+  return AIRCRAFT_SPECS["738"];
+}
+
+// Draw accurate aerodynamic aircraft shape (Fuselage, swept wings, tailplane, cockpit nose)
+function drawAircraftIcon(ctx, x, y, headingDeg, type, isSel, isHolding, isGroundView, zoomScale) {
+  const specs = getAircraftSpecs(type);
+
+  // In ground view, calculate real-world meter dimensions scaled to canvas pixels
+  // BASE_SCALE = 60000 px/deg. 1 deg lat ~ 111,120 meters -> 1 meter = 60000 / 111120 = ~0.54 px at zoom 1.0
+  const pxPerMeter = (BASE_SCALE / 111120) * zoomScale;
+  let lenPx, spanPx;
+
+  if (isGroundView) {
+    // True physical size on Ground radar (clamped to legible minimum for low zoom overview)
+    const minLen = isSel ? 16 : 12;
+    lenPx = Math.max(minLen, specs.length * pxPerMeter);
+    spanPx = Math.max(minLen * 0.9, specs.span * pxPerMeter);
+  } else {
+    // In TMA radar, use proportional tactical symbol size based on heavy/medium wake turbulence category
+    const baseSize = specs.category === 'H' ? 19 : 14;
+    lenPx = baseSize * (isSel ? 1.25 : 1.0);
+    spanPx = lenPx * 0.92;
+  }
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((headingDeg * Math.PI) / 180);
+
+  // Styling colors
+  const primaryColor = isHolding ? "#ef4444" : (isSel ? "#fbbf24" : (isGroundView ? "#10b981" : "#38bdf8"));
+  const fillColor = isHolding ? "rgba(239, 68, 68, 0.45)" : (isSel ? "rgba(251, 191, 36, 0.45)" : (isGroundView ? "rgba(16, 185, 129, 0.35)" : "rgba(56, 189, 248, 0.35)"));
+
+  ctx.fillStyle = fillColor;
+  ctx.strokeStyle = primaryColor;
+  ctx.lineWidth = isSel ? 1.8 : 1.2;
+  ctx.lineJoin = "round";
+
+  // Coordinates normalized relative to nose at +Y (pointing up at 0 deg, heading offset adjusted):
+  // Let nose be at (0, -lenPx * 0.52), tail at (0, lenPx * 0.48)
+  const noseY = -lenPx * 0.52;
+  const tailY = lenPx * 0.48;
+  const halfSpan = spanPx * 0.5;
+  const wingRootY = -lenPx * 0.05;
+  const wingTrailingY = lenPx * 0.16;
+  const wingTipY = lenPx * 0.06;
+  const fuseHalfW = Math.max(1.5, lenPx * 0.075);
+  const stabHalfW = halfSpan * 0.42;
+  const stabRootY = lenPx * 0.34;
+  const stabTipY = lenPx * 0.44;
+
+  ctx.beginPath();
+  // Cockpit nose
+  ctx.moveTo(0, noseY);
+  // Right nose curvature to right wing root
+  ctx.lineTo(fuseHalfW, -lenPx * 0.25);
+  ctx.lineTo(fuseHalfW, wingRootY);
+  // Right Swept Wing leading edge to wingtip
+  ctx.lineTo(halfSpan, wingTipY);
+  // Right Wingtip
+  ctx.lineTo(halfSpan, wingTipY + lenPx * 0.035);
+  // Right Wing trailing edge back to fuselage
+  ctx.lineTo(fuseHalfW, wingTrailingY);
+  // Right fuselage to horizontal stabilizer root
+  ctx.lineTo(fuseHalfW * 0.85, stabRootY);
+  // Right stabilizer leading edge to tip
+  ctx.lineTo(stabHalfW, stabTipY);
+  ctx.lineTo(stabHalfW, stabTipY + lenPx * 0.03);
+  // Right stabilizer trailing edge to tail cone
+  ctx.lineTo(fuseHalfW * 0.4, tailY);
+  ctx.lineTo(0, tailY + lenPx * 0.04);
+
+  // Left side symmetrical
+  ctx.lineTo(-fuseHalfW * 0.4, tailY);
+  ctx.lineTo(-stabHalfW, stabTipY + lenPx * 0.03);
+  ctx.lineTo(-stabHalfW, stabTipY);
+  ctx.lineTo(-fuseHalfW * 0.85, stabRootY);
+  ctx.lineTo(-fuseHalfW, wingTrailingY);
+  ctx.lineTo(-halfSpan, wingTipY + lenPx * 0.035);
+  ctx.lineTo(-halfSpan, wingTipY);
+  ctx.lineTo(-fuseHalfW, wingRootY);
+  ctx.lineTo(-fuseHalfW, -lenPx * 0.25);
+  ctx.closePath();
+
+  ctx.fill();
+  ctx.stroke();
+
+  // If selected, draw rotating tactical ring around aircraft
+  if (isSel) {
+    ctx.strokeStyle = primaryColor;
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(lenPx, spanPx) * 0.68, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 function drawGroundScreen() {
   if (!groundCtx || !viewState.ground.width) return;
   const st = viewState.ground;
@@ -967,30 +1094,20 @@ function drawGroundScreen() {
     ctx.fillText(rw.ref, pEnd.x + 8, pEnd.y + 8);
   });
 
-  // Aircraft on ground
+  // Aircraft on ground (rendered as true scaled aerodynamic aircraft icons)
   aircraft.forEach((ac, idx) => {
     const p = latLonToScreenCoord(ac.lat, ac.lon, st);
     const isSel = idx === selectedAircraftIndex;
 
-    ctx.fillStyle = isSel ? "#f59e0b" : "#22c55e";
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, isSel ? 6 : 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (isSel) {
-      ctx.strokeStyle = "#f59e0b";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    // Draw scaled aircraft icon with physical fuselage, wingspan, and heading
+    drawAircraftIcon(ctx, p.x, p.y, ac.heading, ac.type, isSel, ac.isHoldingForTraffic, true, st.zoom);
 
     ctx.font = "10px 'Share Tech Mono'";
     ctx.fillStyle = isSel ? "#fbbf24" : "#4ade80";
-    ctx.fillText(ac.id, p.x + 10, p.y - 10);
+    ctx.fillText(`${ac.id} (${ac.type})`, p.x + 14, p.y - 10);
     ctx.fillStyle = ac.isHoldingForTraffic ? "#f87171" : "#94a3b8";
     const statusLabel = ac.isHoldingForTraffic ? "HOLD (TRAFFIC AHEAD)" : `${ac.state} [${ac.squawk}]`;
-    ctx.fillText(statusLabel, p.x + 10, p.y + 2);
+    ctx.fillText(statusLabel, p.x + 14, p.y + 2);
   });
 }
 
@@ -1150,16 +1267,15 @@ function drawTmaScreen() {
     ctx.fillText(wp.id, p.x + 7, p.y + 3);
   });
 
-  // Aircraft targets
+  // Aircraft targets (rendered as true scaled aerodynamic aircraft icons with velocity vector)
   aircraft.forEach((ac, idx) => {
     const p = latLonToScreenCoord(ac.lat, ac.lon, st);
     const isSel = idx === selectedAircraftIndex;
 
-    ctx.fillStyle = isSel ? "#f59e0b" : "#38bdf8";
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, isSel ? 6 : 4, 0, Math.PI * 2);
-    ctx.fill();
+    // Draw scaled aircraft icon with physical fuselage, wingspan, and heading
+    drawAircraftIcon(ctx, p.x, p.y, ac.heading, ac.type, isSel, false, false, st.zoom);
 
+    // Velocity vector leader line
     const rad = (ac.heading - 90) * (Math.PI / 180);
     const leaderLen = (ac.groundSpeed || 50) * 0.18;
     ctx.strokeStyle = isSel ? "#f59e0b" : "#38bdf8";
@@ -1171,13 +1287,13 @@ function drawTmaScreen() {
 
     ctx.font = "10px 'Share Tech Mono'";
     ctx.fillStyle = isSel ? "#fbbf24" : "#bae6fd";
-    ctx.fillText(ac.id, p.x + 12, p.y - 10);
+    ctx.fillText(`${ac.id} (${ac.type})`, p.x + 14, p.y - 10);
     
     ctx.fillStyle = "#94a3b8";
     const altStr = ac.altitude === 0 ? "GND" : `A${String(Math.round(ac.altitude/100)).padStart(3, '0')}`;
     const spdStr = `${ac.groundSpeed}K`;
-    ctx.fillText(`${altStr} ${spdStr}`, p.x + 12, p.y);
-    ctx.fillText(`${ac.state}`, p.x + 12, p.y + 10);
+    ctx.fillText(`${altStr} ${spdStr}`, p.x + 14, p.y);
+    ctx.fillText(`${ac.state}`, p.x + 14, p.y + 10);
   });
 }
 
@@ -2340,9 +2456,11 @@ function calculateStarArrivalPath(starCoords, rwyKey) {
 
 function spawnInboundArrival() {
   const arrivalCallsigns = [
-    { id: "CTV123", callsign: "SUPERGREEN 123", airline: "Citilink", type: "A320" },
-    { id: "LNI712", callsign: "LION INTER 712", airline: "Lion Air", type: "B739" },
-    { id: "BTK650", callsign: "BATIK 650", airline: "Batik Air", type: "A320" }
+    { id: "CTV123", callsign: "SUPERGREEN 123", airline: "Citilink", type: "320" },
+    { id: "GIA880", callsign: "INDONESIA 880", airline: "Garuda Indonesia", type: "333" },
+    { id: "SIA958", callsign: "SINGAPORE 958", airline: "Singapore Airlines", type: "777" },
+    { id: "CLX742", callsign: "CARGOLUX 742", airline: "Cargolux", type: "747" },
+    { id: "LNI712", callsign: "LION INTER 712", airline: "Lion Air", type: "738" }
   ];
   const chosen = arrivalCallsigns[aircraft.length % arrivalCallsigns.length];
   const targetRwy = "25R";
