@@ -1403,7 +1403,7 @@ function handleRadarVoiceCommand(text, parsedData) {
       matchedAc.state = "LINE_UP";
       readback = "Line up and wait runway 25R, " + matchedAc.callsign;
       executeLineUpMovement(matchedAc);
-    } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("cleared for takeoff") || norm.includes("takeoff"))) {
+    } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
       matchedAc.state = "TAKEOFF";
       readback = "Runway 25R cleared for takeoff, " + matchedAc.callsign;
       executeTakeoffMovement(matchedAc);
@@ -1635,9 +1635,16 @@ function executeLineUpMovement(ac) {
       ac.lat = lastPt.lat;
       ac.lon = lastPt.lon;
       ac.heading = targetHeading; // Aligned perfectly down the runway
+      ac.state = "LINE_UP";
+      ac.hasCheckedIn = false;
+      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, runway ${rwyKey} lined up and ready for departure.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
+
+      setTimeout(() => {
+        triggerPilotCheckIn(ac);
+      }, 700);
       return;
     }
 
