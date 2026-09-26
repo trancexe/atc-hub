@@ -988,8 +988,9 @@ function drawGroundScreen() {
     ctx.font = "10px 'Share Tech Mono'";
     ctx.fillStyle = isSel ? "#fbbf24" : "#4ade80";
     ctx.fillText(ac.id, p.x + 10, p.y - 10);
-    ctx.fillStyle = "#94a3b8";
-    ctx.fillText(`${ac.state} [${ac.squawk}]`, p.x + 10, p.y + 2);
+    ctx.fillStyle = ac.isHoldingForTraffic ? "#f87171" : "#94a3b8";
+    const statusLabel = ac.isHoldingForTraffic ? "HOLD (TRAFFIC AHEAD)" : `${ac.state} [${ac.squawk}]`;
+    ctx.fillText(statusLabel, p.x + 10, p.y + 2);
   });
 }
 
@@ -1804,6 +1805,16 @@ function executeTaxiMovement(ac) {
     let step = 0;
 
     const stepInterval = setInterval(() => {
+      // Ground collision prevention: if another aircraft is in front, hold brakes!
+      if (checkGroundConflictAhead(ac, targetPt.lat, targetPt.lon)) {
+        ac.groundSpeed = 0;
+        ac.isHoldingForTraffic = true;
+        renderAllScreens();
+        return; // hold position until path is clear
+      }
+      ac.isHoldingForTraffic = false;
+      ac.groundSpeed = hdgDiff > 20 ? 8 : 15;
+
       step++;
       const prog = step / totalSteps;
       ac.lat = startLat + (targetPt.lat - startLat) * prog;
@@ -2053,6 +2064,41 @@ function calculateDistanceNm(lat1, lon1, lat2, lon2) {
             Math.cos(phi1) * Math.cos(phi2) *
             Math.sin(dLam / 2) * Math.sin(dLam / 2);
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Distance in meters on ground
+function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+  return calculateDistanceNm(lat1, lon1, lat2, lon2) * 1852.0;
+}
+
+// Ground collision avoidance check (Wingspan separation & conflict detection)
+// Returns true if there is a conflict ahead and this aircraft must hold/brake
+function checkGroundConflictAhead(currentAc, targetLat, targetLon) {
+  for (const other of aircraft) {
+    if (other.id === currentAc.id) continue;
+    // Only check conflict with aircraft that are also on ground
+    if (other.altitude > 100) continue;
+
+    // Direct distance between both aircraft centers
+    const distBetweenMeters = calculateDistanceMeters(currentAc.lat, currentAc.lon, other.lat, other.lon);
+    // Distance from other aircraft to our intended next node / trajectory
+    const distTargetMeters = calculateDistanceMeters(targetLat, targetLon, other.lat, other.lon);
+
+    // If another aircraft is within safe wingtip cushion (70 meters) in front of us
+    if (distBetweenMeters < 70 || distTargetMeters < 50) {
+      // Determine if other aircraft is ahead in our travel vector
+      const myBearing = currentAc.heading * Math.PI / 180;
+      const dLat = other.lat - currentAc.lat;
+      const dLon = (other.lon - currentAc.lon) * Math.cos(currentAc.lat * Math.PI / 180);
+      const dot = Math.sin(myBearing) * dLon + Math.cos(myBearing) * dLat;
+      
+      // If other aircraft is in front (dot > -0.0001) or dangerously close (<45m), hold brakes!
+      if (dot > -0.0001 || distBetweenMeters < 45) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function calculateDepartureClimbPath(startLat, startLon, startHdg, sidPoints) {
@@ -2511,6 +2557,16 @@ function executeTaxiInMovement(ac) {
     let step = 0;
 
     ac._taxiInInterval = setInterval(() => {
+      // Ground collision prevention: if another aircraft is in front, hold brakes!
+      if (checkGroundConflictAhead(ac, targetNode.lat, targetNode.lon)) {
+        ac.groundSpeed = 0;
+        ac.isHoldingForTraffic = true;
+        renderAllScreens();
+        return; // hold position until path is clear
+      }
+      ac.isHoldingForTraffic = false;
+      ac.groundSpeed = targetSpd;
+
       step++;
       const prog = step / totalSteps;
       ac.lat = startLat + (targetNode.lat - startLat) * prog;
