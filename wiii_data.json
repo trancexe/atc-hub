@@ -67223,15 +67223,10 @@
       ],
       "color": "#f59e0b",
       "waypoints": [
-        "CKG",
         "IMUBA",
         "DOLTA"
       ],
       "coords": [
-        [
-          -6.1275,
-          106.658
-        ],
         [
           -6.2,
           106.48
@@ -67240,7 +67235,8 @@
           -6.345,
           106.72
         ]
-      ]
+      ],
+      "desc": "Dep 25R/L: Climb runway heading, turn left direct IMUBA, cross at/above 7000ft, proceed DOLTA FL140."
     },
     {
       "id": "BUNTO 1C",
@@ -67250,15 +67246,10 @@
       ],
       "color": "#f97316",
       "waypoints": [
-        "CKG",
         "CA",
         "BUNTO"
       ],
       "coords": [
-        [
-          -6.1275,
-          106.658
-        ],
         [
           -6.05,
           106.72
@@ -67267,26 +67258,21 @@
           -6.12,
           106.95
         ]
-      ]
+      ],
+      "desc": "Dep 25R/L: Climb runway heading, turn right crosswind to CA, proceed BUNTO."
     },
     {
       "id": "KRAKE 1C",
       "runways": [
         "25R",
-        "25L",
-        "06"
+        "25L"
       ],
       "color": "#eab308",
       "waypoints": [
-        "CKG",
         "TOPIN",
         "KRAKE"
       ],
       "coords": [
-        [
-          -6.1275,
-          106.658
-        ],
         [
           -5.95,
           106.45
@@ -67295,7 +67281,8 @@
           -6.02,
           106.28
         ]
-      ]
+      ],
+      "desc": "Dep 25R/L: Climb runway heading, right turn to TOPIN, proceed KRAKE."
     },
     {
       "id": "DOLTA 1D",
@@ -67305,15 +67292,10 @@
       ],
       "color": "#d97706",
       "waypoints": [
-        "CKG",
         "ESLAM",
         "DOLTA"
       ],
       "coords": [
-        [
-          -6.1275,
-          106.658
-        ],
         [
           -6.18,
           106.88
@@ -67322,7 +67304,147 @@
           -6.345,
           106.72
         ]
-      ]
+      ],
+      "desc": "Dep 07L/R: Climb runway heading, turn right direct ESLAM, proceed DOLTA."
+    },
+    {
+      "id": "BUNTO 1D",
+      "runways": [
+        "07L",
+        "07R"
+      ],
+      "color": "#fb923c",
+      "waypoints": [
+        "TEGID",
+        "BUNTO"
+      ],
+      "coords": [
+        [
+          -6.1,
+          106.85
+        ],
+        [
+          -6.12,
+          106.95
+        ]
+      ],
+      "desc": "Dep 07L/R: Climb straight on runway heading passing TEGID, proceed BUNTO."
+    },
+    {
+      "id": "KRAKE 1D",
+      "runways": [
+        "07L",
+        "07R"
+      ],
+      "color": "#ca8a04",
+      "waypoints": [
+        "CA",
+        "TOPIN",
+        "KRAKE"
+      ],
+      "coords": [
+        [
+          -6.05,
+          106.72
+        ],
+        [
+          -5.95,
+          106.45
+        ],
+        [
+          -6.02,
+          106.28
+        ]
+      ],
+      "desc": "Dep 07L/R: Climb runway heading, turn left crosswind via CA, TOPIN, proceed KRAKE."
+    },
+    {
+      "id": "KRAKE 2A",
+      "runways": [
+        "24"
+      ],
+      "color": "#eab308",
+      "waypoints": [
+        "TOPIN",
+        "KRAKE"
+      ],
+      "coords": [
+        [
+          -5.95,
+          106.45
+        ],
+        [
+          -6.02,
+          106.28
+        ]
+      ],
+      "desc": "Dep 24: Straight ahead climb, slight right to TOPIN, proceed KRAKE."
+    },
+    {
+      "id": "DOLTA 2A",
+      "runways": [
+        "24"
+      ],
+      "color": "#f59e0b",
+      "waypoints": [
+        "IMUBA",
+        "DOLTA"
+      ],
+      "coords": [
+        [
+          -6.2,
+          106.48
+        ],
+        [
+          -6.345,
+          106.72
+        ]
+      ],
+      "desc": "Dep 24: Climb runway heading, turn left to IMUBA, proceed DOLTA."
+    },
+    {
+      "id": "BUNTO 2A",
+      "runways": [
+        "06"
+      ],
+      "color": "#f97316",
+      "waypoints": [
+        "CA",
+        "BUNTO"
+      ],
+      "coords": [
+        [
+          -6.05,
+          106.72
+        ],
+        [
+          -6.12,
+          106.95
+        ]
+      ],
+      "desc": "Dep 06: Straight ahead climb heading 067, turn right via CA to BUNTO."
+    },
+    {
+      "id": "DOLTA 2B",
+      "runways": [
+        "06"
+      ],
+      "color": "#d97706",
+      "waypoints": [
+        "ESLAM",
+        "DOLTA"
+      ],
+      "coords": [
+        [
+          -6.18,
+          106.88
+        ],
+        [
+          -6.345,
+          106.72
+        ]
+      ],
+      "desc": "Dep 06: Climb runway heading, turn right crosswind to ESLAM, proceed DOLTA."
     }
   ],
   "stars": [
