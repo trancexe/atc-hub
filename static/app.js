@@ -88,83 +88,128 @@ const flightRouteMission = {
 
 let missionLegIndex = 0;
 let flightTickTimer = null;
-let isDebugMuted = true; // DEBUG MODE: Suara di-mute & bypass audio wait
+let isDebugMuted = false; // Real pilot radio speech active
 let showTaxiwayLabels = true; // Toggle for high-visibility taxiway badges
 
-// Trigger pilot initial check-in transmission
-async function triggerPilotCheckIn(ac) {
-  if (ac.hasCheckedIn || isRadioTransmitting) return;
+// Global Radio Audio Queue & Mutex (FIFO queue to prevent pilot voice overlaps)
+const radioTransmissionQueue = [];
+let isRadioProcessing = false;
+
+// Trigger pilot check-in transmission (Queued & non-overlapping)
+function triggerPilotCheckIn(ac) {
+  if (!ac || ac.hasCheckedIn) return;
   ac.hasCheckedIn = true;
-  isRadioTransmitting = true;
-
-  // Visual notify in PTT banner & strips
-  const pttStatus = document.getElementById('ptt-status');
-  if (pttStatus) {
-    pttStatus.innerHTML = `<span class="text-amber-400 font-bold animate-pulse"><i class="fa-solid fa-volume-high"></i> PILOT CALL: ${ac.callsign}</span>`;
-  }
-  renderFlightStrips();
-  updateEasyModePrompter();
-
-  // Speak pilot check-in via radio (skipped instantly in debug mode)
-  await speakPilotTransmission(ac.checkInPhrase);
-  
-  if (pttStatus) {
-    pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> INSTRUKSI ATC SIAP DIKIRIM (KLIK TOMBOL / MIC)</span>`;
-  }
-  isRadioTransmitting = false;
-  renderFlightStrips();
-  updateEasyModePrompter();
+  enqueueRadioTransmission({
+    type: "CHECK_IN",
+    callsign: ac.callsign,
+    text: ac.checkInPhrase,
+    onStart: () => {
+      isRadioTransmitting = true;
+      const pttStatus = document.getElementById('ptt-status');
+      if (pttStatus) {
+        pttStatus.innerHTML = `<span class="text-amber-400 font-bold animate-pulse"><i class="fa-solid fa-volume-high"></i> PILOT CALL: ${ac.callsign}</span>`;
+      }
+      renderFlightStrips();
+      updateEasyModePrompter();
+    },
+    onEnd: () => {
+      isRadioTransmitting = false;
+      const pttStatus = document.getElementById('ptt-status');
+      if (pttStatus) {
+        pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> INSTRUKSI ATC SIAP DIKIRIM (KLIK TOMBOL / MIC)</span>`;
+      }
+      renderFlightStrips();
+      updateEasyModePrompter();
+    }
+  });
 }
 
-async function speakPilotTransmission(text) {
-  if (isDebugMuted) {
-    // Tampilkan transkrip tanpa putar audio
-    const recEl = document.getElementById('recognized-text');
-    if (recEl) recEl.textContent = `[PILOT]: "${text}"`;
-    return new Promise(r => setTimeout(r, 600));
-  }
-  playRadioChirp();
-  try {
-    const audioUrl = `/api/audio/tts?text=${encodeURIComponent(text)}&voice=en-US-GuyNeural`;
-    const audio = new Audio(audioUrl);
-    await new Promise((resolve) => {
-      audio.onended = () => {
-        playRadioChirp();
-        resolve();
-      };
-      audio.onerror = () => { resolve(); };
-      audio.play().catch(() => { resolve(); });
-    });
-  } catch (e) {
-  }
+function enqueueRadioTransmission(item) {
+  radioTransmissionQueue.push(item);
+  processRadioQueue();
 }
 
-async function speakPilotReadback(text) {
+async function processRadioQueue() {
+  if (isRadioProcessing) return;
+  isRadioProcessing = true;
+
+  while (radioTransmissionQueue.length > 0) {
+    const item = radioTransmissionQueue.shift();
+    try {
+      if (item.onStart) item.onStart();
+      if (item.type === "READBACK") {
+        await playSpeechAudio(item.text, "[READBACK]");
+      } else {
+        await playSpeechAudio(item.text, "[PILOT]");
+      }
+    } catch (err) {
+      console.warn("[RADIO QUEUE] Error during speech:", err);
+    } finally {
+      if (item.onEnd) item.onEnd();
+      // Brief 350ms pause between radio transmissions (natural ICAO frequency spacing)
+      await new Promise(r => setTimeout(r, 350));
+    }
+  }
+
+  isRadioProcessing = false;
+}
+
+async function playSpeechAudio(text, tagPrefix = "[RADIO]") {
   const recEl = document.getElementById('recognized-text');
-  if (recEl) recEl.textContent = `[READBACK]: "${text}"`;
-  
-  // Pilot audio feedback:
+  if (recEl) recEl.textContent = `${tagPrefix}: "${text}"`;
+
   playRadioChirp();
   try {
     const audioUrl = `/api/audio/tts?text=${encodeURIComponent(text)}&voice=en-US-GuyNeural`;
     const audio = new Audio(audioUrl);
     await new Promise((resolve) => {
-      audio.onended = () => {
-        playRadioChirp();
-        resolve();
+      let resolved = false;
+      const done = () => {
+        if (!resolved) {
+          resolved = true;
+          playRadioChirp();
+          resolve();
+        }
       };
+
+      audio.onended = done;
       audio.onerror = () => {
         fallbackBrowserSpeech(text);
-        resolve();
+        done();
       };
+      // Fallback timeout in case audio stalls
+      setTimeout(done, 12000);
+
       audio.play().catch(() => {
         fallbackBrowserSpeech(text);
-        resolve();
+        done();
       });
     });
   } catch (e) {
     fallbackBrowserSpeech(text);
   }
+}
+
+async function speakPilotTransmission(text) {
+  return playSpeechAudio(text, "[PILOT]");
+}
+
+async function speakPilotReadback(text) {
+  return new Promise((resolve) => {
+    enqueueRadioTransmission({
+      type: "READBACK",
+      text: text,
+      onStart: () => {
+        isRadioTransmitting = true;
+        renderFlightStrips();
+      },
+      onEnd: () => {
+        isRadioTransmitting = false;
+        renderFlightStrips();
+        resolve();
+      }
+    });
+  });
 }
 
 function executeDebugCommand() {
