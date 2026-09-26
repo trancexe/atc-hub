@@ -1929,6 +1929,67 @@ function executeTakeoffMovement(ac) {
   moveNextRollNode();
 }
 
+function calculateDepartureClimbPath(startLat, startLon, startHdg, sidPoints) {
+  if (!sidPoints || sidPoints.length === 0) return [];
+  const firstFix = sidPoints[0];
+  
+  // Calculate initial departure climb vector straight ahead on runway heading
+  // (Standard Instrument Departure: maintain runway heading to DER + 2-3 NM until reaching safe altitude)
+  const radHdg = (90 - startHdg) * (Math.PI / 180);
+  const straightDistDeg = 0.035; // ~2.1 NM
+  const derLat = startLat + Math.sin(radHdg) * straightDistDeg;
+  const derLon = startLon + Math.cos(radHdg) * straightDistDeg;
+
+  // Build a smooth cubic Bezier turning arc from (derLat, derLon) to first SID fix (CKG VOR)
+  // Control point 1: Continuing along runway heading forward
+  const ctrl1Dist = 0.045;
+  const ctrl1Lat = derLat + Math.sin(radHdg) * ctrl1Dist;
+  const ctrl1Lon = derLon + Math.cos(radHdg) * ctrl1Dist;
+
+  // Control point 2: Inbound tangent to first SID fix
+  const targetLat = firstFix.lat;
+  const targetLon = firstFix.lon;
+  const dAngle = Math.atan2(targetLat - ctrl1Lat, targetLon - ctrl1Lon);
+  const ctrl2Dist = 0.045;
+  const ctrl2Lat = targetLat - Math.sin(dAngle) * ctrl2Dist;
+  const ctrl2Lon = targetLon - Math.cos(dAngle) * ctrl2Dist;
+
+  const transitionArc = [];
+  // Initial straight climb leg
+  transitionArc.push({
+    lat: derLat,
+    lon: derLon,
+    alt: 2200,
+    spd: 195,
+    desc: "RUNWAY TRACK CLIMB"
+  });
+
+  // 6 intermediate smooth curve banking points (realistic standard-rate turn arc)
+  const arcSteps = 6;
+  for (let i = 1; i <= arcSteps; i++) {
+    const t = i / (arcSteps + 1);
+    const b0 = Math.pow(1 - t, 3);
+    const b1 = 3 * Math.pow(1 - t, 2) * t;
+    const b2 = 3 * (1 - t) * Math.pow(t, 2);
+    const b3 = Math.pow(t, 3);
+
+    const pLat = b0 * derLat + b1 * ctrl1Lat + b2 * ctrl2Lat + b3 * targetLat;
+    const pLon = b0 * derLon + b1 * ctrl1Lon + b2 * ctrl2Lon + b3 * targetLon;
+    const pAlt = Math.round(2200 + t * 1800);
+    const pSpd = Math.round(195 + t * 35);
+    transitionArc.push({
+      lat: pLat,
+      lon: pLon,
+      alt: pAlt,
+      spd: pSpd,
+      desc: `SID TURNING ARC ${i}`
+    });
+  }
+
+  // Combine transition arc with the main SID enroute waypoints
+  return [...transitionArc, ...sidPoints];
+}
+
 function executeClimbEnroute(ac) {
   // Prevent duplicate intervals if called while airborne
   if (ac._climbInterval) return;
@@ -1938,16 +1999,18 @@ function executeClimbEnroute(ac) {
     ? airportData.sids.find(s => s.id === sidKey)
     : null;
 
-  const points = (sidObj && sidObj.coords)
+  const rawSidPoints = (sidObj && sidObj.coords)
     ? sidObj.coords.map((c, i) => ({
         lat: c[0],
         lon: c[1],
-        alt: 3000 + i * 4000,
-        spd: 210 + i * 30,
-        hdg: ac.heading,
+        alt: 4000 + i * 4000,
+        spd: 230 + i * 25,
         desc: sidObj.waypoints[i] || "WAYPOINT"
       }))
     : flightRouteMission.climbWaypoints;
+
+  // Generate realistic smooth departure turning arc (no abrupt 90-degree snap!)
+  const points = calculateDepartureClimbPath(ac.lat, ac.lon, ac.heading, rawSidPoints);
 
   let ptIdx = 0;
 
