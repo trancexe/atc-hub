@@ -273,99 +273,129 @@ function executeDebugCommand() {
   handleRadarVoiceCommand(instructionText, {});
 }
 
-// Easy Mode Dynamic Prompts by Aircraft State (Strict ICAO Standard Telephony)
-const stateInstructions = {
-  "GATE": {
-    context: "Pesawat parkir di Gate Echo 1 Terminal 3, siap pushback dan engine start.",
-    speech: "Indonesia 502 push and start approved, facing west",
-    actionDesc: "Pushback & Start Approved"
-  },
-  "PUSHBACK": {
-    context: "Pesawat sedang pushback mandiri ke taxiway...",
-    speech: "Standby for taxi request",
-    actionDesc: "Pushback in progress"
-  },
-  "READY_TAXI": {
-    context: "Pesawat selesai pushback di NC1, pilot check-in meminta clearance taxi menuju Runway 25R.",
-    speech: "Indonesia 502 taxi to holding point runway 25R via NC1, N2",
-    actionDesc: "Taxi to Holding Point 25R"
-  },
-  "HOLD_SHORT_CROSS": {
-    context: "Pesawat berhenti di Stop Bar sebelum menyeberangi runway aktif! Wajib berikan izin cross runway.",
-    speech: "Indonesia 502 cross runway 25R at November cross, report vacated",
-    actionDesc: "Cross Runway Clearance"
-  },
-  "TAXI": {
-    context: "Pesawat sedang taxi menuju holding point 25R...",
-    speech: "Standby at holding point",
-    actionDesc: "Taxiing"
-  },
-  "HOLDING": {
-    context: "Pesawat berhenti di Holding Point 25R, runway sedang menunggu antrean.",
-    speech: "Indonesia 502 line up and wait runway 25R",
-    actionDesc: "Line up and wait"
-  },
-  "LINE_UP": {
-    context: "Pesawat sudah berada di posisi runway 25R siap lepas landas, angin 250 derajat 8 knot.",
-    speech: "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff",
-    actionDesc: "Cleared for Takeoff"
-  },
-  "LINING_UP": {
-    context: "Pesawat sedang bergerak masuk ke runway (rolling lineup). ATC dapat langsung memberikan izin takeoff!",
-    speech: "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff",
-    actionDesc: "Immediate Takeoff Clearance"
-  },
-  "TAKEOFF": {
-    context: "Pesawat akselerasi dan lepas landas dari runway 25R...",
-    speech: "Airborne climb out",
-    actionDesc: "Takeoff Roll"
-  },
-  "APPROACH": {
-    context: "Pesawat inbound pada rute kedatangan STAR menuju final intercept ILS.",
-    speech: "Supergreen 123 descend and maintain 3000 feet, cleared ILS approach runway 25R",
-    actionDesc: "Cleared ILS Approach"
-  },
-  "FINAL": {
-    context: "Pesawat di final approach 5 NM siap mendarat di runway.",
-    speech: "Supergreen 123 wind 250 at 8 knots, runway 25R cleared to land",
-    actionDesc: "Cleared to Land"
-  },
-  "LANDED": {
-    context: "Pesawat telah mendarat dan melambat di runway. Berikan izin vacate runway menuju apron.",
-    speech: "Supergreen 123 vacate runway via November 4, contact Ground 121 decimal 6",
-    actionDesc: "Vacate Runway"
-  },
-  "TAXI_IN": {
-    context: "Pesawat sedang taxi masuk (taxi in) menyusuri taxiway menuju apron stand/gate.",
-    speech: "Supergreen 123 taxi to Gate Echo 1 via November Charlie",
-    actionDesc: "Taxi to Gate"
-  },
-  "PARKED": {
-    context: "Pesawat telah parkir sempurna di gate stand, mesin dimatikan.",
-    speech: "Supergreen 123 gate arrival confirmed, shutdown approved, good day",
-    actionDesc: "At Gate / Shutdown"
-  },
-  "AIRBORNE": {
-    context: "Pesawat airborne passing 2000ft, transfer kendali dari Tower ke Jakarta Approach.",
-    speech: "Indonesia 502 contact Jakarta Approach 119 decimal 75",
-    actionDesc: "Contact Approach"
-  },
-  "CLIMBING": {
-    context: "Pesawat mengikuti SID DOLTA 1C, climb passing FL120 menuju FL140.",
-    speech: "Indonesia 502 climb and maintain flight level 140",
-    actionDesc: "Climb FL140"
-  },
-  "HANDOFF": {
-    context: "Pesawat mendekati batas COP DOLTA (14.000 ft), handoff transfer kendali ke Jakarta Center!",
-    speech: "Indonesia 502 contact Jakarta Center 128 decimal 5, good day",
-    actionDesc: "Handsoff to Center"
-  },
-  "HANDED_OFF": {
-    context: "Pesawat berhasil ditransfer ke Jakarta Center. Misi selesai!",
-    speech: "Mission Complete",
-    actionDesc: "Enroute with Center"
+function getDynamicEasyModePrompt(ac) {
+  if (!ac) return { context: "Tidak ada pesawat.", speech: "Standby", actionDesc: "Standby" };
+
+  const cs = ac.callsign || ac.id;
+  const rwyKey = ac.clearedRwy || "25R";
+  const sidKey = ac.clearedSid || "DOLTA 1C";
+  const starKey = ac.clearedStar || "DOLTA 1A";
+  const mech = (airportData && airportData.runway_mechanisms) ? airportData.runway_mechanisms[rwyKey] : null;
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+  const exitTwy = mech && mech.exit_taxiways && mech.exit_taxiways.length > 0 ? mech.exit_taxiways[0].name : "November 4";
+
+  switch (ac.state) {
+    case "GATE":
+      return {
+        context: `Pesawat parkir di Gate, siap pushback dan engine start untuk Runway ${rwyKey} via ${sidKey}.`,
+        speech: `${cs} push and start approved, facing west`,
+        actionDesc: "Pushback & Start Approved"
+      };
+    case "PUSHBACK":
+      return {
+        context: `Pesawat sedang pushback mandiri menuju taxiway...`,
+        speech: `Standby for taxi request, ${cs}`,
+        actionDesc: "Pushback in progress"
+      };
+    case "READY_TAXI":
+      return {
+        context: `Pesawat selesai pushback, pilot check-in meminta clearance taxi menuju Runway ${rwyKey}.`,
+        speech: `${cs} taxi to holding point runway ${rwyKey} via ${hpName}`,
+        actionDesc: `Taxi to Holding Point ${rwyKey}`
+      };
+    case "HOLD_SHORT_CROSS":
+      return {
+        context: `Pesawat berhenti di Stop Bar sebelum menyeberangi runway aktif! Wajib berikan izin cross runway.`,
+        speech: `${cs} cross runway 25R at November cross, report vacated`,
+        actionDesc: "Cross Runway Clearance"
+      };
+    case "TAXI":
+      return {
+        context: `Pesawat sedang taxi menyusuri taxiway menuju holding point Runway ${rwyKey} (${hpName})...`,
+        speech: `Standby at holding point, ${cs}`,
+        actionDesc: "Taxiing"
+      };
+    case "HOLDING":
+      return {
+        context: `Pesawat berhenti di Holding Point ${hpName} Runway ${rwyKey}, runway siap digunakan.`,
+        speech: `${cs} line up and wait runway ${rwyKey}`,
+        actionDesc: `Line up and wait Runway ${rwyKey}`
+      };
+    case "LINE_UP":
+    case "LINING_UP":
+      return {
+        context: `Pesawat di posisi Runway ${rwyKey} via ${sidKey} siap lepas landas. Angin 250 derajat 8 knot.`,
+        speech: `${cs} wind 250 at 8 knots, runway ${rwyKey} cleared for takeoff`,
+        actionDesc: `Cleared Takeoff RWY ${rwyKey}`
+      };
+    case "TAKEOFF":
+      return {
+        context: `Pesawat akselerasi lepas landas dari Runway ${rwyKey}...`,
+        speech: `Airborne climb out via ${sidKey}, ${cs}`,
+        actionDesc: "Takeoff Roll"
+      };
+    case "APPROACH":
+      return {
+        context: `Pesawat inbound pada rute kedatangan ${starKey} menuju ILS Runway ${rwyKey}.`,
+        speech: `${cs} descend and maintain 3000 feet, cleared ILS approach runway ${rwyKey}`,
+        actionDesc: `Cleared ILS RWY ${rwyKey} (${starKey})`
+      };
+    case "FINAL":
+      return {
+        context: `Pesawat established di final approach 5 NM siap mendarat di Runway ${rwyKey}.`,
+        speech: `${cs} wind 250 at 8 knots, runway ${rwyKey} cleared to land`,
+        actionDesc: `Cleared to Land RWY ${rwyKey}`
+      };
+    case "LANDED":
+      return {
+        context: `Pesawat telah mendarat di Runway ${rwyKey}. Berikan izin keluar runway via ${exitTwy} ke Ground.`,
+        speech: `${cs} vacate runway via ${exitTwy}, contact Ground 121 decimal 6`,
+        actionDesc: `Vacate RWY via ${exitTwy}`
+      };
+    case "TAXI_IN":
+      return {
+        context: `Pesawat sedang taxi masuk (taxi in) dari Runway ${rwyKey} menuju gate stand.`,
+        speech: `${cs} taxi to Gate Echo 1 via November Charlie`,
+        actionDesc: "Taxi to Gate"
+      };
+    case "PARKED":
+      return {
+        context: `Pesawat telah parkir sempurna di gate stand, mesin dimatikan.`,
+        speech: `${cs} gate arrival confirmed, shutdown approved, good day`,
+        actionDesc: "At Gate / Shutdown"
+      };
+    case "AIRBORNE":
+      return {
+        context: `Pesawat airborne passing 2000ft mengikuti SID ${sidKey}, transfer kendali ke Jakarta Approach.`,
+        speech: `${cs} contact Jakarta Approach 119 decimal 75`,
+        actionDesc: "Contact Approach"
+      };
+    case "CLIMBING":
+      return {
+        context: `Pesawat mengikuti SID ${sidKey}, climb passing FL120 menuju FL140.`,
+        speech: `${cs} climb and maintain flight level 140 via ${sidKey}`,
+        actionDesc: `Climb FL140 (${sidKey})`
+      };
+    case "HANDOFF":
+      return {
+        context: `Pesawat menyelesaikan rute SID ${sidKey} di FL140, transfer kendali ke Jakarta Center!`,
+        speech: `${cs} contact Jakarta Center 128 decimal 5, good day`,
+        actionDesc: "Handoff to Center"
+      };
+    case "HANDED_OFF":
+      return {
+        context: `Pesawat berhasil ditransfer ke Jakarta Center via ${sidKey}. Misi selesai!`,
+        speech: "Mission Complete",
+        actionDesc: "Enroute with Center"
+      };
+    default:
+      return {
+        context: `Pesawat dalam status ${ac.state} menuju Runway ${rwyKey}.`,
+        speech: `${cs} roger and standby`,
+        actionDesc: "Standby"
+      };
   }
-};
+}
 
 function updateEasyModePrompter() {
   const prompter = document.getElementById('easy-mode-prompter');
@@ -379,13 +409,9 @@ function updateEasyModePrompter() {
 
   if (aircraft.length === 0) return;
   const ac = aircraft[selectedAircraftIndex % aircraft.length];
-  const info = stateInstructions[ac.state] || {
-    context: `Pesawat sedang dalam status ${ac.state}.`,
-    speech: `${ac.callsign} roger and standby`,
-    actionDesc: "Standby"
-  };
+  const info = getDynamicEasyModePrompt(ac);
 
-  document.getElementById('prompt-ac-badge').textContent = `${ac.id} (${ac.state})`;
+  document.getElementById('prompt-ac-badge').textContent = `${ac.id} (${ac.state}) • RWY ${ac.clearedRwy || '25R'}`;
   document.getElementById('prompt-context').textContent = `Skenario: ${info.context}`;
   document.getElementById('prompt-speech-text').textContent = `"${info.speech}"`;
 }
