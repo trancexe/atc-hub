@@ -189,7 +189,7 @@ function executeDebugCommand() {
     return;
   } else if (ac.state === "HOLDING") {
     instructionText = "Indonesia 502 line up and wait runway 25R";
-  } else if (ac.state === "LINE_UP") {
+  } else if (ac.state === "LINE_UP" || ac.state === "LINING_UP") {
     instructionText = "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff";
   } else if (ac.state === "TAKEOFF") {
     console.log("[DEBUG ATC] Takeoff roll already in progress...");
@@ -243,6 +243,11 @@ const stateInstructions = {
     context: "Pesawat sudah berada di posisi runway 25R siap lepas landas, angin 250 derajat 8 knot.",
     speech: "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff",
     actionDesc: "Cleared for Takeoff"
+  },
+  "LINING_UP": {
+    context: "Pesawat sedang bergerak masuk ke runway (rolling lineup). ATC dapat langsung memberikan izin takeoff!",
+    speech: "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff",
+    actionDesc: "Immediate Takeoff Clearance"
   },
   "TAKEOFF": {
     context: "Pesawat akselerasi dan lepas landas dari runway 25R...",
@@ -1403,7 +1408,7 @@ function handleRadarVoiceCommand(text, parsedData) {
       matchedAc.state = "LINE_UP";
       readback = "Line up and wait runway 25R, " + matchedAc.callsign;
       executeLineUpMovement(matchedAc);
-    } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
+    } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "LINING_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
       matchedAc.state = "TAKEOFF";
       readback = "Runway 25R cleared for takeoff, " + matchedAc.callsign;
       executeTakeoffMovement(matchedAc);
@@ -1621,7 +1626,10 @@ function executeLineUpMovement(ac) {
 
   const targetHeading = mech ? mech.heading : 250;
   let eIdx = 1;
+  ac.state = "LINING_UP";
   ac.groundSpeed = 10;
+  renderFlightStrips();
+  updateEasyModePrompter();
 
   function moveNextEntryNode() {
     if (eIdx >= entryNodes.length) {
@@ -1740,9 +1748,13 @@ function executeTakeoffMovement(ac) {
       updateEasyModePrompter();
       renderAllScreens();
 
+      // Trigger Pilot Airborne Callout
       setTimeout(() => {
         triggerPilotCheckIn(ac);
-      }, 1000);
+      }, 700);
+
+      // Seamlessly continue flying and climbing enroute without freezing in midair!
+      executeClimbEnroute(ac);
       return;
     }
 
@@ -1791,11 +1803,18 @@ function executeTakeoffMovement(ac) {
 }
 
 function executeClimbEnroute(ac) {
+  // Prevent duplicate intervals if called while airborne
+  if (ac._climbInterval) return;
+
   const points = flightRouteMission.climbWaypoints;
   let ptIdx = 0;
 
   function moveNextClimbLeg() {
     if (ptIdx >= points.length) {
+      if (ac._climbInterval) {
+        clearInterval(ac._climbInterval);
+        ac._climbInterval = null;
+      }
       // Arrived at DOLTA COP Gateway!
       ac.state = "HANDOFF";
       ac.hasCheckedIn = false;
@@ -1822,7 +1841,7 @@ function executeClimbEnroute(ac) {
     const totalSteps = 180;
     let step = 0;
 
-    const legInterval = setInterval(() => {
+    ac._climbInterval = setInterval(() => {
       step++;
       const prog = step / totalSteps;
       ac.lat = startLat + (leg.lat - startLat) * prog;
@@ -1836,7 +1855,8 @@ function executeClimbEnroute(ac) {
       renderAllScreens();
 
       if (step >= totalSteps) {
-        clearInterval(legInterval);
+        clearInterval(ac._climbInterval);
+        ac._climbInterval = null;
         ac.heading = targetHdg;
         ptIdx++;
         moveNextClimbLeg();
