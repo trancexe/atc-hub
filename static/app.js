@@ -1354,14 +1354,51 @@ function changeAircraftSid(idx, newSid) {
   renderAllScreens();
 }
 
+let _cameraAnimFrame = null;
+
 function focusAircraftOnGround(ac, optimalZoom = 6.5) {
   if (!ac) return;
   const st = viewState.ground;
-  st.zoom = optimalZoom;
-  // Calculate panX and panY so that (ac.lat, ac.lon) is placed directly in the center of the canvas
-  st.panX = - (ac.lon - refLon) * BASE_SCALE * st.zoom;
-  st.panY = (ac.lat - refLat) * BASE_SCALE * st.zoom;
-  renderAllScreens();
+
+  if (_cameraAnimFrame) {
+    cancelAnimationFrame(_cameraAnimFrame);
+    _cameraAnimFrame = null;
+  }
+
+  const startZoom = st.zoom;
+  const startPanX = st.panX;
+  const startPanY = st.panY;
+
+  const targetZoom = optimalZoom;
+  const targetPanX = - (ac.lon - refLon) * BASE_SCALE * targetZoom;
+  const targetPanY = (ac.lat - refLat) * BASE_SCALE * targetZoom;
+
+  const duration = 500; // ms
+  const startTime = performance.now();
+
+  function easeOutCubic(x) {
+    return 1 - Math.pow(1 - x, 3);
+  }
+
+  function step(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(1, elapsed / duration);
+    const ease = easeOutCubic(progress);
+
+    st.zoom = startZoom + (targetZoom - startZoom) * ease;
+    st.panX = startPanX + (targetPanX - startPanX) * ease;
+    st.panY = startPanY + (targetPanY - startPanY) * ease;
+
+    renderAllScreens();
+
+    if (progress < 1) {
+      _cameraAnimFrame = requestAnimationFrame(step);
+    } else {
+      _cameraAnimFrame = null;
+    }
+  }
+
+  _cameraAnimFrame = requestAnimationFrame(step);
 }
 
 function selectAircraft(idx) {
@@ -1496,7 +1533,23 @@ function handleRadarVoiceCommand(text, parsedData) {
     matchedAc = aircraft.find(a => a.id.toLowerCase() === cs || a.callsign.toLowerCase().includes(cs));
   }
   if (!matchedAc) {
-    matchedAc = aircraft.find(a => norm.includes(a.id.toLowerCase()) || norm.includes("garuda") || norm.includes("indonesia"));
+    matchedAc = aircraft.find(a => norm.includes(a.id.toLowerCase()) || norm.includes(a.callsign.toLowerCase()));
+  }
+  if (!matchedAc) {
+    if (norm.includes("garuda") || norm.includes("indonesia") || norm.includes("502")) {
+      matchedAc = aircraft.find(a => a.id.includes("502") || a.callsign.includes("502"));
+    } else if (norm.includes("supergreen") || norm.includes("citilink") || norm.includes("123")) {
+      matchedAc = aircraft.find(a => a.id.includes("123") || a.callsign.includes("123"));
+    } else if (norm.includes("lion") || norm.includes("712")) {
+      matchedAc = aircraft.find(a => a.id.includes("712") || a.callsign.includes("712"));
+    } else if (norm.includes("batik") || norm.includes("650")) {
+      matchedAc = aircraft.find(a => a.id.includes("650") || a.callsign.includes("650"));
+    }
+  }
+
+  // Fallback: If no callsign in transmission, apply to currently selected aircraft
+  if (!matchedAc && selectedAircraftIndex >= 0 && selectedAircraftIndex < aircraft.length) {
+    matchedAc = aircraft[selectedAircraftIndex];
   }
   
   if (matchedAc) {
