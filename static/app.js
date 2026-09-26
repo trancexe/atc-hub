@@ -16,7 +16,7 @@ const viewState = {
   ground: {
     panX: 0,
     panY: 0,
-    zoom: 1.0, // Clean 1x full-overview default for touchpad / mouse-free convenience
+    zoom: 0.35, // Perfect 1x airport overview: displays ALL 3 runways, North/South aprons, concourses & taxiways
     isDragging: false,
     startX: 0,
     startY: 0,
@@ -26,7 +26,7 @@ const viewState = {
   tma: {
     panX: 0,
     panY: 0,
-    zoom: 0.16, // Optimal default to display full 80 NM TMA + SIDs, STARs, and Center Gateway fixes
+    zoom: 0.016, // Perfect 1x TMA overview: displays ALL SIDs, STARs, ATS Airways, and 100NM boundary fixes
     isDragging: false,
     startX: 0,
     startY: 0,
@@ -1282,7 +1282,7 @@ function resetScreen(screenKey) {
   const st = viewState[screenKey];
   st.panX = 0;
   st.panY = 0;
-  st.zoom = screenKey === 'ground' ? 6.5 : 0.16;
+  st.zoom = screenKey === 'ground' ? 0.35 : 0.016;
   renderAllScreens();
 }
 
