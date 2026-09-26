@@ -561,24 +561,37 @@ function setLayout(mode) {
 
   if (mode === 'split') {
     container.className = "flex-1 grid grid-cols-2 gap-1 bg-slate-900 p-1 h-full overflow-hidden";
+    paneGround.style.display = "";
+    paneTma.style.display = "";
     paneGround.classList.remove('hidden');
     paneTma.classList.remove('hidden');
+    paneGround.classList.remove('col-span-2');
+    paneTma.classList.remove('col-span-2');
     btnSplit.className = "px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
   } else if (mode === 'ground') {
     container.className = "flex-1 flex bg-slate-900 p-1 h-full overflow-hidden";
+    paneGround.style.display = "flex";
+    paneTma.style.display = "none";
     paneGround.classList.remove('hidden');
     paneTma.classList.add('hidden');
+    paneGround.classList.add('w-full', 'h-full');
     btnGround.className = "px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
   } else if (mode === 'tma') {
     container.className = "flex-1 flex bg-slate-900 p-1 h-full overflow-hidden";
+    paneGround.style.display = "none";
+    paneTma.style.display = "flex";
     paneGround.classList.add('hidden');
     paneTma.classList.remove('hidden');
+    paneTma.classList.add('w-full', 'h-full');
     btnTma.className = "px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
   }
 
   setTimeout(() => {
     resizeCanvases();
-  }, 50);
+  }, 30);
+  setTimeout(() => {
+    resizeCanvases();
+  }, 120);
 }
 
 function resizeCanvases() {
@@ -1152,14 +1165,33 @@ function setupCanvasInteraction(cElem, screenKey) {
   cElem.addEventListener('wheel', (e) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.15 : 0.85;
-    zoomScreen(screenKey, factor);
+    const rect = cElem.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    zoomScreen(screenKey, factor, mouseX, mouseY);
   }, { passive: false });
 }
 
-function zoomScreen(screenKey, factor) {
+function zoomScreen(screenKey, factor, anchorCanvasX = null, anchorCanvasY = null) {
   const st = viewState[screenKey];
   const minZoom = screenKey === 'tma' ? 0.01 : 0.05;
-  st.zoom = Math.max(minZoom, Math.min(25.0, st.zoom * factor));
+  const oldZoom = st.zoom;
+  const newZoom = Math.max(minZoom, Math.min(25.0, oldZoom * factor));
+  if (newZoom === oldZoom) return;
+
+  // If anchor coordinates provided (e.g. cursor mousewheel position), zoom centered on anchor
+  if (anchorCanvasX !== null && anchorCanvasY !== null) {
+    const centerOffsetX = anchorCanvasX - st.width / 2;
+    const centerOffsetY = anchorCanvasY - st.height / 2;
+    st.panX = centerOffsetX - (centerOffsetX - st.panX) * (newZoom / oldZoom);
+    st.panY = centerOffsetY - (centerOffsetY - st.panY) * (newZoom / oldZoom);
+  } else {
+    // Zoom centered around the current view center (keeping center locked)
+    st.panX = st.panX * (newZoom / oldZoom);
+    st.panY = st.panY * (newZoom / oldZoom);
+  }
+
+  st.zoom = newZoom;
   renderAllScreens();
 }
 
