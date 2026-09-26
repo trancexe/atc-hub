@@ -2444,15 +2444,16 @@ function executeApproachMovement(ac) {
 function executeTaxiInMovement(ac) {
   if (ac._taxiInInterval) return;
 
-  // Extract reverse route from runway exit point into Gate E1 Stand
-  const fullTwy = (airportData && airportData.routes && airportData.routes.gate_e1_to_rwy25r)
-    ? airportData.routes.gate_e1_to_rwy25r
-    : [];
+  const rwyKey = ac.clearedRwy || "25R";
+  const taxiInData = (airportData && airportData.taxi_in_routes && airportData.taxi_in_routes[rwyKey])
+    ? airportData.taxi_in_routes[rwyKey]
+    : null;
 
-  // Index 33 down to 0 leads smoothly from North taxiway NC6 into Gate Stand E1
-  const taxiInPoints = (fullTwy.length > 34)
-    ? fullTwy.slice(0, 34).reverse().map(p => ({ lat: p[0], lon: p[1] }))
+  // Use the verified OSM Dijkstra path from runway exit point to Gate E1 stand
+  const taxiInPoints = (taxiInData && taxiInData.coords)
+    ? taxiInData.coords.map(p => ({ lat: p[0], lon: p[1] }))
     : [
+        { lat: ac.lat, lon: ac.lon },
         { lat: -6.118502, lon: 106.652425 },
         { lat: -6.121013, lon: 106.650012 },
         { lat: -6.121480, lon: 106.650280 },
@@ -2495,16 +2496,17 @@ function executeTaxiInMovement(ac) {
       targetHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
     }
 
-    const distNm = calculateDistanceNm(startLat, startLon, targetNode.lat, targetNode.lon);
-    // At stand entry (<3 nodes from gate), slow to 6 knots
-    const targetSpd = (nodeIdx >= taxiInPoints.length - 3) ? 6 : 14;
+    // Realistic taxi speed: straight 15 kts, turns 8 kts, stand entry 5 kts
+    const hdgDiff = Math.abs((targetHdg - ac.heading + 540) % 360 - 180);
+    let targetSpd = hdgDiff > 25 ? 8 : 15;
+    if (nodeIdx >= taxiInPoints.length - 3) {
+      targetSpd = 5;
+    }
     ac.groundSpeed = targetSpd;
 
-    // Simulation multiplier 4x
-    const SIM_SPEED_MULT = 4.0;
-    const durationSec = Math.max(0.1, (distNm / targetSpd) * (3600 / SIM_SPEED_MULT));
-    const stepIntervalMs = 50;
-    const totalSteps = Math.max(2, Math.round((durationSec * 1000) / stepIntervalMs));
+    // Use consistent step timing identical to departure taxiway movement
+    const distDeg = Math.sqrt(dLat * dLat + dLon * dLon);
+    const totalSteps = Math.max(12, Math.round(distDeg * 120000));
     let step = 0;
 
     ac._taxiInInterval = setInterval(() => {
@@ -2513,8 +2515,9 @@ function executeTaxiInMovement(ac) {
       ac.lat = startLat + (targetNode.lat - startLat) * prog;
       ac.lon = startLon + (targetNode.lon - startLon) * prog;
 
+      // Smooth heading turn
       const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
-      ac.heading = Math.round((ac.heading + angleDelta * 0.12 + 360) % 360);
+      ac.heading = Math.round((ac.heading + angleDelta * 0.15 + 360) % 360);
 
       renderAllScreens();
 
@@ -2527,7 +2530,7 @@ function executeTaxiInMovement(ac) {
         nodeIdx++;
         moveNextTaxiInNode();
       }
-    }, stepIntervalMs);
+    }, 75);
   }
 
   moveNextTaxiInNode();
