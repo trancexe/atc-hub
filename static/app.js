@@ -1258,7 +1258,13 @@ function renderFlightStrips() {
     const isPending = !ac.hasCheckedIn;
     const isSel = idx === selectedAircraftIndex;
     const availableRwys = ["25R", "07L", "25L", "07R", "24", "06"];
-    const availableSids = ["DOLTA 1C", "BUNTO 1C", "KRAKE 1C", "DOLTA 1D"];
+    // Get valid SIDs specifically designated for this runway from airportData
+    const allSids = (airportData && airportData.sids) ? airportData.sids : [];
+    const validSidsForRwy = allSids.filter(s => !s.runways || s.runways.includes(ac.clearedRwy)).map(s => s.id);
+    const availableSids = validSidsForRwy.length > 0 ? validSidsForRwy : ["DOLTA 1C", "BUNTO 1C", "KRAKE 1C"];
+    if (!availableSids.includes(ac.clearedSid)) {
+      ac.clearedSid = availableSids[0];
+    }
 
     return `
       <div class="p-2.5 rounded text-xs border transition ${isSel ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
@@ -1301,9 +1307,17 @@ function changeAircraftRunway(idx, newRwy) {
   const ac = aircraft[idx];
   if (!ac) return;
   ac.clearedRwy = newRwy;
+
+  // Auto update clearedSid to a valid SID matching the new runway
+  const allSids = (airportData && airportData.sids) ? airportData.sids : [];
+  const validSids = allSids.filter(s => !s.runways || s.runways.includes(newRwy)).map(s => s.id);
+  if (validSids.length > 0 && !validSids.includes(ac.clearedSid)) {
+    ac.clearedSid = validSids[0];
+  }
+
   const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[newRwy] : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : newRwy;
-  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned Runway ${newRwy} (HP: ${hpName})`);
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned Runway ${newRwy} (HP: ${hpName}), SID: ${ac.clearedSid}`);
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
