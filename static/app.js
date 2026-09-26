@@ -173,31 +173,35 @@ function executeDebugCommand() {
   
   console.log(`[DEBUG ATC] Executing command for ${ac.id}, current state: ${ac.state}`);
 
+  const rwyKey = ac.clearedRwy || "25R";
+  const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+
   // Determine clearance action directly by current state machine
   let instructionText = "";
   if (ac.state === "GATE") {
-    instructionText = "Indonesia 502 push and start approved, facing west";
+    instructionText = `${ac.callsign} push and start approved, facing west`;
   } else if (ac.state === "PUSHBACK") {
     // Show clear status feedback if clicked during active pushback
     const recEl = document.getElementById('recognized-text');
-    if (recEl) recEl.textContent = `[PILOT]: "Pushback in progress, approaching NC6 centerline, INDONESIA 502."`;
+    if (recEl) recEl.textContent = `[PILOT]: "Pushback in progress, approaching NC6 centerline, ${ac.callsign}."`;
     return;
   } else if (ac.state === "READY_TAXI") {
-    instructionText = "Indonesia 502 taxi to holding point runway 25R via NC1 and N2";
+    instructionText = `${ac.callsign} taxi to holding point runway ${rwyKey} via ${hpName}`;
   } else if (ac.state === "TAXI") {
     console.log("[DEBUG ATC] Taxi already in progress...");
     return;
   } else if (ac.state === "HOLDING") {
-    instructionText = "Indonesia 502 line up and wait runway 25R";
+    instructionText = `${ac.callsign} line up and wait runway ${rwyKey}`;
   } else if (ac.state === "LINE_UP" || ac.state === "LINING_UP") {
-    instructionText = "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff";
+    instructionText = `${ac.callsign} wind 250 at 8 knots, runway ${rwyKey} cleared for takeoff`;
   } else if (ac.state === "TAKEOFF") {
     console.log("[DEBUG ATC] Takeoff roll already in progress...");
     return;
   } else if (ac.state === "AIRBORNE") {
-    instructionText = "Indonesia 502 contact Jakarta Approach 119 decimal 75, good day";
+    instructionText = `${ac.callsign} contact Jakarta Approach 119 decimal 75, good day`;
   } else if (ac.state === "CLIMBING" || ac.state === "HANDOFF") {
-    instructionText = "Indonesia 502 contact Jakarta Center 128 decimal 5, good day";
+    instructionText = `${ac.callsign} contact Jakarta Center 128 decimal 5, good day`;
   } else {
     instructionText = `${ac.callsign} roger and standby`;
   }
@@ -1229,22 +1233,66 @@ function renderFlightStrips() {
   container.innerHTML = aircraft.map((ac, idx) => {
     const isPending = !ac.hasCheckedIn;
     const isSel = idx === selectedAircraftIndex;
+    const availableRwys = ["25R", "07L", "25L", "07R", "24", "06"];
+    const availableSids = ["DOLTA 1C", "BUNTO 1C", "KRAKE 1C", "DOLTA 1D"];
+
     return `
-      <div onclick="selectAircraft(${idx})" class="p-2 rounded text-xs cursor-pointer border transition ${isSel ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
-        <div class="flex justify-between items-center ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
+      <div class="p-2.5 rounded text-xs border transition ${isSel ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
+        <div onclick="selectAircraft(${idx})" class="flex justify-between items-center cursor-pointer ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
           <span>${ac.id} (${ac.type})</span>
           <span class="text-[10px] ${isPending ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-400'}">
             ${isPending ? 'CALLING...' : ac.airline}
           </span>
         </div>
-        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
-          <span>STATE: <b class="text-white">${ac.state}</b></span>
-          <span>RWY: <b class="text-white">${ac.clearedRwy}</b></span>
+
+        <div class="grid grid-cols-2 gap-1.5 text-[11px] text-slate-300 mt-2 bg-slate-900/80 p-1.5 rounded border border-slate-800">
+          <div>
+            <span class="text-[9px] text-slate-500 block uppercase">State</span>
+            <b class="text-emerald-400">${ac.state}</b>
+          </div>
+          <div>
+            <span class="text-[9px] text-slate-500 block uppercase">Squawk</span>
+            <b class="text-amber-300 font-mono">${ac.squawk || '4215'}</b>
+          </div>
+          <div class="col-span-1">
+            <span class="text-[9px] text-slate-500 block uppercase">Runway</span>
+            <select onchange="changeAircraftRunway(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-amber-300 text-[10px] rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+              ${availableRwys.map(r => `<option value="${r}" ${ac.clearedRwy === r ? 'selected' : ''}>RWY ${r}</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-span-1">
+            <span class="text-[9px] text-slate-500 block uppercase">SID Route</span>
+            <select onchange="changeAircraftSid(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-sky-300 text-[10px] rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+              ${availableSids.map(s => `<option value="${s}" ${(ac.clearedSid || 'DOLTA 1C') === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
         </div>
       </div>
     `;
   }).join('');
   document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
+}
+
+function changeAircraftRunway(idx, newRwy) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  ac.clearedRwy = newRwy;
+  const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[newRwy] : null;
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : newRwy;
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned Runway ${newRwy} (HP: ${hpName})`);
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+}
+
+function changeAircraftSid(idx, newSid) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  ac.clearedSid = newSid;
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned SID ${newSid}`);
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
 }
 
 function focusAircraftOnGround(ac, optimalZoom = 6.5) {
@@ -1396,20 +1444,24 @@ function handleRadarVoiceCommand(text, parsedData) {
     let readback = "";
     const intent = parsed.intent || "";
 
+    const rwyKey = matchedAc.clearedRwy || "25R";
+    const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
+    const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+
     if (matchedAc.state === "GATE" && (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start"))) {
       matchedAc.state = "PUSHBACK";
       readback = "Push and start approved, facing west, " + matchedAc.callsign;
       executePushbackMovement(matchedAc);
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
-      readback = "Taxi to holding point runway 25R via NC1 and N2, " + matchedAc.callsign;
+      readback = `Taxi to holding point runway ${rwyKey} via ${hpName}, ${matchedAc.callsign}`;
       executeTaxiMovement(matchedAc);
     } else if ((matchedAc.state === "HOLDING" || matchedAc.state === "TAXI") && (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait"))) {
       matchedAc.state = "LINE_UP";
-      readback = "Line up and wait runway 25R, " + matchedAc.callsign;
+      readback = `Line up and wait runway ${rwyKey}, ${matchedAc.callsign}`;
       executeLineUpMovement(matchedAc);
     } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "LINING_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
-      readback = "Runway 25R cleared for takeoff, " + matchedAc.callsign;
+      readback = `Runway ${rwyKey} cleared for takeoff, ${matchedAc.callsign}`;
       if (matchedAc.state === "LINING_UP") {
         // Pilot acknowledges clearance, completes the lineup curve first to runway threshold, then rolls!
         matchedAc.takeoffQueued = true;
@@ -1527,26 +1579,33 @@ function executePushbackMovement(ac) {
 }
 
 function executeTaxiMovement(ac) {
-  // Use exact real taxiway centerline points from OSM graph (NC6 to HP N2 on RWY 25R)
-  const points = (airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2) 
-    ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
-    : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_rwy25r)
-        ? airportData.routes.taxi_nc6_to_rwy25r.map(p => ({ lat: p[0], lon: p[1] }))
+  // Read dynamic route according to cleared runway mechanism
+  const rwyKey = ac.clearedRwy || "25R";
+  const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
+    ? airportData.runway_mechanisms[rwyKey]
+    : null;
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+
+  const dynamicRoutes = airportData && airportData.taxi_routes_by_runway ? airportData.taxi_routes_by_runway[rwyKey] : null;
+
+  const points = (dynamicRoutes && dynamicRoutes.coords)
+    ? dynamicRoutes.coords.map(p => ({ lat: p[0], lon: p[1] }))
+    : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2)
+        ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
         : flightRouteMission.taxiwayPoints);
 
   let ptIdx = 0;
 
   function moveNextTaxiNode() {
     if (ptIdx >= points.length) {
-      // Arrived precisely at Holding Point N2! Stop bar lock.
+      // Arrived precisely at designated Runway Holding Point!
       ac.groundSpeed = 0;
-      // Exact stop coordinates at HP N2 (-6.1104895, 106.6679684)
       ac.lat = points[points.length - 1].lat;
       ac.lon = points[points.length - 1].lon;
-      ac.heading = 335; // Aligned along Taxiway N2 facing holding bar into Runway 25R
+      ac.heading = mech ? mech.heading : 335;
       ac.state = "HOLDING";
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = "Jakarta Tower, INDONESIA 502, holding point November two runway two five right, ready for departure.";
+      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, holding point ${hpName} runway ${rwyKey}, ready for departure.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
@@ -1823,7 +1882,22 @@ function executeClimbEnroute(ac) {
   // Prevent duplicate intervals if called while airborne
   if (ac._climbInterval) return;
 
-  const points = flightRouteMission.climbWaypoints;
+  const sidKey = ac.clearedSid || "DOLTA 1C";
+  const sidObj = (airportData && airportData.sids)
+    ? airportData.sids.find(s => s.id === sidKey)
+    : null;
+
+  const points = (sidObj && sidObj.coords)
+    ? sidObj.coords.map((c, i) => ({
+        lat: c[0],
+        lon: c[1],
+        alt: 3000 + i * 4000,
+        spd: 210 + i * 30,
+        hdg: ac.heading,
+        desc: sidObj.waypoints[i] || "WAYPOINT"
+      }))
+    : flightRouteMission.climbWaypoints;
+
   let ptIdx = 0;
 
   function moveNextClimbLeg() {
