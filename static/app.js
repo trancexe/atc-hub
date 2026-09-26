@@ -817,6 +817,11 @@ function drawGroundScreen() {
 
   if (!airportData) return;
 
+  const selAc = (selectedAircraftIndex >= 0 && selectedAircraftIndex < aircraft.length)
+    ? aircraft[selectedAircraftIndex]
+    : null;
+  const activeRwyKey = selAc ? (selAc.clearedRwy || "25R") : null;
+
   // 0. Terminals & Buildings footprint
   ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
   ctx.strokeStyle = "rgba(71, 85, 105, 0.45)";
@@ -1023,7 +1028,6 @@ function drawGroundScreen() {
   }
 
   // 4d. Runway Crossing Stop Bar Indicator (Visible if route crosses North Runway)
-  const selAc = aircraft[selectedAircraftIndex] || aircraft[0];
   if (selAc && (selAc.clearedRwy === "25L" || selAc.clearedRwy === "07R")) {
     const crossPt = latLonToScreenCoord(-6.1220515, 106.6481632, st);
     ctx.beginPath();
@@ -1062,8 +1066,10 @@ function drawGroundScreen() {
   // 6. Runways
   (airportData.runways || []).forEach(rw => {
     if (!rw.coords || rw.coords.length < 2) return;
+    const isAssignedRwy = (activeRwyKey && (rw.ref === activeRwyKey || rw.ref.includes(activeRwyKey)));
+
     ctx.beginPath();
-    ctx.strokeStyle = "#059669";
+    ctx.strokeStyle = isAssignedRwy ? "#10b981" : "#065f46";
     ctx.lineWidth = Math.max(6, (rw.width || 60) * 0.16 * st.zoom);
     const p0 = latLonToScreenCoord(rw.coords[0][0], rw.coords[0][1], st);
     ctx.moveTo(p0.x, p0.y);
@@ -1075,7 +1081,7 @@ function drawGroundScreen() {
 
     // Centerline dashed marking
     ctx.beginPath();
-    ctx.strokeStyle = "#ffffff";
+    ctx.strokeStyle = isAssignedRwy ? "#fef08a" : "#ffffff";
     ctx.lineWidth = Math.max(1.5, 1.2 * (st.zoom / 2));
     ctx.setLineDash([8 * st.zoom, 5 * st.zoom]);
     ctx.moveTo(p0.x, p0.y);
@@ -1088,11 +1094,32 @@ function drawGroundScreen() {
 
     // Runway Designator Badges
     const pEnd = latLonToScreenCoord(rw.coords[rw.coords.length - 1][0], rw.coords[rw.coords.length - 1][1], st);
-    ctx.font = "bold 13px 'Share Tech Mono'";
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(rw.ref, p0.x - 14, p0.y - 8);
-    ctx.fillText(rw.ref, pEnd.x + 8, pEnd.y + 8);
+    ctx.font = isAssignedRwy ? "bold 14px 'Share Tech Mono'" : "bold 13px 'Share Tech Mono'";
+    ctx.fillStyle = isAssignedRwy ? "#fef08a" : "#ffffff";
+    ctx.fillText(`${rw.ref}${isAssignedRwy ? ' [ACTIVE]' : ''}`, p0.x - 14, p0.y - 8);
+    ctx.fillText(`${rw.ref}${isAssignedRwy ? ' [ACTIVE]' : ''}`, pEnd.x + 8, pEnd.y + 8);
   });
+
+  // Highlight tactical taxi path to cleared runway for selected aircraft on Ground
+  if (selAc && ["GATE", "PUSHBACK", "READY_TAXI", "TAXI", "HOLDING"].includes(selAc.state)) {
+    const dynRoute = (airportData && airportData.taxi_routes_by_runway && airportData.taxi_routes_by_runway[activeRwyKey])
+      ? airportData.taxi_routes_by_runway[activeRwyKey]
+      : null;
+    if (dynRoute && dynRoute.coords && dynRoute.coords.length > 1) {
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(245, 158, 11, 0.75)";
+      ctx.lineWidth = Math.max(2.5, 1.8 * st.zoom);
+      ctx.setLineDash([6, 6]);
+      const r0 = latLonToScreenCoord(dynRoute.coords[0][0], dynRoute.coords[0][1], st);
+      ctx.moveTo(r0.x, r0.y);
+      for (let i = 1; i < dynRoute.coords.length; i++) {
+        const rp = latLonToScreenCoord(dynRoute.coords[i][0], dynRoute.coords[i][1], st);
+        ctx.lineTo(rp.x, rp.y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
 
   // Aircraft on ground (rendered as true scaled aerodynamic aircraft icons)
   aircraft.forEach((ac, idx) => {
@@ -1174,13 +1201,21 @@ function drawTmaScreen() {
     ctx.fillText(`${aw.id}`, pm.x - 8, pm.y + 14);
   });
 
+  // Get selected aircraft cleared SID and STAR to highlight active tactical route
+  const selAc = (selectedAircraftIndex >= 0 && selectedAircraftIndex < aircraft.length)
+    ? aircraft[selectedAircraftIndex]
+    : null;
+  const activeSidId = selAc ? selAc.clearedSid : null;
+  const activeStarId = selAc ? selAc.clearedStar : null;
+
   // 2. SIDs (Standard Instrument Departures) - Orange/Amber dashed routes
   (airportData.sids || []).forEach(sid => {
     if (!sid.coords || sid.coords.length < 2) return;
+    const isActive = activeSidId === sid.id;
     ctx.beginPath();
-    ctx.strokeStyle = sid.color || "rgba(245, 158, 11, 0.65)";
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = isActive ? "#f59e0b" : "rgba(245, 158, 11, 0.22)";
+    ctx.lineWidth = isActive ? 3.0 : 1.2;
+    ctx.setLineDash(isActive ? [8, 4] : [4, 4]);
     const p0 = latLonToScreenCoord(sid.coords[0][0], sid.coords[0][1], st);
     ctx.moveTo(p0.x, p0.y);
     for (let i = 1; i < sid.coords.length; i++) {
@@ -1193,18 +1228,19 @@ function drawTmaScreen() {
     // SID Label
     const midIdx = Math.floor(sid.coords.length / 2);
     const pm = latLonToScreenCoord(sid.coords[midIdx][0], sid.coords[midIdx][1], st);
-    ctx.font = "bold 9px 'Share Tech Mono'";
-    ctx.fillStyle = sid.color || "#f59e0b";
-    ctx.fillText(`[SID] ${sid.id}`, pm.x - 15, pm.y - 8);
+    ctx.font = isActive ? "bold 11px 'Share Tech Mono'" : "9px 'Share Tech Mono'";
+    ctx.fillStyle = isActive ? "#fbbf24" : "rgba(245, 158, 11, 0.4)";
+    ctx.fillText(`${isActive ? '★ [ACTIVE SID] ' : '[SID] '}${sid.id}`, pm.x - 15, pm.y - 8);
   });
 
   // STARs (Standard Terminal Arrival Routes) - Cyan/Blue dashed routes
   (airportData.stars || []).forEach(star => {
     if (!star.coords || star.coords.length < 2) return;
+    const isActive = activeStarId === star.id;
     ctx.beginPath();
-    ctx.strokeStyle = star.color || "rgba(6, 182, 212, 0.75)";
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = isActive ? "#06b6d4" : "rgba(6, 182, 212, 0.22)";
+    ctx.lineWidth = isActive ? 3.0 : 1.2;
+    ctx.setLineDash(isActive ? [8, 4] : [3, 4]);
     const p0 = latLonToScreenCoord(star.coords[0][0], star.coords[0][1], st);
     ctx.moveTo(p0.x, p0.y);
     for (let i = 1; i < star.coords.length; i++) {
@@ -1217,9 +1253,9 @@ function drawTmaScreen() {
     // STAR Label
     const midIdx = Math.floor(star.coords.length / 2);
     const pm = latLonToScreenCoord(star.coords[midIdx][0], star.coords[midIdx][1], st);
-    ctx.font = "bold 9px 'Share Tech Mono'";
-    ctx.fillStyle = star.color || "#06b6d4";
-    ctx.fillText(`[STAR] ${star.id}`, pm.x + 8, pm.y + 12);
+    ctx.font = isActive ? "bold 11px 'Share Tech Mono'" : "9px 'Share Tech Mono'";
+    ctx.fillStyle = isActive ? "#67e8f9" : "rgba(6, 182, 212, 0.4)";
+    ctx.fillText(`${isActive ? '★ [ACTIVE STAR] ' : '[STAR] '}${star.id}`, pm.x + 8, pm.y + 12);
   });
 
   // 4. Center Coordination & Handoff Gateways (Entry / Exit fixes)
@@ -1418,6 +1454,14 @@ function renderFlightStrips() {
       ac.clearedSid = availableSids[0];
     }
 
+    const isArrival = ["APPROACH", "FINAL", "LANDED", "TAXI_IN", "PARKED"].includes(ac.state);
+    const allStars = (airportData && airportData.stars) ? airportData.stars : [];
+    const validStarsForRwy = allStars.filter(s => !s.runways || s.runways.includes(ac.clearedRwy)).map(s => s.id);
+    const availableStars = validStarsForRwy.length > 0 ? validStarsForRwy : ["DOLTA 1A", "BUNTO 1A", "KRAKE 1A"];
+    if (isArrival && !availableStars.includes(ac.clearedStar)) {
+      ac.clearedStar = availableStars[0];
+    }
+
     return `
       <div class="p-2.5 rounded text-xs border transition ${isSel ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
         <div onclick="selectAircraft(${idx})" class="flex justify-between items-center cursor-pointer ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
@@ -1443,10 +1487,16 @@ function renderFlightStrips() {
             </select>
           </div>
           <div class="col-span-1">
-            <span class="text-[9px] text-slate-500 block uppercase">SID Route</span>
-            <select onchange="changeAircraftSid(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-sky-300 text-[10px] rounded px-1 py-0.5 mt-0.5 focus:outline-none">
-              ${availableSids.map(s => `<option value="${s}" ${(ac.clearedSid || 'DOLTA 1C') === s ? 'selected' : ''}>${s}</option>`).join('')}
-            </select>
+            <span class="text-[9px] text-slate-500 block uppercase">${isArrival ? 'STAR Route' : 'SID Route'}</span>
+            ${isArrival ? `
+              <select onchange="changeAircraftStar(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+                ${availableStars.map(s => `<option value="${s}" ${(ac.clearedStar || 'DOLTA 1A') === s ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>
+            ` : `
+              <select onchange="changeAircraftSid(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-sky-300 text-[10px] rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+                ${availableSids.map(s => `<option value="${s}" ${(ac.clearedSid || 'DOLTA 1C') === s ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>
+            `}
           </div>
         </div>
       </div>
@@ -1460,16 +1510,25 @@ function changeAircraftRunway(idx, newRwy) {
   if (!ac) return;
   ac.clearedRwy = newRwy;
 
-  // Auto update clearedSid to a valid SID matching the new runway
-  const allSids = (airportData && airportData.sids) ? airportData.sids : [];
-  const validSids = allSids.filter(s => !s.runways || s.runways.includes(newRwy)).map(s => s.id);
-  if (validSids.length > 0 && !validSids.includes(ac.clearedSid)) {
-    ac.clearedSid = validSids[0];
+  const isArrival = ["APPROACH", "FINAL", "LANDED", "TAXI_IN", "PARKED"].includes(ac.state);
+  if (isArrival) {
+    const allStars = (airportData && airportData.stars) ? airportData.stars : [];
+    const validStars = allStars.filter(s => !s.runways || s.runways.includes(newRwy)).map(s => s.id);
+    if (validStars.length > 0 && !validStars.includes(ac.clearedStar)) {
+      ac.clearedStar = validStars[0];
+    }
+  } else {
+    // Auto update clearedSid to a valid SID matching the new runway
+    const allSids = (airportData && airportData.sids) ? airportData.sids : [];
+    const validSids = allSids.filter(s => !s.runways || s.runways.includes(newRwy)).map(s => s.id);
+    if (validSids.length > 0 && !validSids.includes(ac.clearedSid)) {
+      ac.clearedSid = validSids[0];
+    }
   }
 
   const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[newRwy] : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : newRwy;
-  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned Runway ${newRwy} (HP: ${hpName}), SID: ${ac.clearedSid}`);
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned Runway ${newRwy} (HP: ${hpName})`);
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
@@ -1480,6 +1539,16 @@ function changeAircraftSid(idx, newSid) {
   if (!ac) return;
   ac.clearedSid = newSid;
   console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned SID ${newSid}`);
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+}
+
+function changeAircraftStar(idx, newStar) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  ac.clearedStar = newStar;
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned STAR ${newStar}`);
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
