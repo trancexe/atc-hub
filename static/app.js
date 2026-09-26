@@ -2151,14 +2151,13 @@ function executeClimbEnroute(ac) {
     const targetHdg = leg.hdg;
 
     const legDistNm = calculateDistanceNm(startLat, startLon, leg.lat, leg.lon);
-    const avgSpeedKts = (startSpd + targetSpd) / 2;
-    // Time in seconds: (dist / speed) * 3600.
-    // In simulator game-time, we apply a consistent simulation speed ratio (e.g. 1 real sec = 4 sim sec)
-    // Duration (seconds) = (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT)
+    const avgSpeedKts = Math.max(40, (startSpd + targetSpd) / 2);
+    // Unclamped linear physics: Simulation multiplier 4.0 (1 real second = 4 simulation seconds)
+    // Time (seconds) = (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT)
     const SIM_SPEED_MULT = 4.0;
-    const legDurationSec = Math.max(2.5, (legDistNm / Math.max(120, avgSpeedKts)) * (3600 / SIM_SPEED_MULT));
+    const legDurationSec = Math.max(0.1, (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT));
     const stepIntervalMs = 50;
-    const totalSteps = Math.max(20, Math.round((legDurationSec * 1000) / stepIntervalMs));
+    const totalSteps = Math.max(2, Math.round((legDurationSec * 1000) / stepIntervalMs));
     let step = 0;
 
     ac._climbInterval = setInterval(() => {
@@ -2387,12 +2386,13 @@ function executeApproachMovement(ac) {
     }
 
     const legDistNm = calculateDistanceNm(startLat, startLon, leg.lat, leg.lon);
-    const avgSpeedKts = (startSpd + targetSpd) / 2;
-    // Same calibrated physics: simulation multiplier 4x (1 real sec = 4 sim sec)
+    const avgSpeedKts = Math.max(40, (startSpd + targetSpd) / 2);
+    // Unclamped linear physics: Simulation multiplier 4.0 (1 real second = 4 simulation seconds)
+    // Time (seconds) = (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT)
     const SIM_SPEED_MULT = 4.0;
-    const legDurationSec = Math.max(2.5, (legDistNm / Math.max(120, avgSpeedKts)) * (3600 / SIM_SPEED_MULT));
+    const legDurationSec = Math.max(0.1, (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT));
     const stepIntervalMs = 50;
-    const totalSteps = Math.max(20, Math.round((legDurationSec * 1000) / stepIntervalMs));
+    const totalSteps = Math.max(2, Math.round((legDurationSec * 1000) / stepIntervalMs));
     let step = 0;
 
     ac._approachInterval = setInterval(() => {
