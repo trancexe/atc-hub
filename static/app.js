@@ -3402,6 +3402,12 @@ function transmitAiClearance(ac, atcText, readbackText, executeCallback) {
   const recEl = document.getElementById('recognized-text');
   if (recEl) recEl.textContent = `[AI ATC]: "${atcText}"`;
 
+  // Immediately execute the flight maneuver callback (do not wait for radio TTS finished)
+  if (executeCallback) executeCallback();
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+
   // Enqueue ATC Controller Voice
   enqueueRadioTransmission({
     type: "AI_ATC",
@@ -3423,9 +3429,6 @@ function transmitAiClearance(ac, atcText, readbackText, executeCallback) {
         pttStatus.className = "text-xs font-radar text-slate-400 mb-1.5 px-3 py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow";
       }
 
-      // Execute flight movement
-      if (executeCallback) executeCallback();
-
       // Enqueue Pilot Readback
       enqueueRadioTransmission({
         type: "READBACK",
@@ -3440,10 +3443,17 @@ function transmitAiClearance(ac, atcText, readbackText, executeCallback) {
           renderFlightStrips();
           updateEasyModePrompter();
           renderAllScreens();
+          // Trigger immediate evaluation for the next autonomous action
+          setTimeout(runAiCoControllerCycle, 500);
         }
       });
     }
   });
+
+  // Safety unlock in case radio transmission gets stalled or aborted
+  setTimeout(() => {
+    ac._aiClearanceBusy = false;
+  }, 10000);
 }
 
 function handleAiAutonomousDispatch(ac, idx) {
