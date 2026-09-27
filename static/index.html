@@ -37,6 +37,35 @@
     <!-- Center Control Bar -->
     <div class="flex items-center space-x-3">
       
+      <!-- CONTROLLER ROLE SELECTOR (MANUAL VS FULL AI SPECTATOR) -->
+      <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 font-radar text-xs">
+        <span class="text-[10px] text-slate-400 px-1.5 uppercase font-bold flex items-center gap-1">
+          <i class="fa-solid fa-headset text-emerald-400"></i> Role:
+        </span>
+        <button id="role-all-btn" onclick="setControllerRole('ALL')" class="px-2 py-0.5 rounded text-[11px] font-semibold transition bg-emerald-700 text-white" title="Manual Control Semua Sektor">
+          ALL
+        </button>
+        <button id="role-gnd-btn" onclick="setControllerRole('GND')" class="px-2 py-0.5 rounded text-[11px] font-semibold transition text-slate-400 hover:text-white" title="Ground Only (Tower & Approach Full AI)">
+          GND
+        </button>
+        <button id="role-twr-btn" onclick="setControllerRole('TWR')" class="px-2 py-0.5 rounded text-[11px] font-semibold transition text-slate-400 hover:text-white" title="Tower Only (Ground & Approach Full AI)">
+          TWR
+        </button>
+        <button id="role-app-btn" onclick="setControllerRole('APP')" class="px-2 py-0.5 rounded text-[11px] font-semibold transition text-slate-400 hover:text-white" title="Approach Only (Ground & Tower Full AI)">
+          APP
+        </button>
+        <button id="role-spectator-btn" onclick="setControllerRole('SPECTATOR')" class="px-2 py-0.5 rounded text-[11px] font-bold transition text-purple-300 hover:text-white hover:bg-purple-900/60" title="Full AI Spectator Mode (Seluruh Sektor Beroperasi Otonom)">
+          <i class="fa-solid fa-eye text-purple-400 mr-0.5"></i> AI SPECTATOR
+        </button>
+      </div>
+
+      <!-- ACTIVE FREQUENCY PANEL -->
+      <div id="freq-panel" class="hidden md:flex items-center bg-slate-950 px-2.5 py-1 rounded-lg border border-emerald-950 font-radar text-xs">
+        <span class="text-[9px] text-slate-500 mr-1.5 uppercase font-bold">VHF FREQ:</span>
+        <span id="active-freq-label" class="text-amber-300 font-mono font-bold text-xs tracking-wider">121.600 MHz</span>
+        <span id="active-sector-tag" class="ml-1.5 text-[9px] px-1 py-0.2 rounded bg-blue-900/80 text-blue-200 font-mono">GND</span>
+      </div>
+
       <!-- EASY MODE TOGGLE -->
       <button id="easy-mode-btn" onclick="toggleEasyMode()" class="px-3 py-1.5 rounded-lg border font-radar text-xs font-bold flex items-center gap-1.5 transition bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-lg">
         <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
