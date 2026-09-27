@@ -3297,6 +3297,21 @@ function setControllerRole(newRole) {
   const prompter = document.getElementById('easy-mode-prompter');
   if (controllerRole === 'SPECTATOR') {
     if (prompter) prompter.classList.add('opacity-40');
+    // Clear any pending busy flags so AI starts acting immediately on current aircraft states
+    aircraft.forEach(ac => {
+      ac._aiClearanceBusy = false;
+      if (ac.state === "GATE") ac._aiPushIssued = false;
+      if (ac.state === "READY_TAXI") ac._aiTaxiIssued = false;
+      if (ac.state === "HOLD_SHORT_CROSS") ac._aiCrossIssued = false;
+      if (ac.state === "HOLDING") ac._aiLineupIssued = false;
+      if (["LINE_UP", "LINING_UP"].includes(ac.state)) ac._aiTakeoffIssued = false;
+      if (ac.state === "AIRBORNE") ac._aiAppHandoffIssued = false;
+      if (ac.state === "CLIMBING") ac._aiCenterHandoffIssued = false;
+      if (ac.state === "APPROACH") ac._aiIlsIssued = false;
+      if (ac.state === "FINAL") ac._aiLandIssued = false;
+      if (ac.state === "LANDED") ac._aiVacateIssued = false;
+      if (ac.state === "TAXI_IN") ac._aiTaxiInStandIssued = false;
+    });
   } else {
     if (prompter) prompter.classList.remove('opacity-40');
   }
@@ -3439,7 +3454,7 @@ function handleAiAutonomousDispatch(ac, idx) {
   const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
 
-  // AI GATE: Issue pushback after waiting 3 seconds
+  // AI GATE: Issue pushback after waiting 2.5 seconds
   if (ac.state === "GATE" && !ac._aiPushIssued) {
     ac._aiPushIssued = true;
     setTimeout(() => {
@@ -3453,7 +3468,7 @@ function handleAiAutonomousDispatch(ac, idx) {
           executePushbackMovement(ac);
         }
       );
-    }, 2500);
+    }, 2000);
   }
 
   // AI READY_TAXI: Issue taxi clearance to holding point
