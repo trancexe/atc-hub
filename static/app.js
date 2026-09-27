@@ -1760,6 +1760,7 @@ function renderFlightStrips() {
 function changeAircraftRunway(idx, newRwy) {
   const ac = aircraft[idx];
   if (!ac) return;
+  const oldRwy = ac.clearedRwy;
   ac.clearedRwy = newRwy;
 
   const isArrival = ["APPROACH", "FINAL", "LANDED", "TAXI_IN", "PARKED"].includes(ac.state);
@@ -1768,6 +1769,17 @@ function changeAircraftRunway(idx, newRwy) {
     const validStars = allStars.filter(s => !s.runways || s.runways.includes(newRwy)).map(s => s.id);
     if (validStars.length > 0 && !validStars.includes(ac.clearedStar)) {
       ac.clearedStar = validStars[0];
+    }
+
+    // DYNAMIC IN-FLIGHT RE-ROUTING FOR ARRIVALS
+    // If the aircraft is currently airborne approaching runway, recalculate flight path immediately to new runway!
+    if (ac.state === "APPROACH" || ac.state === "FINAL") {
+      if (ac._approachInterval) {
+        clearInterval(ac._approachInterval);
+        ac._approachInterval = null;
+      }
+      console.log(`[ATC REROUTE] Recalculating live approach path for ${ac.id} from ${oldRwy} to ${newRwy}`);
+      executeApproachMovement(ac);
     }
   } else {
     // Auto update clearedSid to a valid SID matching the new runway
@@ -1801,6 +1813,16 @@ function changeAircraftStar(idx, newStar) {
   if (!ac) return;
   ac.clearedStar = newStar;
   console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned STAR ${newStar}`);
+
+  // If currently approaching, re-route trajectory to new STAR waypoints immediately
+  if (ac.state === "APPROACH" || ac.state === "FINAL") {
+    if (ac._approachInterval) {
+      clearInterval(ac._approachInterval);
+      ac._approachInterval = null;
+    }
+    executeApproachMovement(ac);
+  }
+
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
@@ -2840,11 +2862,28 @@ function calculateStarArrivalPath(starCoords, rwyKey) {
   // 5. Touchdown threshold
   path.push({ lat: threshold[0], lon: threshold[1], alt: 0, spd: 135, desc: "TOUCHDOWN" });
 
-  // 6. Realistic Landing Rollout on Runway Centerline (Touchdown 135 kts -> Decel to 60 kts exit speed)
+  // 6. Realistic Landing Rollout on Runway Centerline to Rapid Exit Taxiway
   const rollPath = mech && mech.takeoff_roll_path ? mech.takeoff_roll_path : [];
+  const taxiInData = (airportData && airportData.taxi_in_routes && airportData.taxi_in_routes[rwyKey])
+    ? airportData.taxi_in_routes[rwyKey]
+    : null;
+  const targetExitPoint = taxiInData ? taxiInData.exit_point : null;
+
   if (rollPath && rollPath.length > 2) {
-    // Traverse down 60% of runway length to rapid exit taxiway
-    const exitNodeCount = Math.min(rollPath.length - 1, Math.max(3, Math.floor(rollPath.length * 0.65)));
+    // Find the exact roll node closest to the rapid exit taxiway point
+    let bestExitIdx = Math.min(rollPath.length - 1, Math.max(3, Math.floor(rollPath.length * 0.65)));
+    if (targetExitPoint) {
+      let minDistSq = Infinity;
+      rollPath.forEach((pt, i) => {
+        const dSq = Math.pow(pt[0] - targetExitPoint[0], 2) + Math.pow(pt[1] - targetExitPoint[1], 2);
+        if (dSq < minDistSq) {
+          minDistSq = dSq;
+          bestExitIdx = i;
+        }
+      });
+    }
+
+    const exitNodeCount = Math.max(2, bestExitIdx);
     for (let r = 1; r <= exitNodeCount; r++) {
       const prog = r / exitNodeCount;
       const rollPt = rollPath[r];
@@ -2937,7 +2976,8 @@ function executeApproachMovement(ac) {
       ac.groundSpeed = 60;
       ac.altitude = 0;
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, slowed to sixty knots, runway vacated at November four.`;
+      const exitName = rwyKey.startsWith("25") ? "November four" : "runway exit";
+      ac.checkInPhrase = `Jakarta Tower, ${ac.callsign}, slowed to sixty knots, runway vacated at ${exitName}.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
