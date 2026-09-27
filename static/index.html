@@ -129,7 +129,7 @@
       <!-- Aircraft Strip Overlay (Right floating drawer) -->
       <div class="absolute top-3 right-3 z-10 w-72 bg-slate-900/95 backdrop-blur border border-emerald-900/80 rounded-lg p-3 font-radar shadow-xl">
         <div class="text-xs font-bold text-emerald-400 border-b border-emerald-900/40 pb-1.5 mb-2 flex justify-between items-center">
-          <span>ACTIVE FLIGHT STRIPS</span>
+          <span>ELECTRONIC FLIGHT STRIPS</span>
           <div class="flex items-center gap-1.5">
             <button onclick="spawnInboundArrival()" class="text-[9px] px-1.5 py-0.5 rounded bg-sky-900 hover:bg-sky-800 text-sky-200 border border-sky-600 transition" title="Spawn Pesawat Masuk Inbound STAR / ILS">
               + Inbound
@@ -137,7 +137,16 @@
             <span id="aircraft-count" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">1 In Flight</span>
           </div>
         </div>
-        <div id="flight-strips" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+
+        <!-- STRIP BAYS FILTER TAB -->
+        <div class="flex gap-1 mb-2 bg-slate-950 p-1 rounded border border-emerald-950 text-[10px]">
+          <button id="bay-tab-all" onclick="setStripBayFilter('ALL')" class="flex-1 py-0.5 rounded font-bold transition bg-emerald-700 text-white">ALL</button>
+          <button id="bay-tab-dep" onclick="setStripBayFilter('DEP')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">DEP</button>
+          <button id="bay-tab-twr" onclick="setStripBayFilter('TWR')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">TWR</button>
+          <button id="bay-tab-app" onclick="setStripBayFilter('APP')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">APP</button>
+        </div>
+
+        <div id="flight-strips" class="space-y-2.5 max-h-80 overflow-y-auto pr-1">
           <!-- Strips rendered here -->
         </div>
       </div>

@@ -1448,6 +1448,20 @@ function drawTmaScreen() {
       ctx.restore();
     }
 
+    // Squawk IDENT Radar Flash Effect (blooming cyan circle)
+    const isIdent = ac.isIdentActive && Date.now() < (ac.identEndTime || 0);
+    if (isIdent) {
+      ctx.save();
+      const identFlash = (Math.floor(Date.now() / 200) % 2 === 0);
+      ctx.strokeStyle = identFlash ? "#38bdf8" : "#ffffff";
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 24, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.font = "10px 'Share Tech Mono'";
     ctx.fillStyle = hasStca ? "#f87171" : (isSel ? "#fbbf24" : "#bae6fd");
     ctx.fillText(`${ac.id} (${ac.type})`, p.x + 14, p.y - 10);
@@ -1455,9 +1469,19 @@ function drawTmaScreen() {
     ctx.fillStyle = "#94a3b8";
     const altStr = ac.altitude === 0 ? "GND" : `A${String(Math.round(ac.altitude/100)).padStart(3, '0')}`;
     const spdStr = `${ac.groundSpeed}K`;
-    ctx.fillText(`${altStr} ${spdStr}`, p.x + 14, p.y);
+    
+    // FDE Scratchpad Overlay on Radar Tag (CFL / Assigned SPD / Direct Fix)
+    const cflStr = (ac.fde && ac.fde.assignedAlt) ? `→${ac.fde.assignedAlt}` : "";
+    const assignedSpdStr = (ac.fde && ac.fde.assignedSpd) ? `→${ac.fde.assignedSpd}` : "";
+    const dirStr = (ac.fde && ac.fde.directFix) ? ` [${ac.fde.directFix}]` : "";
 
-    if (hasStca) {
+    ctx.fillText(`${altStr}${cflStr} ${spdStr}${assignedSpdStr}`, p.x + 14, p.y);
+
+    if (isIdent) {
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "bold 10px 'Share Tech Mono'";
+      ctx.fillText(`★ IDENT`, p.x + 14, p.y + 10);
+    } else if (hasStca) {
       ctx.fillStyle = "#ef4444";
       ctx.font = "bold 10px 'Share Tech Mono'";
       ctx.fillText(`⚡ STCA ALERT`, p.x + 14, p.y + 10);
@@ -1466,7 +1490,7 @@ function drawTmaScreen() {
       ctx.font = "bold 10px 'Share Tech Mono'";
       ctx.fillText(`⚠ MSAW TERRAIN`, p.x + 14, p.y + 10);
     } else {
-      ctx.fillText(`${ac.state}`, p.x + 14, p.y + 10);
+      ctx.fillText(`${ac.state}${dirStr}`, p.x + 14, p.y + 10);
     }
   });
 }
@@ -1577,14 +1601,71 @@ function resetScreen(screenKey) {
   renderAllScreens();
 }
 
+let activeStripBayFilter = "ALL"; // 'ALL', 'DEP', 'TWR', 'APP'
+
+function setStripBayFilter(bay) {
+  activeStripBayFilter = bay;
+  ["all", "dep", "twr", "app"].forEach(b => {
+    const el = document.getElementById(`bay-tab-${b}`);
+    if (el) {
+      if (b === bay.toLowerCase()) {
+        el.className = "flex-1 py-0.5 rounded font-bold transition bg-emerald-700 text-white";
+      } else {
+        el.className = "flex-1 py-0.5 rounded transition text-slate-400 hover:text-white";
+      }
+    }
+  });
+  renderFlightStrips();
+}
+
+function getAircraftBayCategory(ac) {
+  if (["GATE", "PUSHBACK", "READY_TAXI", "TAXI"].includes(ac.state)) return "DEP";
+  if (["HOLD_SHORT_CROSS", "HOLDING", "LINE_UP", "LINING_UP", "TAKEOFF", "LANDED"].includes(ac.state)) return "TWR";
+  if (["APPROACH", "FINAL", "AIRBORNE", "CLIMBING", "HANDOFF", "HANDED_OFF", "TAXI_IN", "PARKED"].includes(ac.state)) return "APP";
+  return "DEP";
+}
+
+function triggerSquawkIdent(idx) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  ac.isIdentActive = true;
+  ac.identEndTime = Date.now() + 18000; // IDENT flashes for 18 seconds (standard radar spec)
+  renderFlightStrips();
+  renderAllScreens();
+  playRadioChirp();
+}
+
+function updateAircraftScratchpad(idx, field, val) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  if (!ac.fde) ac.fde = {};
+  ac.fde[field] = val;
+  renderFlightStrips();
+  renderAllScreens();
+}
+
 function renderFlightStrips() {
   const container = document.getElementById('flight-strips');
   if (!container) return;
-  container.innerHTML = aircraft.map((ac, idx) => {
+
+  const filtered = aircraft.map((ac, idx) => ({ ac, idx })).filter(item => {
+    if (activeStripBayFilter === "ALL") return true;
+    return getAircraftBayCategory(item.ac) === activeStripBayFilter;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="p-3 text-center text-slate-500 text-xs italic">Tidak ada strip di Bay ${activeStripBayFilter}</div>`;
+    document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(({ ac, idx }) => {
     const isPending = !ac.hasCheckedIn;
     const isSel = idx === selectedAircraftIndex;
+    const bayCat = getAircraftBayCategory(ac);
+    const isIdent = ac.isIdentActive && Date.now() < (ac.identEndTime || 0);
+
     const availableRwys = ["25R", "07L", "25L", "07R", "24", "06"];
-    // Get valid SIDs specifically designated for this runway from airportData
     const allSids = (airportData && airportData.sids) ? airportData.sids : [];
     const validSidsForRwy = allSids.filter(s => !s.runways || s.runways.includes(ac.clearedRwy)).map(s => s.id);
     const availableSids = validSidsForRwy.length > 0 ? validSidsForRwy : ["DOLTA 1C", "BUNTO 1C", "KRAKE 1C"];
@@ -1600,41 +1681,74 @@ function renderFlightStrips() {
       ac.clearedStar = availableStars[0];
     }
 
+    const assignedAlt = (ac.fde && ac.fde.assignedAlt) ? ac.fde.assignedAlt : "";
+    const assignedSpd = (ac.fde && ac.fde.assignedSpd) ? ac.fde.assignedSpd : "";
+    const directFix = (ac.fde && ac.fde.directFix) ? ac.fde.directFix : "";
+
     return `
-      <div class="p-2.5 rounded text-xs border transition ${isSel ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
-        <div onclick="selectAircraft(${idx})" class="flex justify-between items-center cursor-pointer ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
-          <span>${ac.id} (${ac.type})</span>
-          <span class="text-[10px] ${isPending ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-400'}">
-            ${isPending ? 'CALLING...' : ac.airline}
-          </span>
+      <div class="p-2 rounded text-xs border transition ${isSel ? 'bg-amber-950/40 border-amber-500 shadow-md' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
+        <!-- Strip Header: Callsign, Type, Bay Badge, & Ident Button -->
+        <div class="flex justify-between items-center">
+          <div onclick="selectAircraft(${idx})" class="cursor-pointer flex items-center gap-1.5 ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
+            <span class="text-[9px] px-1 py-0.2 rounded ${bayCat === 'DEP' ? 'bg-blue-900/80 text-blue-200' : (bayCat === 'TWR' ? 'bg-emerald-900/80 text-emerald-200' : 'bg-purple-900/80 text-purple-200')} font-mono">
+              ${bayCat}
+            </span>
+            <span>${ac.id}</span>
+            <span class="text-[10px] text-slate-400 font-normal">(${ac.type})</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="triggerSquawkIdent(${idx})" class="text-[9px] px-1 py-0.5 rounded border transition font-bold font-mono ${isIdent ? 'bg-amber-500 text-slate-950 border-amber-300 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" title="Squawk IDENT Flash">
+              ${isIdent ? '★ IDENT' : 'IDENT'}
+            </button>
+            <span class="text-[10px] ${isPending ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-400'}">
+              ${isPending ? 'CALLING...' : ac.airline}
+            </span>
+          </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-1.5 text-[11px] text-slate-300 mt-2 bg-slate-900/80 p-1.5 rounded border border-slate-800">
+        <!-- Clearance & Procedure Controls -->
+        <div class="grid grid-cols-2 gap-1 text-[11px] text-slate-300 mt-1.5 bg-slate-900/90 p-1.5 rounded border border-slate-800">
           <div>
-            <span class="text-[9px] text-slate-500 block uppercase">State</span>
-            <b class="text-emerald-400">${ac.state}</b>
+            <span class="text-[8px] text-slate-500 block uppercase">State</span>
+            <b class="text-emerald-400 font-mono text-[10px]">${ac.state}</b>
           </div>
           <div>
-            <span class="text-[9px] text-slate-500 block uppercase">Squawk</span>
-            <b class="text-amber-300 font-mono">${ac.squawk || '4215'}</b>
+            <span class="text-[8px] text-slate-500 block uppercase">Squawk Code</span>
+            <input type="text" maxlength="4" value="${ac.squawk || '4215'}" onchange="aircraft[${idx}].squawk = this.value; renderFlightStrips(); renderAllScreens();" class="w-14 bg-slate-950 border border-slate-700 text-amber-300 font-mono text-[10px] rounded px-1 py-0 text-center focus:outline-none" />
           </div>
           <div class="col-span-1">
-            <span class="text-[9px] text-slate-500 block uppercase">Runway</span>
-            <select onchange="changeAircraftRunway(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-amber-300 text-[10px] rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+            <span class="text-[8px] text-slate-500 block uppercase">Cleared RWY</span>
+            <select onchange="changeAircraftRunway(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-amber-300 text-[10px] rounded px-1 py-0.5 focus:outline-none">
               ${availableRwys.map(r => `<option value="${r}" ${ac.clearedRwy === r ? 'selected' : ''}>RWY ${r}</option>`).join('')}
             </select>
           </div>
           <div class="col-span-1">
-            <span class="text-[9px] text-slate-500 block uppercase">${isArrival ? 'STAR Route' : 'SID Route'}</span>
+            <span class="text-[8px] text-slate-500 block uppercase">${isArrival ? 'Assigned STAR' : 'Assigned SID'}</span>
             ${isArrival ? `
-              <select onchange="changeAircraftStar(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+              <select onchange="changeAircraftStar(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] rounded px-1 py-0.5 focus:outline-none">
                 ${availableStars.map(s => `<option value="${s}" ${(ac.clearedStar || 'DOLTA 1A') === s ? 'selected' : ''}>${s}</option>`).join('')}
               </select>
             ` : `
-              <select onchange="changeAircraftSid(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-sky-300 text-[10px] rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+              <select onchange="changeAircraftSid(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-sky-300 text-[10px] rounded px-1 py-0.5 focus:outline-none">
                 ${availableSids.map(s => `<option value="${s}" ${(ac.clearedSid || 'DOLTA 1C') === s ? 'selected' : ''}>${s}</option>`).join('')}
               </select>
             `}
+          </div>
+        </div>
+
+        <!-- FDE SCRATCHPAD (Flight Data Entry: CFL Altitude, Speed, Direct Fix) -->
+        <div class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
+          <div class="flex items-center gap-0.5">
+            <span class="text-slate-500 font-mono">CFL:</span>
+            <input type="text" placeholder="A040" value="${assignedAlt}" onchange="updateAircraftScratchpad(${idx}, 'assignedAlt', this.value)" class="w-11 bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-emerald-500" title="Cleared Flight Level / Altitude" />
+          </div>
+          <div class="flex items-center gap-0.5">
+            <span class="text-slate-500 font-mono">SPD:</span>
+            <input type="text" placeholder="210K" value="${assignedSpd}" onchange="updateAircraftScratchpad(${idx}, 'assignedSpd', this.value)" class="w-11 bg-slate-950 border border-slate-800 text-sky-300 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-sky-500" title="Assigned Airspeed" />
+          </div>
+          <div class="flex items-center gap-0.5">
+            <span class="text-slate-500 font-mono">DIR:</span>
+            <input type="text" placeholder="TOPIN" value="${directFix}" onchange="updateAircraftScratchpad(${idx}, 'directFix', this.value)" class="w-14 bg-slate-950 border border-slate-800 text-amber-200 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-amber-500" title="Direct-To Fix" />
           </div>
         </div>
       </div>
