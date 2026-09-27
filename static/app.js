@@ -1374,10 +1374,54 @@ function drawTmaScreen() {
     ctx.fillText(wp.id, p.x + 7, p.y + 3);
   });
 
+  // 6. Airborne Safety Monitoring: STCA (Short Term Conflict Alert) & MSAW (Minimum Safe Altitude Warning)
+  const activeAlerts = checkAirborneConflicts();
+
+  // Draw STCA Conflict Vectors and Warning Rings between conflicting pairs
+  activeAlerts.stcaPairs.forEach(pair => {
+    const p1 = latLonToScreenCoord(pair.ac1.lat, pair.ac1.lon, st);
+    const p2 = latLonToScreenCoord(pair.ac2.lat, pair.ac2.lon, st);
+
+    // Flashing red conflict line connecting targets
+    ctx.save();
+    ctx.strokeStyle = (Math.floor(Date.now() / 250) % 2 === 0) ? "#ef4444" : "#fca5a5";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+
+    // Red separation buffer ring (3 NM = 3 * 1852 meters)
+    const nmInMeters = 1852;
+    const centerLat = (pair.ac1.lat + pair.ac2.lat) / 2;
+    const centerLon = (pair.ac1.lon + pair.ac2.lon) / 2;
+    const midPt = latLonToScreenCoord(centerLat, centerLon, st);
+    
+    ctx.strokeStyle = "rgba(239, 68, 68, 0.75)";
+    ctx.fillStyle = "rgba(239, 68, 68, 0.12)";
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    // 3 NM radius converted to screen pixels
+    const refPt = latLonToScreenCoord(centerLat + (3 / 60), centerLon, st);
+    const radPx = Math.abs(refPt.y - midPt.y);
+    ctx.arc(midPt.x, midPt.y, radPx, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fill();
+
+    // Alert Badge in mid-distance
+    ctx.fillStyle = "#ef4444";
+    ctx.font = "bold 11px 'Share Tech Mono'";
+    ctx.fillText(`⚡ STCA CONFLICT: ${pair.distNm.toFixed(1)}NM / ${Math.abs(pair.ac1.altitude - pair.ac2.altitude)}FT`, midPt.x - 70, midPt.y - 12);
+    ctx.restore();
+  });
+
   // Aircraft targets (rendered as true scaled aerodynamic aircraft icons with velocity vector)
   aircraft.forEach((ac, idx) => {
     const p = latLonToScreenCoord(ac.lat, ac.lon, st);
     const isSel = idx === selectedAircraftIndex;
+    const hasStca = activeAlerts.conflictingIds.has(ac.id);
+    const hasMsaw = activeAlerts.msawIds.has(ac.id);
 
     // Draw scaled aircraft icon with physical fuselage, wingspan, and heading
     drawAircraftIcon(ctx, p.x, p.y, ac.heading, ac.type, isSel, false, false, st.zoom);
@@ -1385,22 +1429,45 @@ function drawTmaScreen() {
     // Velocity vector leader line
     const rad = (ac.heading - 90) * (Math.PI / 180);
     const leaderLen = (ac.groundSpeed || 50) * 0.18;
-    ctx.strokeStyle = isSel ? "#f59e0b" : "#38bdf8";
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = hasStca ? "#ef4444" : (isSel ? "#f59e0b" : "#38bdf8");
+    ctx.lineWidth = hasStca ? 2.5 : 1.5;
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
     ctx.lineTo(p.x + Math.cos(rad) * leaderLen, p.y + Math.sin(rad) * leaderLen);
     ctx.stroke();
 
+    // STCA / MSAW Flashing halo around aircraft target
+    if (hasStca || hasMsaw) {
+      ctx.save();
+      const flash = (Math.floor(Date.now() / 300) % 2 === 0);
+      ctx.strokeStyle = flash ? "#ef4444" : "#fbbf24";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.font = "10px 'Share Tech Mono'";
-    ctx.fillStyle = isSel ? "#fbbf24" : "#bae6fd";
+    ctx.fillStyle = hasStca ? "#f87171" : (isSel ? "#fbbf24" : "#bae6fd");
     ctx.fillText(`${ac.id} (${ac.type})`, p.x + 14, p.y - 10);
     
     ctx.fillStyle = "#94a3b8";
     const altStr = ac.altitude === 0 ? "GND" : `A${String(Math.round(ac.altitude/100)).padStart(3, '0')}`;
     const spdStr = `${ac.groundSpeed}K`;
     ctx.fillText(`${altStr} ${spdStr}`, p.x + 14, p.y);
-    ctx.fillText(`${ac.state}`, p.x + 14, p.y + 10);
+
+    if (hasStca) {
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "bold 10px 'Share Tech Mono'";
+      ctx.fillText(`⚡ STCA ALERT`, p.x + 14, p.y + 10);
+    } else if (hasMsaw) {
+      ctx.fillStyle = "#f59e0b";
+      ctx.font = "bold 10px 'Share Tech Mono'";
+      ctx.fillText(`⚠ MSAW TERRAIN`, p.x + 14, p.y + 10);
+    } else {
+      ctx.fillText(`${ac.state}`, p.x + 14, p.y + 10);
+    }
   });
 }
 
@@ -2308,6 +2375,94 @@ function executeTakeoffMovement(ac) {
   }
 
   moveNextRollNode();
+}
+
+// Safety Alerts Engine: ICAO Separation, STCA (3 NM / 1000 FT), and MSAW
+let lastAlertChirpTime = 0;
+
+function playAlertChirp() {
+  const now = Date.now();
+  if (now - lastAlertChirpTime < 2500) return; // Rate limit chirp to once every 2.5s
+  lastAlertChirpTime = now;
+  try {
+    const actx = getAudioContext();
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(880, actx.currentTime); // A5 alert tone
+    osc.frequency.setValueAtTime(440, actx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.12, actx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, actx.currentTime + 0.25);
+    osc.connect(gain);
+    gain.connect(actx.destination);
+    osc.start();
+    osc.stop(actx.currentTime + 0.25);
+  } catch (e) {}
+}
+
+function checkAirborneConflicts() {
+  const conflictingIds = new Set();
+  const msawIds = new Set();
+  const stcaPairs = [];
+
+  const airborne = aircraft.filter(a => a.altitude > 150 && !["PARKED", "GATE", "PUSHBACK", "TAXI", "READY_TAXI"].includes(a.state));
+
+  for (let i = 0; i < airborne.length; i++) {
+    const a1 = airborne[i];
+
+    // MSAW Check: Minimum Safe Altitude in WIII TMA is 2000 ft (except on final approach intercept below 10 NM)
+    const distToWiii = calculateDistanceNm(a1.lat, a1.lon, refLat, refLon);
+    if (a1.altitude < 1800 && distToWiii > 7.5 && a1.state !== "FINAL") {
+      msawIds.add(a1.id);
+    }
+
+    // STCA Pairwise Check (Current & 60-second Lookahead Vector)
+    for (let j = i + 1; j < airborne.length; j++) {
+      const a2 = airborne[j];
+
+      // 1. Current Separation
+      const currentDistNm = calculateDistanceNm(a1.lat, a1.lon, a2.lat, a2.lon);
+      const currentAltDiff = Math.abs(a1.altitude - a2.altitude);
+
+      // 2. Predictive 60s Lookahead (Forward vector extrapolation)
+      // Heading: 0 = North, 90 = East, 180 = South, 270 = West
+      const lookaheadSec = 60;
+      const rad1 = (a1.heading * Math.PI) / 180;
+      const rad2 = (a2.heading * Math.PI) / 180;
+      const distNm1 = ((a1.groundSpeed || 200) / 3600) * lookaheadSec;
+      const distNm2 = ((a2.groundSpeed || 200) / 3600) * lookaheadSec;
+
+      // 1 deg lat = 60 NM; 1 deg lon = 60 * cos(lat) NM
+      const predLat1 = a1.lat + (distNm1 * Math.cos(rad1)) / 60;
+      const predLon1 = a1.lon + (distNm1 * Math.sin(rad1)) / (60 * Math.cos((a1.lat * Math.PI) / 180));
+      const predLat2 = a2.lat + (distNm2 * Math.cos(rad2)) / 60;
+      const predLon2 = a2.lon + (distNm2 * Math.sin(rad2)) / (60 * Math.cos((a2.lat * Math.PI) / 180));
+
+      const predDistNm = calculateDistanceNm(predLat1, predLon1, predLat2, predLon2);
+
+      // Standard ICAO TMA Separation: 3.0 NM horizontal & 1,000 ft vertical
+      const isLossOfSeparation = (currentDistNm < 3.0 && currentAltDiff < 1000);
+      const isPredictedConflict = (predDistNm < 3.0 && currentAltDiff < 1000);
+
+      if (isLossOfSeparation || isPredictedConflict) {
+        conflictingIds.add(a1.id);
+        conflictingIds.add(a2.id);
+        stcaPairs.push({
+          ac1: a1,
+          ac2: a2,
+          distNm: currentDistNm,
+          predictedDistNm: predDistNm,
+          isImmediate: isLossOfSeparation
+        });
+      }
+    }
+  }
+
+  if (stcaPairs.length > 0 || msawIds.size > 0) {
+    playAlertChirp();
+  }
+
+  return { conflictingIds, msawIds, stcaPairs };
 }
 
 function calculateDistanceNm(lat1, lon1, lat2, lon2) {
