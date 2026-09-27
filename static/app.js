@@ -1528,14 +1528,24 @@ function setupCanvasInteraction(cElem, screenKey) {
   const st = viewState[screenKey];
   if (!cElem) return;
 
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let hasMovedSignificantly = false;
+
   cElem.addEventListener('mousedown', (e) => {
     st.isDragging = true;
+    hasMovedSignificantly = false;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
     st.startX = e.clientX - st.panX;
     st.startY = e.clientY - st.panY;
   });
 
   window.addEventListener('mousemove', (e) => {
     if (!st.isDragging) return;
+    if (Math.abs(e.clientX - dragStartX) > 4 || Math.abs(e.clientY - dragStartY) > 4) {
+      hasMovedSignificantly = true;
+    }
     st.panX = e.clientX - st.startX;
     st.panY = e.clientY - st.startY;
     renderAllScreens();
@@ -1543,6 +1553,31 @@ function setupCanvasInteraction(cElem, screenKey) {
 
   window.addEventListener('mouseup', () => {
     st.isDragging = false;
+  });
+
+  // Direct Click on Radar Target to Select Aircraft
+  cElem.addEventListener('click', (e) => {
+    if (hasMovedSignificantly) return; // User was panning, ignore click
+    const rect = cElem.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Check hit radius with all active aircraft targets
+    let closestAcIdx = -1;
+    let minDistance = 28; // 28px generous click radius around aircraft silhouette
+
+    aircraft.forEach((ac, idx) => {
+      const p = latLonToScreenCoord(ac.lat, ac.lon, st);
+      const d = Math.hypot(clickX - p.x, clickY - p.y);
+      if (d < minDistance) {
+        minDistance = d;
+        closestAcIdx = idx;
+      }
+    });
+
+    if (closestAcIdx !== -1) {
+      selectAircraft(closestAcIdx);
+    }
   });
 
   cElem.addEventListener('wheel', (e) => {
@@ -1686,18 +1721,19 @@ function renderFlightStrips() {
     const directFix = (ac.fde && ac.fde.directFix) ? ac.fde.directFix : "";
 
     return `
-      <div class="p-2 rounded text-xs border transition ${isSel ? 'bg-amber-950/40 border-amber-500 shadow-md' : 'bg-slate-950 border-emerald-950 hover:bg-slate-900'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
+      <div onclick="selectAircraft(${idx})" class="p-2.5 rounded text-xs border transition cursor-pointer select-none ${isSel ? 'bg-amber-950/50 border-amber-500 shadow-lg ring-1 ring-amber-500/80' : 'bg-slate-950 border-emerald-950/80 hover:bg-slate-900/90 hover:border-emerald-800'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
         <!-- Strip Header: Callsign, Type, Bay Badge, & Ident Button -->
         <div class="flex justify-between items-center">
-          <div onclick="selectAircraft(${idx})" class="cursor-pointer flex items-center gap-1.5 ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
+          <div class="flex items-center gap-1.5 ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
             <span class="text-[9px] px-1 py-0.2 rounded ${bayCat === 'DEP' ? 'bg-blue-900/80 text-blue-200' : (bayCat === 'TWR' ? 'bg-emerald-900/80 text-emerald-200' : 'bg-purple-900/80 text-purple-200')} font-mono">
               ${bayCat}
             </span>
-            <span>${ac.id}</span>
+            <span class="text-sm tracking-wide font-mono">${ac.id}</span>
             <span class="text-[10px] text-slate-400 font-normal">(${ac.type})</span>
+            ${isSel ? '<span class="text-[9px] px-1 bg-amber-500 text-slate-950 font-bold rounded">ACTIVE</span>' : ''}
           </div>
           <div class="flex items-center gap-1">
-            <button onclick="triggerSquawkIdent(${idx})" class="text-[9px] px-1 py-0.5 rounded border transition font-bold font-mono ${isIdent ? 'bg-amber-500 text-slate-950 border-amber-300 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" title="Squawk IDENT Flash">
+            <button onclick="event.stopPropagation(); triggerSquawkIdent(${idx})" class="text-[9px] px-1.5 py-0.5 rounded border transition font-bold font-mono ${isIdent ? 'bg-amber-500 text-slate-950 border-amber-300 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" title="Squawk IDENT Flash">
               ${isIdent ? '★ IDENT' : 'IDENT'}
             </button>
             <span class="text-[10px] ${isPending ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-400'}">
@@ -1707,7 +1743,7 @@ function renderFlightStrips() {
         </div>
 
         <!-- Clearance & Procedure Controls -->
-        <div class="grid grid-cols-2 gap-1 text-[11px] text-slate-300 mt-1.5 bg-slate-900/90 p-1.5 rounded border border-slate-800">
+        <div onclick="event.stopPropagation()" class="grid grid-cols-2 gap-1 text-[11px] text-slate-300 mt-1.5 bg-slate-900/90 p-1.5 rounded border border-slate-800">
           <div>
             <span class="text-[8px] text-slate-500 block uppercase">State</span>
             <b class="text-emerald-400 font-mono text-[10px]">${ac.state}</b>
@@ -1737,7 +1773,7 @@ function renderFlightStrips() {
         </div>
 
         <!-- FDE SCRATCHPAD (Flight Data Entry: CFL Altitude, Speed, Direct Fix) -->
-        <div class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
+        <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
           <div class="flex items-center gap-0.5">
             <span class="text-slate-500 font-mono">CFL:</span>
             <input type="text" placeholder="A040" value="${assignedAlt}" onchange="updateAircraftScratchpad(${idx}, 'assignedAlt', this.value)" class="w-11 bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-emerald-500" title="Cleared Flight Level / Altitude" />
