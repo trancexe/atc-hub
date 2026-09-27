@@ -3320,6 +3320,17 @@ function setControllerRole(newRole) {
   runAiCoControllerCycle();
 }
 
+function getStripBayCategory(state) {
+  if (['GATE', 'PUSHBACK', 'READY_TAXI', 'TAXI', 'HOLD_SHORT_CROSS', 'TAXI_IN', 'PARKED'].includes(state)) {
+    return 'DEP';
+  } else if (['HOLDING', 'LINE_UP', 'LINING_UP', 'TAKEOFF', 'FINAL', 'LANDED'].includes(state)) {
+    return 'TWR';
+  } else if (['AIRBORNE', 'CLIMBING', 'APPROACH', 'HANDOFF', 'HANDED_OFF'].includes(state)) {
+    return 'APP';
+  }
+  return 'DEP';
+}
+
 function updateActiveFrequencyUI() {
   const lbl = document.getElementById('active-freq-label');
   const tag = document.getElementById('active-sector-tag');
@@ -3394,109 +3405,93 @@ function runAiCoControllerCycle() {
   });
 }
 
-// AI Controller Clearance Transmission Helper
-function transmitAiClearance(ac, atcText, readbackText, executeCallback) {
-  if (ac._aiClearanceBusy) return;
-  ac._aiClearanceBusy = true;
+  // AI Controller Clearance Transmission Helper
+  function transmitAiClearance(ac, atcText, readbackText, executeCallback) {
+    const recEl = document.getElementById('recognized-text');
+    if (recEl) recEl.textContent = `[AI ATC]: "${atcText}"`;
 
-  const recEl = document.getElementById('recognized-text');
-  if (recEl) recEl.textContent = `[AI ATC]: "${atcText}"`;
+    // Immediately execute the flight maneuver callback
+    if (executeCallback) executeCallback();
+    renderFlightStrips();
+    updateEasyModePrompter();
+    renderAllScreens();
 
-  // Immediately execute the flight maneuver callback (do not wait for radio TTS finished)
-  if (executeCallback) executeCallback();
-  renderFlightStrips();
-  updateEasyModePrompter();
-  renderAllScreens();
-
-  // Enqueue ATC Controller Voice
-  enqueueRadioTransmission({
-    type: "AI_ATC",
-    callsign: "JAKARTA ATC",
-    text: atcText,
-    onStart: () => {
-      isRadioTransmitting = true;
-      const pttStatus = document.getElementById('ptt-status');
-      if (pttStatus) {
-        pttStatus.innerHTML = `<span class="text-purple-400 font-bold">AI ATC TRANSMITTING:</span> ${atcText}`;
-        pttStatus.className = "text-xs font-radar text-purple-300 mb-1.5 px-3 py-1 bg-purple-950/90 rounded border border-purple-800 transition-all shadow";
-      }
-    },
-    onEnd: () => {
-      isRadioTransmitting = false;
-      const pttStatus = document.getElementById('ptt-status');
-      if (pttStatus) {
-        pttStatus.innerHTML = `Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Mic to Transmit`;
-        pttStatus.className = "text-xs font-radar text-slate-400 mb-1.5 px-3 py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow";
-      }
-
-      // Enqueue Pilot Readback
-      enqueueRadioTransmission({
-        type: "READBACK",
-        callsign: ac.callsign,
-        text: readbackText,
-        onStart: () => {
-          isRadioTransmitting = true;
-        },
-        onEnd: () => {
-          isRadioTransmitting = false;
-          ac._aiClearanceBusy = false;
-          renderFlightStrips();
-          updateEasyModePrompter();
-          renderAllScreens();
-          // Trigger immediate evaluation for the next autonomous action
-          setTimeout(runAiCoControllerCycle, 500);
+    // Enqueue ATC Controller Voice & Readback without blocking future clearances
+    enqueueRadioTransmission({
+      type: "AI_ATC",
+      callsign: "JAKARTA ATC",
+      text: atcText,
+      onStart: () => {
+        isRadioTransmitting = true;
+        const pttStatus = document.getElementById('ptt-status');
+        if (pttStatus) {
+          pttStatus.innerHTML = `<span class="text-purple-400 font-bold">AI ATC TRANSMITTING:</span> ${atcText}`;
+          pttStatus.className = "text-xs font-radar text-purple-300 mb-1.5 px-3 py-1 bg-purple-950/90 rounded border border-purple-800 transition-all shadow";
         }
-      });
-    }
-  });
+      },
+      onEnd: () => {
+        isRadioTransmitting = false;
+        const pttStatus = document.getElementById('ptt-status');
+        if (pttStatus) {
+          pttStatus.innerHTML = `Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Mic to Transmit`;
+          pttStatus.className = "text-xs font-radar text-slate-400 mb-1.5 px-3 py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow";
+        }
 
-  // Safety unlock in case radio transmission gets stalled or aborted
-  setTimeout(() => {
-    ac._aiClearanceBusy = false;
-  }, 10000);
-}
+        // Enqueue Pilot Readback
+        enqueueRadioTransmission({
+          type: "READBACK",
+          callsign: ac.callsign,
+          text: readbackText,
+          onStart: () => {
+            isRadioTransmitting = true;
+          },
+          onEnd: () => {
+            isRadioTransmitting = false;
+            renderFlightStrips();
+            updateEasyModePrompter();
+            renderAllScreens();
+            setTimeout(runAiCoControllerCycle, 200);
+          }
+        });
+      }
+    });
+  }
 
 function handleAiAutonomousDispatch(ac, idx) {
-  if (ac._aiClearanceBusy) return;
-
   const rwyKey = ac.clearedRwy || "25R";
   const sidKey = ac.clearedSid || "DOLTA 1C";
   const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
 
-  // AI GATE: Issue pushback after waiting 2.5 seconds
+  // AI GATE: Execute pushback immediately without timer lag
   if (ac.state === "GATE" && !ac._aiPushIssued) {
     ac._aiPushIssued = true;
-    setTimeout(() => {
-      if (ac.state !== "GATE") return;
-      transmitAiClearance(
-        ac,
-        `${ac.callsign}, push and start approved, facing west.`,
-        `Push and start approved, facing west, ${ac.callsign}.`,
-        () => {
-          ac.state = "PUSHBACK";
-          executePushbackMovement(ac);
-        }
-      );
-    }, 1200);
+    transmitAiClearance(
+      ac,
+      `${ac.callsign}, push and start approved, facing west.`,
+      `Push and start approved, facing west, ${ac.callsign}.`,
+      () => {
+        ac.state = "PUSHBACK";
+        executePushbackMovement(ac);
+      }
+    );
+    return;
   }
 
-  // AI READY_TAXI: Issue taxi clearance to holding point
+  // AI READY_TAXI: Issue taxi clearance to holding point immediately
   if (ac.state === "READY_TAXI" && !ac._aiTaxiIssued) {
     ac._aiTaxiIssued = true;
-    setTimeout(() => {
-      if (ac.state !== "READY_TAXI") return;
-      transmitAiClearance(
-        ac,
-        `${ac.callsign}, taxi to holding point runway ${rwyKey} via ${hpName}.`,
-        `Taxi to holding point runway ${rwyKey} via ${hpName}, ${ac.callsign}.`,
-        () => {
-          ac.state = "TAXI";
-          ac._runwayCrossCleared = false;
-          executeTaxiMovement(ac);
-        }
-      );
-    }, 1200);
+    transmitAiClearance(
+      ac,
+      `${ac.callsign}, taxi to holding point runway ${rwyKey} via ${hpName}.`,
+      `Taxi to holding point runway ${rwyKey} via ${hpName}, ${ac.callsign}.`,
+      () => {
+        ac.state = "TAXI";
+        ac._runwayCrossCleared = false;
+        executeTaxiMovement(ac);
+      }
+    );
+    return;
   }
 
   // AI HOLD_SHORT_CROSS: Verify runway clear, then grant cross clearance
@@ -3504,19 +3499,17 @@ function handleAiAutonomousDispatch(ac, idx) {
     const northRwy = (rwyKey === "07R" || rwyKey === "07L") ? "07L" : "25R";
     if (!isRunwayPhysicallyOccupied(northRwy, ac.id)) {
       ac._aiCrossIssued = true;
-      setTimeout(() => {
-        if (ac.state !== "HOLD_SHORT_CROSS") return;
-        transmitAiClearance(
-          ac,
-          `${ac.callsign}, cross runway ${northRwy} at November cross, report vacated.`,
-          `Cross runway ${northRwy} at November cross, ${ac.callsign}.`,
-          () => {
-            ac.state = "TAXI";
-            ac._runwayCrossCleared = true;
-            executeTaxiMovement(ac);
-          }
-        );
-      }, 1500);
+      transmitAiClearance(
+        ac,
+        `${ac.callsign}, cross runway ${northRwy} at November cross, report vacated.`,
+        `Cross runway ${northRwy} at November cross, ${ac.callsign}.`,
+        () => {
+          ac.state = "TAXI";
+          ac._runwayCrossCleared = true;
+          executeTaxiMovement(ac);
+        }
+      );
+      return;
     }
   }
 
@@ -3524,18 +3517,16 @@ function handleAiAutonomousDispatch(ac, idx) {
   if (ac.state === "HOLDING" && !ac._aiLineupIssued) {
     if (!isRunwayPhysicallyOccupied(rwyKey, ac.id)) {
       ac._aiLineupIssued = true;
-      setTimeout(() => {
-        if (ac.state !== "HOLDING") return;
-        transmitAiClearance(
-          ac,
-          `${ac.callsign}, line up and wait runway ${rwyKey}.`,
-          `Line up and wait runway ${rwyKey}, ${ac.callsign}.`,
-          () => {
-            ac.state = "LINE_UP";
-            executeLineUpMovement(ac);
-          }
-        );
-      }, 1800);
+      transmitAiClearance(
+        ac,
+        `${ac.callsign}, line up and wait runway ${rwyKey}.`,
+        `Line up and wait runway ${rwyKey}, ${ac.callsign}.`,
+        () => {
+          ac.state = "LINE_UP";
+          executeLineUpMovement(ac);
+        }
+      );
+      return;
     }
   }
 
@@ -3543,22 +3534,20 @@ function handleAiAutonomousDispatch(ac, idx) {
   if ((ac.state === "LINE_UP" || ac.state === "LINING_UP") && !ac._aiTakeoffIssued) {
     if (!isRunwayPhysicallyOccupied(rwyKey, ac.id)) {
       ac._aiTakeoffIssued = true;
-      setTimeout(() => {
-        if (!["LINE_UP", "LINING_UP"].includes(ac.state)) return;
-        transmitAiClearance(
-          ac,
-          `${ac.callsign}, wind 250 at 8 knots, runway ${rwyKey} cleared for takeoff.`,
-          `Runway ${rwyKey} cleared for takeoff, ${ac.callsign}.`,
-          () => {
-            if (ac.state === "LINING_UP") {
-              ac.takeoffQueued = true;
-            } else {
-              ac.state = "TAKEOFF";
-              executeTakeoffMovement(ac);
-            }
+      transmitAiClearance(
+        ac,
+        `${ac.callsign}, wind 250 at 8 knots, runway ${rwyKey} cleared for takeoff.`,
+        `Runway ${rwyKey} cleared for takeoff, ${ac.callsign}.`,
+        () => {
+          if (ac.state === "LINING_UP") {
+            ac.takeoffQueued = true;
+          } else {
+            ac.state = "TAKEOFF";
+            executeTakeoffMovement(ac);
           }
-        );
-      }, 2000);
+        }
+      );
+      return;
     }
   }
 
