@@ -3062,21 +3062,31 @@ function executeApproachMovement(ac) {
   const rawFullPath = calculateStarArrivalPath(starCoords, rwyKey);
 
   // In-flight Dynamic Splice:
-  // If aircraft is already airborne, find the next remaining leg forward along current heading/position
-  // instead of jumping backward to the first waypoint (DOLTA)
+  // If aircraft is already airborne, smoothly transition towards the new flight plan:
+  // 1. If switching runway/STAR to an entirely different entry corridor (e.g. from East BUNTO to West KRAKE),
+  //    never jump straight to touchdown! Always join from the initial entry/feeder or earliest intercept fix.
+  // 2. Only splice forward if the aircraft is already aligned on that corridor's sequence.
   let ptIdx = 0;
   if (ac.lat && ac.lon) {
     let closestIdx = 0;
     let minD = Infinity;
-    for (let i = 0; i < rawFullPath.length; i++) {
+    // Only search among enroute/intercept legs (indices 0 to FAF index), never rollout/touchdown legs!
+    const maxSearchIdx = Math.max(1, rawFullPath.findIndex(p => p.desc.includes("FAF") || p.desc.includes("TOUCHDOWN")));
+    for (let i = 0; i <= maxSearchIdx; i++) {
       const d = calculateDistanceNm(ac.lat, ac.lon, rawFullPath[i].lat, rawFullPath[i].lon);
       if (d < minD) {
         minD = d;
         closestIdx = i;
       }
     }
-    // Advance to the upcoming waypoint ahead so aircraft continues flying forward (e.g. ESLAM/TEGID)
-    ptIdx = Math.min(rawFullPath.length - 1, closestIdx + 1);
+
+    // If the closest waypoint is very far (> 18 NM, e.g. switching across opposite side of airport),
+    // navigate from the start of the new route (ptIdx = 0) so the aircraft flies through the approach properly
+    if (minD > 18) {
+      ptIdx = 0;
+    } else {
+      ptIdx = Math.min(rawFullPath.length - 1, closestIdx + 1);
+    }
   }
 
   const fullPath = rawFullPath;
