@@ -2885,6 +2885,18 @@ function calculateStarArrivalPath(starCoords, rwyKey) {
   const ctrl2Lon = fafLon - Math.cos(rad) * 0.035;
 
   const path = [];
+  // 0. Pre-STAR feeder leg (from 15 NM outer radius entering the STAR entry fix)
+  if (starCoords.length > 1) {
+    const wp0 = starCoords[0];
+    const wp1 = starCoords[1];
+    const dLat = wp0[0] - wp1[0];
+    const dLon = wp0[1] - wp1[1];
+    const distDeg = Math.hypot(dLat, dLon) || 0.1;
+    const feederLat = wp0[0] + (dLat / distDeg) * 0.25;
+    const feederLon = wp0[1] + (dLon / distDeg) * 0.25;
+    path.push({ lat: feederLat, lon: feederLon, alt: 12000, spd: 260, desc: `FEEDER INBOUND (15NM OUT)` });
+  }
+
   // 1. STAR enroute waypoints
   for (let i = 0; i < starCoords.length; i++) {
     const alt = Math.max(4000, 10000 - i * 3000);
@@ -2984,22 +2996,36 @@ function spawnInboundArrival() {
   const starObj = allStars.find(s => s.id === defaultStar) || allStars[0];
   const starCoords = starObj ? starObj.coords : [[-6.345, 106.72], [-6.18, 106.88], [-6.1, 106.85]];
 
+  // Calculate pre-entry feeder position: 15 NM before the first STAR fix along the inbound inbound bearing
+  const wp0 = starCoords[0];
+  const wp1 = starCoords.length > 1 ? starCoords[1] : [wp0[0] + 0.1, wp0[1] + 0.1];
+  const feederDLat = wp0[0] - wp1[0];
+  const feederDLon = wp0[1] - wp1[1];
+  const feederDistDeg = Math.hypot(feederDLat, feederDLon) || 0.1;
+  const entryOffsetDeg = 0.25; // ~15 Nautical Miles before waypoint 0
+  const spawnLat = wp0[0] + (feederDLat / feederDistDeg) * entryOffsetDeg;
+  const spawnLon = wp0[1] + (feederDLon / feederDistDeg) * entryOffsetDeg;
+
+  // Initial heading aligned directly towards the first STAR fix
+  const angleRad = Math.atan2(wp0[0] - spawnLat, (wp0[1] - spawnLon) * Math.cos(spawnLat * Math.PI / 180));
+  const initialHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
+
   const newAc = {
     id: chosen.id,
     callsign: chosen.callsign,
     airline: chosen.airline,
     type: chosen.type,
-    lat: starCoords[0][0],
-    lon: starCoords[0][1],
-    heading: 320,
-    altitude: 10000,
-    groundSpeed: 250,
+    lat: spawnLat,
+    lon: spawnLon,
+    heading: initialHdg,
+    altitude: 12000,
+    groundSpeed: 260,
     state: "APPROACH",
     clearedRwy: targetRwy,
     clearedStar: defaultStar,
     squawk: String(Math.floor(1000 + Math.random() * 8000)),
     hasCheckedIn: false,
-    checkInPhrase: `Jakarta Approach, ${chosen.callsign}, inbound via ${defaultStar}, descending through flight level one zero zero.`
+    checkInPhrase: `Jakarta Approach, ${chosen.callsign}, 15 miles before ${starObj.waypoints ? starObj.waypoints[0] : 'entry fix'}, inbound flight level one two zero.`
   };
 
   aircraft.push(newAc);
