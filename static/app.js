@@ -2116,8 +2116,12 @@ function handleRadarVoiceCommand(text, parsedData) {
         executeTakeoffMovement(matchedAc);
       }
     } else if (matchedAc.state === "APPROACH" && (norm.includes("ils") || norm.includes("descend") || norm.includes("approach") || norm.includes("cleared"))) {
+      if (!matchedAc.fde) matchedAc.fde = {};
+      matchedAc.fde.assignedAlt = "A030";
       readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwyKey}, ${matchedAc.callsign}`;
     } else if (matchedAc.state === "FINAL" && (norm.includes("land") || norm.includes("cleared"))) {
+      if (!matchedAc.fde) matchedAc.fde = {};
+      matchedAc.fde.assignedAlt = "GND";
       readback = `Runway ${rwyKey} cleared to land, ${matchedAc.callsign}`;
     } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121") || norm.includes("taxi"))) {
       matchedAc.state = "TAXI_IN";
@@ -2128,10 +2132,14 @@ function handleRadarVoiceCommand(text, parsedData) {
       executeTaxiInMovement(matchedAc);
     } else if (matchedAc.state === "AIRBORNE" && (norm.includes("approach") || norm.includes("radar") || norm.includes("119") || norm.includes("125"))) {
       matchedAc.state = "CLIMBING";
+      if (!matchedAc.fde) matchedAc.fde = {};
+      matchedAc.fde.assignedAlt = "FL140";
       readback = "Contact Jakarta Approach 119 decimal 75, good day, " + matchedAc.callsign;
       executeClimbEnroute(matchedAc);
     } else if ((matchedAc.state === "CLIMBING" || matchedAc.state === "HANDOFF") && (norm.includes("center") || norm.includes("128") || norm.includes("handoff") || norm.includes("good day"))) {
       matchedAc.state = "HANDED_OFF";
+      if (!matchedAc.fde) matchedAc.fde = {};
+      matchedAc.fde.assignedAlt = "FL240";
       readback = "Contact Jakarta Center 128 decimal 5, thank you for service, " + matchedAc.callsign;
       executeHandoffComplete(matchedAc);
     } else {
@@ -3562,6 +3570,8 @@ function handleAiAutonomousDispatch(ac, idx) {
         `Contact Jakarta Approach 119 decimal 75, ${ac.callsign}.`,
         () => {
           ac.state = "CLIMBING";
+          if (!ac.fde) ac.fde = {};
+          ac.fde.assignedAlt = "FL140";
           executeClimbEnroute(ac);
         }
       );
@@ -3579,6 +3589,8 @@ function handleAiAutonomousDispatch(ac, idx) {
         `Contact Jakarta Center 128 decimal 5, ${ac.callsign}.`,
         () => {
           ac.state = "HANDED_OFF";
+          if (!ac.fde) ac.fde = {};
+          ac.fde.assignedAlt = "FL240";
           executeHandoffComplete(ac);
         }
       );
@@ -3595,7 +3607,8 @@ function handleAiAutonomousDispatch(ac, idx) {
         `${ac.callsign}, descend and maintain 3000 feet, cleared ILS runway ${rwyKey}.`,
         `Descend and maintain 3000 feet, cleared ILS runway ${rwyKey}, ${ac.callsign}.`,
         () => {
-          // Approach already descending
+          if (!ac.fde) ac.fde = {};
+          ac.fde.assignedAlt = "A030";
         }
       );
     }, 2500);
@@ -3612,7 +3625,8 @@ function handleAiAutonomousDispatch(ac, idx) {
           `${ac.callsign}, wind 250 at 8 knots, runway ${rwyKey} cleared to land.`,
           `Runway ${rwyKey} cleared to land, ${ac.callsign}.`,
           () => {
-            // Cleared to land
+            if (!ac.fde) ac.fde = {};
+            ac.fde.assignedAlt = "GND";
           }
         );
       }, 1500);
