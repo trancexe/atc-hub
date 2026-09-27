@@ -1824,11 +1824,7 @@ function changeAircraftRunway(idx, newRwy) {
     // DYNAMIC IN-FLIGHT RE-ROUTING FOR ARRIVALS
     // If the aircraft is currently airborne approaching runway, recalculate flight path immediately to new runway!
     if (ac.state === "APPROACH" || ac.state === "FINAL") {
-      if (ac._approachInterval) {
-        clearInterval(ac._approachInterval);
-        ac._approachInterval = null;
-      }
-      console.log(`[ATC REROUTE] Recalculating live approach path for ${ac.id} from ${oldRwy} to ${newRwy}`);
+      console.log(`[ATC REROUTE] Dynamically splicing approach path for ${ac.id} from ${oldRwy} to ${newRwy}`);
       executeApproachMovement(ac);
     }
   } else {
@@ -1866,10 +1862,6 @@ function changeAircraftStar(idx, newStar) {
 
   // If currently approaching, re-route trajectory to new STAR waypoints immediately
   if (ac.state === "APPROACH" || ac.state === "FINAL") {
-    if (ac._approachInterval) {
-      clearInterval(ac._approachInterval);
-      ac._approachInterval = null;
-    }
     executeApproachMovement(ac);
   }
 
@@ -2978,9 +2970,15 @@ function spawnInboundArrival() {
     { id: "CLX742", callsign: "CARGOLUX 742", airline: "Cargolux", type: "747" },
     { id: "LNI712", callsign: "LION INTER 712", airline: "Lion Air", type: "738" }
   ];
-  const chosen = arrivalCallsigns[aircraft.length % arrivalCallsigns.length];
-  const targetRwy = "25R";
-  const defaultStar = "DOLTA 1A";
+  const arrivalEntryStars = [
+    { star: "DOLTA 1A", rwy: "25R", desc: "via DOLTA (South)" },
+    { star: "BUNTO 1A", rwy: "25R", desc: "via BUNTO (East)" },
+    { star: "GOMBA 1A", rwy: "25R", desc: "via GOMBA (North)" },
+    { star: "DOLTA 1A", rwy: "25L", desc: "via DOLTA (South)" }
+  ];
+  const chosenEntry = arrivalEntryStars[aircraft.length % arrivalEntryStars.length];
+  const targetRwy = chosenEntry.rwy;
+  const defaultStar = chosenEntry.star;
 
   const allStars = (airportData && airportData.stars) ? airportData.stars : [];
   const starObj = allStars.find(s => s.id === defaultStar) || allStars[0];
@@ -3018,7 +3016,10 @@ function spawnInboundArrival() {
 }
 
 function executeApproachMovement(ac) {
-  if (ac._approachInterval) return;
+  if (ac._approachInterval) {
+    clearInterval(ac._approachInterval);
+    ac._approachInterval = null;
+  }
 
   const rwyKey = ac.clearedRwy || "25R";
   const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
@@ -3031,8 +3032,27 @@ function executeApproachMovement(ac) {
   const starObj = allStars.find(s => s.id === ac.clearedStar) || allStars[0];
   const starCoords = starObj ? starObj.coords : [[-6.345, 106.72], [-6.18, 106.88], [-6.1, 106.85]];
 
-  const fullPath = calculateStarArrivalPath(starCoords, rwyKey);
+  const rawFullPath = calculateStarArrivalPath(starCoords, rwyKey);
+
+  // In-flight Dynamic Splice:
+  // If aircraft is already airborne, find the next remaining leg forward along current heading/position
+  // instead of jumping backward to the first waypoint (DOLTA)
   let ptIdx = 0;
+  if (ac.lat && ac.lon) {
+    let closestIdx = 0;
+    let minD = Infinity;
+    for (let i = 0; i < rawFullPath.length; i++) {
+      const d = calculateDistanceNm(ac.lat, ac.lon, rawFullPath[i].lat, rawFullPath[i].lon);
+      if (d < minD) {
+        minD = d;
+        closestIdx = i;
+      }
+    }
+    // Advance to the upcoming waypoint ahead so aircraft continues flying forward (e.g. ESLAM/TEGID)
+    ptIdx = Math.min(rawFullPath.length - 1, closestIdx + 1);
+  }
+
+  const fullPath = rawFullPath;
 
   function moveNextArrivalLeg() {
     if (ptIdx >= fullPath.length) {
