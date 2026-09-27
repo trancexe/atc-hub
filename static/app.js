@@ -3300,17 +3300,17 @@ function setControllerRole(newRole) {
     // Clear any pending busy flags so AI starts acting immediately on current aircraft states
     aircraft.forEach(ac => {
       ac._aiClearanceBusy = false;
-      if (ac.state === "GATE") ac._aiPushIssued = false;
-      if (ac.state === "READY_TAXI") ac._aiTaxiIssued = false;
-      if (ac.state === "HOLD_SHORT_CROSS") ac._aiCrossIssued = false;
-      if (ac.state === "HOLDING") ac._aiLineupIssued = false;
-      if (["LINE_UP", "LINING_UP"].includes(ac.state)) ac._aiTakeoffIssued = false;
-      if (ac.state === "AIRBORNE") ac._aiAppHandoffIssued = false;
-      if (ac.state === "CLIMBING") ac._aiCenterHandoffIssued = false;
-      if (ac.state === "APPROACH") ac._aiIlsIssued = false;
-      if (ac.state === "FINAL") ac._aiLandIssued = false;
-      if (ac.state === "LANDED") ac._aiVacateIssued = false;
-      if (ac.state === "TAXI_IN") ac._aiTaxiInStandIssued = false;
+      ac._aiPushIssued = false;
+      ac._aiTaxiIssued = false;
+      ac._aiCrossIssued = false;
+      ac._aiLineupIssued = false;
+      ac._aiTakeoffIssued = false;
+      ac._aiAppHandoffIssued = false;
+      ac._aiCenterHandoffIssued = false;
+      ac._aiIlsIssued = false;
+      ac._aiLandIssued = false;
+      ac._aiVacateIssued = false;
+      ac._aiTaxiInStandIssued = false;
     });
   } else {
     if (prompter) prompter.classList.remove('opacity-40');
@@ -3478,7 +3478,7 @@ function handleAiAutonomousDispatch(ac, idx) {
           executePushbackMovement(ac);
         }
       );
-    }, 2000);
+    }, 1200);
   }
 
   // AI READY_TAXI: Issue taxi clearance to holding point
@@ -3496,7 +3496,7 @@ function handleAiAutonomousDispatch(ac, idx) {
           executeTaxiMovement(ac);
         }
       );
-    }, 2000);
+    }, 1200);
   }
 
   // AI HOLD_SHORT_CROSS: Verify runway clear, then grant cross clearance
