@@ -1809,6 +1809,10 @@ function changeAircraftRunway(idx, newRwy) {
   const oldRwy = ac.clearedRwy;
   ac.clearedRwy = newRwy;
 
+  if (ac.state === "HOLD_SHORT_CROSS") {
+    ac._aiCrossIssued = false;
+  }
+
   const isArrival = ["APPROACH", "FINAL", "LANDED", "TAXI_IN", "PARKED"].includes(ac.state);
   if (isArrival) {
     const allStars = (airportData && airportData.stars) ? airportData.stars : [];
@@ -2336,6 +2340,7 @@ function executeTaxiMovement(ac) {
 
       if (step >= totalSteps) {
         clearInterval(stepInterval);
+        ac._activeInterval = null;
         ac.lat = targetPt.lat;
         ac.lon = targetPt.lon;
         ac.heading = targetHdg;
@@ -2343,6 +2348,7 @@ function executeTaxiMovement(ac) {
         moveNextTaxiNode();
       }
     }, 75);
+    ac._activeInterval = stepInterval;
   }
 
   moveNextTaxiNode();
@@ -2674,6 +2680,11 @@ function checkGroundConflictAhead(currentAc, targetLat, targetLon) {
     if (other.id === currentAc.id) continue;
     // Only check conflict with aircraft that are also on ground
     if (other.altitude > 100) continue;
+
+    // Skip conflict check if the other aircraft is parked at a gate stand and not moving
+    if (other.state === "PARKED" || (other.state === "GATE" && other.groundSpeed === 0)) {
+      continue;
+    }
 
     // Direct distance between both aircraft centers
     const distBetweenMeters = calculateDistanceMeters(currentAc.lat, currentAc.lon, other.lat, other.lon);
@@ -3465,14 +3476,15 @@ function handleAiAutonomousDispatch(ac, idx) {
 
   // AI HOLD_SHORT_CROSS: Verify runway clear, then grant cross clearance
   if (ac.state === "HOLD_SHORT_CROSS" && !ac._aiCrossIssued) {
-    if (!isRunwayPhysicallyOccupied(rwyKey, ac.id)) {
+    const northRwy = (rwyKey === "07R" || rwyKey === "07L") ? "07L" : "25R";
+    if (!isRunwayPhysicallyOccupied(northRwy, ac.id)) {
       ac._aiCrossIssued = true;
       setTimeout(() => {
         if (ac.state !== "HOLD_SHORT_CROSS") return;
         transmitAiClearance(
           ac,
-          `${ac.callsign}, cross runway 25R at November cross, report vacated.`,
-          `Cross runway 25R at November cross, ${ac.callsign}.`,
+          `${ac.callsign}, cross runway ${northRwy} at November cross, report vacated.`,
+          `Cross runway ${northRwy} at November cross, ${ac.callsign}.`,
           () => {
             ac.state = "TAXI";
             ac._runwayCrossCleared = true;
