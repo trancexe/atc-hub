@@ -2988,6 +2988,7 @@ function spawnInboundArrival() {
     { star: "GOMBA 1A", rwy: "25R", desc: "via GOMBA (North)" },
     { star: "DOLTA 1A", rwy: "25L", desc: "via DOLTA (South)" }
   ];
+  const chosen = arrivalCallsigns[aircraft.length % arrivalCallsigns.length];
   const chosenEntry = arrivalEntryStars[aircraft.length % arrivalEntryStars.length];
   const targetRwy = chosenEntry.rwy;
   const defaultStar = chosenEntry.star;
