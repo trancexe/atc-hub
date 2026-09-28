@@ -21,106 +21,105 @@
 <body class="bg-slate-950 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
 
   <!-- Top Navbar -->
-  <header class="bg-slate-900 border-b border-emerald-900/50 px-4 py-2 flex items-center justify-between shrink-0 shadow-lg z-20">
-    <div class="flex items-center space-x-3">
-      <div class="w-8 h-8 rounded bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-radar text-lg font-bold">
+  <header class="bg-slate-900 border-b border-emerald-900/50 px-3 py-1.5 flex items-center justify-between shrink-0 shadow-lg z-20 gap-2">
+    <!-- Brand Title -->
+    <div class="flex items-center space-x-2 shrink-0">
+      <div class="w-7 h-7 rounded bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-radar text-base font-bold">
         <i class="fa-solid fa-plane-arrival"></i>
       </div>
       <div>
-        <h1 class="font-radar text-lg font-bold tracking-wider text-emerald-400 flex items-center gap-2">
-          ATC HUB <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">WIII / CGK</span>
+        <h1 class="font-radar text-base font-bold tracking-wider text-emerald-400 flex items-center gap-1.5 leading-none">
+          ATC HUB <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">WIII</span>
         </h1>
-        <p class="text-[10px] text-slate-400">Jakarta Control Airspace & Voice Phraseology Academy</p>
+        <p class="text-[9px] text-slate-400 hidden xl:block leading-tight">Jakarta Control Airspace</p>
       </div>
     </div>
 
-    <!-- Center Control Bar -->
-    <div class="flex items-center space-x-3">
+    <!-- Center Control Bar (Responsive Flex Wrap & Compact Gaps) -->
+    <div class="flex items-center flex-wrap gap-1.5 md:gap-2 justify-center flex-1 max-w-5xl">
       
-      <!-- CONTROLLER ROLE SELECTOR (MANUAL VS FULL AI SPECTATOR) -->
-      <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 font-radar text-xs">
-        <span class="text-[10px] text-slate-400 px-1.5 uppercase font-bold flex items-center gap-1">
-          <i class="fa-solid fa-headset text-emerald-400"></i> Role:
-        </span>
-        <button id="role-all-btn" onclick="setControllerRole('ALL')" class="px-2 py-0.5 rounded text-[11px] font-semibold transition bg-emerald-700 text-white" title="Manual Control Semua Sektor">
+      <!-- CONTROLLER ROLE SELECTOR -->
+      <div class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-radar text-xs">
+        <span class="text-[9px] text-slate-400 px-1 uppercase font-bold hidden sm:inline">Role:</span>
+        <button id="role-all-btn" onclick="setControllerRole('ALL')" class="px-1.5 py-0.5 rounded text-[10px] font-semibold transition bg-emerald-700 text-white" title="Manual Control Semua Sektor">
           ALL
         </button>
-        <button id="role-gnd-btn" onclick="setControllerRole('GND')" class="px-2 py-0.5 rounded text-[11px] font-semibold transition text-slate-400 hover:text-white" title="Ground Only (Tower & Approach Full AI)">
+        <button id="role-gnd-btn" onclick="setControllerRole('GND')" class="px-1.5 py-0.5 rounded text-[10px] font-semibold transition text-slate-400 hover:text-white" title="Ground Only (Tower & Approach Full AI)">
           GND
         </button>
-        <button id="role-twr-btn" onclick="setControllerRole('TWR')" class="px-2 py-0.5 rounded text-[11px] font-semibold transition text-slate-400 hover:text-white" title="Tower Only (Ground & Approach Full AI)">
+        <button id="role-twr-btn" onclick="setControllerRole('TWR')" class="px-1.5 py-0.5 rounded text-[10px] font-semibold transition text-slate-400 hover:text-white" title="Tower Only (Ground & Approach Full AI)">
           TWR
         </button>
-        <button id="role-app-btn" onclick="setControllerRole('APP')" class="px-2 py-0.5 rounded text-[11px] font-semibold transition text-slate-400 hover:text-white" title="Approach Only (Ground & Tower Full AI)">
+        <button id="role-app-btn" onclick="setControllerRole('APP')" class="px-1.5 py-0.5 rounded text-[10px] font-semibold transition text-slate-400 hover:text-white" title="Approach Only (Ground & Tower Full AI)">
           APP
         </button>
-        <button id="role-spectator-btn" onclick="setControllerRole('SPECTATOR')" class="px-2 py-0.5 rounded text-[11px] font-bold transition text-purple-300 hover:text-white hover:bg-purple-900/60" title="Full AI Spectator Mode (Seluruh Sektor Beroperasi Otonom)">
-          <i class="fa-solid fa-eye text-purple-400 mr-0.5"></i> AI SPECTATOR
+        <button id="role-spectator-btn" onclick="setControllerRole('SPECTATOR')" class="px-1.5 py-0.5 rounded text-[10px] font-bold transition text-purple-300 hover:text-white hover:bg-purple-900/60" title="Full AI Spectator Mode">
+          <i class="fa-solid fa-eye text-purple-400 mr-0.5"></i> <span class="hidden sm:inline">SPECTATOR</span><span class="sm:hidden">AI</span>
         </button>
       </div>
 
-      <!-- ACTIVE FREQUENCY PANEL -->
-      <div id="freq-panel" class="hidden md:flex items-center bg-slate-950 px-2.5 py-1 rounded-lg border border-emerald-950 font-radar text-xs">
-        <span class="text-[9px] text-slate-500 mr-1.5 uppercase font-bold">VHF FREQ:</span>
-        <span id="active-freq-label" class="text-amber-300 font-mono font-bold text-xs tracking-wider">121.600 MHz</span>
-        <span id="active-sector-tag" class="ml-1.5 text-[9px] px-1 py-0.2 rounded bg-blue-900/80 text-blue-200 font-mono">GND</span>
+      <!-- ACTIVE FREQUENCY PANEL (Hidden on narrow screens) -->
+      <div id="freq-panel" class="hidden lg:flex items-center bg-slate-950 px-2 py-0.5 rounded border border-emerald-950 font-radar text-xs">
+        <span class="text-[9px] text-slate-500 mr-1 uppercase font-bold">VHF:</span>
+        <span id="active-freq-label" class="text-amber-300 font-mono font-bold text-[11px] tracking-wider">121.600 MHz</span>
+        <span id="active-sector-tag" class="ml-1 text-[9px] px-1 py-0.2 rounded bg-blue-900/80 text-blue-200 font-mono">GND</span>
       </div>
 
       <!-- WEATHER PRESET SELECTOR & ATIS -->
-      <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 font-radar text-xs">
-        <span class="text-[10px] text-sky-400 px-1.5 uppercase font-bold flex items-center gap-1">
-          <i class="fa-solid fa-cloud-sun-rain text-sky-400"></i> WX:
+      <div class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-radar text-xs">
+        <span class="text-[9px] text-sky-400 px-1 uppercase font-bold hidden sm:inline">
+          <i class="fa-solid fa-cloud-sun-rain"></i> WX:
         </span>
-        <select id="weather-preset-select" onchange="setWeatherPreset(this.value)" class="bg-slate-900 border border-slate-700 text-sky-300 text-[11px] font-semibold rounded px-1.5 py-0.5 focus:outline-none focus:border-sky-500">
-          <option value="CAVOK">☀️ CAVOK (250/08KT)</option>
-          <option value="TAILWIND_SHIFT">🔄 WIND SHIFT (070/14KT)</option>
-          <option value="TROPICAL_STORM">⛈️ STORM (280/20G30KT)</option>
-          <option value="LOW_VISIBILITY">🌫️ LVP / CAT III (040/03KT)</option>
+        <select id="weather-preset-select" onchange="setWeatherPreset(this.value)" class="bg-slate-900 border border-slate-700 text-sky-300 text-[10px] font-semibold rounded px-1 py-0.5 focus:outline-none focus:border-sky-500 max-w-[120px] sm:max-w-none">
+          <option value="CAVOK">☀️ CAVOK (250/08)</option>
+          <option value="TAILWIND_SHIFT">🔄 SHIFT (070/14)</option>
+          <option value="TROPICAL_STORM">⛈️ STORM (280/20G)</option>
+          <option value="LOW_VISIBILITY">🌫️ LVP (040/03)</option>
         </select>
-        <button id="btn-listen-atis" onclick="playAtisBroadcast()" class="ml-1 px-2 py-0.5 rounded bg-sky-950/80 border border-sky-600/70 text-sky-300 hover:text-white hover:bg-sky-900 text-[11px] font-bold flex items-center gap-1" title="Dengarkan ATIS Info (128.000 MHz)">
+        <button id="btn-listen-atis" onclick="playAtisBroadcast()" class="ml-1 px-1.5 py-0.5 rounded bg-sky-950/80 border border-sky-600/70 text-sky-300 hover:text-white hover:bg-sky-900 text-[10px] font-bold flex items-center gap-1" title="Dengarkan ATIS Info (128.000 MHz)">
           <i class="fa-solid fa-tower-broadcast text-sky-400"></i> ATIS
         </button>
       </div>
 
       <!-- EASY MODE TOGGLE -->
-      <button id="easy-mode-btn" onclick="toggleEasyMode()" class="px-3 py-1.5 rounded-lg border font-radar text-xs font-bold flex items-center gap-1.5 transition bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-lg">
-        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
-        <span>EASY MODE: <span id="easy-mode-label">ON</span></span>
+      <button id="easy-mode-btn" onclick="toggleEasyMode()" class="px-2 py-1 rounded border font-radar text-[11px] font-bold flex items-center gap-1 transition bg-amber-500/20 text-amber-300 border-amber-500/60 shadow">
+        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-[10px]"></i>
+        <span>EASY: <span id="easy-mode-label">ON</span></span>
       </button>
 
       <!-- Layout Switcher -->
-      <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 font-radar text-xs">
-        <button id="view-split-btn" onclick="setLayout('split')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition bg-emerald-600 text-white">
-          <i class="fa-solid fa-columns"></i> Split
+      <div class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-radar text-xs">
+        <button id="view-split-btn" onclick="setLayout('split')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition bg-emerald-600 text-white" title="Split Radar Screen">
+          <i class="fa-solid fa-columns text-[10px]"></i> <span class="hidden md:inline">Split</span>
         </button>
-        <button id="view-ground-btn" onclick="setLayout('ground')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white">
-          <i class="fa-solid fa-road"></i> Ground
+        <button id="view-ground-btn" onclick="setLayout('ground')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white" title="Ground Radar Only">
+          <i class="fa-solid fa-road text-[10px]"></i> <span class="hidden md:inline">GND</span>
         </button>
-        <button id="view-tma-btn" onclick="setLayout('tma')" class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white">
-          <i class="fa-solid fa-satellite-dish"></i> TMA
+        <button id="view-tma-btn" onclick="setLayout('tma')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white" title="TMA Radar Only">
+          <i class="fa-solid fa-satellite-dish text-[10px]"></i> <span class="hidden md:inline">TMA</span>
         </button>
       </div>
 
-      <!-- Tab Switcher -->
-      <div class="flex items-center space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-        <button id="tab-radar-btn" onclick="switchTab('radar')" class="px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white">
-          <i class="fa-solid fa-crosshairs"></i> Radar Ops
+      <!-- Tab Switcher (Radar vs Academy) -->
+      <div class="flex items-center space-x-0.5 bg-slate-950 p-0.5 rounded border border-slate-800">
+        <button id="tab-radar-btn" onclick="switchTab('radar')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition bg-emerald-600 text-white">
+          <i class="fa-solid fa-crosshairs text-[10px]"></i> Radar
         </button>
-        <button id="tab-academy-btn" onclick="switchTab('academy')" class="px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
-          <i class="fa-solid fa-graduation-cap"></i> Academy
+        <button id="tab-academy-btn" onclick="switchTab('academy')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white">
+          <i class="fa-solid fa-graduation-cap text-[10px]"></i> <span class="hidden sm:inline">Academy</span>
         </button>
       </div>
     </div>
 
-    <!-- Clock & Whisper Status -->
-    <div class="flex items-center space-x-4 font-radar text-xs">
+    <!-- Clock & Whisper Status (Compact Right Side) -->
+    <div class="flex items-center space-x-2 shrink-0 font-radar text-xs">
       <div class="text-right">
-        <div class="text-emerald-400 font-bold" id="utc-clock">00:00:00 UTC</div>
-        <div class="text-[10px] text-slate-400" id="metar-bar">QNH 1011 | WIND 250/08KT</div>
+        <div class="text-emerald-400 font-bold text-[11px] leading-tight" id="utc-clock">00:00:00 UTC</div>
+        <div class="text-[9px] text-slate-400 hidden sm:block leading-tight font-mono" id="metar-bar">QNH 1011 | 250/08KT</div>
       </div>
-      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-950 border border-emerald-900/60 text-emerald-400">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-[11px]" id="whisper-status">WHISPER READY</span>
+      <div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950 border border-emerald-900/60 text-emerald-400" title="Whisper Speech Recognition Ready">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[10px] hidden md:inline" id="whisper-status">READY</span>
       </div>
     </div>
   </header>
