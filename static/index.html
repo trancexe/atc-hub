@@ -234,6 +234,29 @@
             <i class="fa-solid fa-paper-plane"></i> KIRIM ATC
           </button>
         </div>
+
+        <!-- QUICK TACTICAL ACTION CHIPS (Milestone 5 Easy Mode Shortcuts) -->
+        <div id="prompt-tactical-chips" class="mt-2 pt-1.5 border-t border-slate-800/80 flex items-center gap-1.5 flex-wrap text-[10px]">
+          <span class="text-slate-500 uppercase font-bold text-[9px] mr-0.5">Taktis:</span>
+          <button onclick="quickTacticalVector(250)" class="px-2 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-compass"></i> HDG 250°
+          </button>
+          <button onclick="quickTacticalVector(180)" class="px-2 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-compass"></i> HDG 180°
+          </button>
+          <button onclick="quickTacticalSpeed(180)" class="px-2 py-0.5 rounded bg-sky-950/70 hover:bg-sky-900 border border-sky-600/60 text-sky-300 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-gauge"></i> SPD 180K
+          </button>
+          <button onclick="quickTacticalSpeed(210)" class="px-2 py-0.5 rounded bg-sky-950/70 hover:bg-sky-900 border border-sky-600/60 text-sky-300 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-gauge"></i> SPD 210K
+          </button>
+          <button onclick="quickTacticalGoAround()" class="px-2 py-0.5 rounded bg-red-950/80 hover:bg-red-900 border border-red-600/70 text-red-300 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-plane-circle-exclamation"></i> GO-AROUND
+          </button>
+          <button onclick="quickTacticalResume()" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[9px]">
+            Resume Own Nav
+          </button>
+        </div>
       </div>
 
       <!-- Bottom Push-to-Talk Bar -->

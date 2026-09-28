@@ -511,6 +511,46 @@ function updateEasyModePrompter() {
   document.getElementById('prompt-ac-badge').textContent = `${ac.id} (${ac.state}) • RWY ${ac.clearedRwy || '25R'}`;
   document.getElementById('prompt-context').textContent = `Skenario: ${info.context}`;
   document.getElementById('prompt-speech-text').textContent = `"${info.speech}"`;
+
+  // Show/Hide Tactical Quick Action Chips (only relevant when airborne)
+  const chips = document.getElementById('prompt-tactical-chips');
+  if (chips) {
+    if (ac.altitude > 100 && !["PARKED", "GATE", "PUSHBACK", "TAXI", "READY_TAXI"].includes(ac.state)) {
+      chips.classList.remove('hidden');
+    } else {
+      chips.classList.add('hidden');
+    }
+  }
+}
+
+// Easy Mode Quick Tactical Action Helpers
+function quickTacticalVector(hdg) {
+  const ac = aircraft[selectedAircraftIndex] || aircraft[0];
+  if (!ac) return;
+  const idx = aircraft.findIndex(a => a.id === ac.id);
+  issueRadarVector(idx, String(hdg));
+}
+
+function quickTacticalSpeed(spd) {
+  const ac = aircraft[selectedAircraftIndex] || aircraft[0];
+  if (!ac) return;
+  const idx = aircraft.findIndex(a => a.id === ac.id);
+  issueSpeedControl(idx, String(spd));
+}
+
+function quickTacticalGoAround() {
+  const ac = aircraft[selectedAircraftIndex] || aircraft[0];
+  if (!ac) return;
+  const idx = aircraft.findIndex(a => a.id === ac.id);
+  issueGoAround(idx);
+}
+
+function quickTacticalResume() {
+  const ac = aircraft[selectedAircraftIndex] || aircraft[0];
+  if (!ac) return;
+  const idx = aircraft.findIndex(a => a.id === ac.id);
+  issueRadarVector(idx, "RESUME");
+  issueSpeedControl(idx, "RESUME");
 }
 
 function toggleEasyMode() {
