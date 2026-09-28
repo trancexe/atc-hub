@@ -1331,6 +1331,9 @@ function drawTmaScreen() {
   // Milestone 4: Weather Radar Layer (Precipitation reflectivity overlay)
   drawWeatherRadarOverlay(ctx, st);
 
+  // Milestone 5: Tactical Vectors & Separation Ruler Tool
+  drawTacticalOverlays(ctx, st);
+
   if (!airportData) return;
 
   // Runways simplified
@@ -1685,6 +1688,28 @@ function setupCanvasInteraction(cElem, screenKey) {
     });
 
     if (closestAcIdx !== -1) {
+      if (rulerToolActive) {
+        if (!rulerSelectedAc1) {
+          rulerSelectedAc1 = aircraft[closestAcIdx];
+          const pttStatus = document.getElementById('ptt-status');
+          if (pttStatus) {
+            pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> Target 1 (${rulerSelectedAc1.callsign}) dipilih! Sekarang klik target kedua...</span>`;
+          }
+        } else if (!rulerSelectedAc2 && aircraft[closestAcIdx].id !== rulerSelectedAc1.id) {
+          rulerSelectedAc2 = aircraft[closestAcIdx];
+          const distNm = calculateDistanceNm(rulerSelectedAc1.lat, rulerSelectedAc1.lon, rulerSelectedAc2.lat, rulerSelectedAc2.lon);
+          const pttStatus = document.getElementById('ptt-status');
+          if (pttStatus) {
+            pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> SEPARASI: ${distNm.toFixed(2)} NM (${rulerSelectedAc1.callsign} ↔ ${rulerSelectedAc2.callsign})</span>`;
+          }
+        } else {
+          // Reset anchor to this clicked aircraft
+          rulerSelectedAc1 = aircraft[closestAcIdx];
+          rulerSelectedAc2 = null;
+        }
+        renderAllScreens();
+        return;
+      }
       selectAircraft(closestAcIdx);
     }
   });
@@ -1880,6 +1905,43 @@ function renderFlightStrips() {
             `}
           </div>
         </div>
+
+        <!-- TACTICAL RESOLUTION CONTROLS (Milestone 5: Vector, Altitude Step, Speed, Go-Around) -->
+        ${(ac.altitude > 100 && !["PARKED", "GATE", "PUSHBACK", "TAXI", "READY_TAXI"].includes(ac.state)) ? `
+          <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
+            <!-- Tactical Vector Heading -->
+            <div class="flex items-center gap-0.5">
+              <span class="text-amber-400 font-mono font-bold">HDG:</span>
+              <select onchange="issueRadarVector(${idx}, this.value)" class="bg-slate-950 border border-slate-800 text-amber-300 font-mono text-[9px] rounded px-0.5 py-0 focus:outline-none focus:border-amber-500">
+                <option value="" disabled selected>Turn...</option>
+                <option value="090">090° (E)</option>
+                <option value="180">180° (S)</option>
+                <option value="250">250° (ILS)</option>
+                <option value="270">270° (W)</option>
+                <option value="360">360° (N)</option>
+                <option value="RESUME">Resume</option>
+              </select>
+            </div>
+            <!-- Tactical Speed Control -->
+            <div class="flex items-center gap-0.5">
+              <span class="text-sky-400 font-mono font-bold">SPD:</span>
+              <select onchange="issueSpeedControl(${idx}, this.value)" class="bg-slate-950 border border-slate-800 text-sky-300 font-mono text-[9px] rounded px-0.5 py-0 focus:outline-none focus:border-sky-500">
+                <option value="" disabled selected>Speed...</option>
+                <option value="160">160K</option>
+                <option value="180">180K</option>
+                <option value="210">210K</option>
+                <option value="250">250K</option>
+                <option value="RESUME">Resume</option>
+              </select>
+            </div>
+            <!-- Go-Around (Missed Approach Button) -->
+            ${ac.state === "FINAL" ? `
+              <button onclick="issueGoAround(${idx})" class="px-1.5 py-0 rounded bg-red-950/80 border border-red-600/80 text-red-300 font-bold hover:bg-red-900 text-[9px]" title="Initiate Missed Approach & Go-Around">
+                GO-AROUND
+              </button>
+            ` : ''}
+          </div>
+        ` : ''}
 
         <!-- FDE SCRATCHPAD (Flight Data Entry: CFL Altitude, Speed, Direct Fix) -->
         <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
@@ -2214,6 +2276,25 @@ function handleRadarVoiceCommand(text, parsedData) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "GND";
       readback = `Runway ${rwyKey} cleared to land, ${matchedAc.callsign}`;
+    } else if (norm.includes("go around") || norm.includes("missed approach") || norm.includes("go round") || intent === "GO_AROUND") {
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = issueGoAround(idx);
+    } else if ((norm.includes("turn") || norm.includes("heading") || intent === "VECTOR") && matchedAc.altitude > 100) {
+      const hdgMatch = norm.match(/\b(?:heading|turn\s*(?:left|right)?(?:\s*heading)?)\s*(\d{2,3})\b/);
+      const targetHdg = hdgMatch ? parseInt(hdgMatch[1], 10) : 180;
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = issueRadarVector(idx, targetHdg);
+    } else if ((norm.includes("speed") || norm.includes("reduce") || norm.includes("maintain") || intent === "SPEED") && matchedAc.altitude > 100) {
+      const spdMatch = norm.match(/\b(?:speed|to|reduce|maintain)\s*(\d{2,3})\s*(?:knots|kts)?\b/);
+      const targetSpd = spdMatch ? parseInt(spdMatch[1], 10) : 210;
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = issueSpeedControl(idx, targetSpd);
+    } else if ((norm.includes("climb") || norm.includes("descend")) && matchedAc.altitude > 100) {
+      const flMatch = norm.match(/\b(?:flight\s*level|fl)\s*(\d{2,3})\b/);
+      const altMatch = norm.match(/\b(\d{1,2})\s*(?:thousand)?\s*(?:feet|ft)?\b/);
+      const targetAlt = flMatch ? `FL${flMatch[1]}` : (altMatch ? `A${String(parseInt(altMatch[1], 10) * 10).padStart(3, '0')}` : "A050");
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = issueAltitudeStep(idx, targetAlt);
     } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121") || norm.includes("taxi"))) {
       matchedAc.state = "TAXI_IN";
       readback = `Vacating runway via November 4, contacting Ground 121 decimal 6, ${matchedAc.callsign}`;
@@ -2773,6 +2854,254 @@ function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
   return calculateDistanceNm(lat1, lon1, lat2, lon2) * 1852.0;
 }
 
+// ========================================================
+// MILESTONE 5: TACTICAL CONFLICT RESOLUTION & RULER ENGINE
+// ========================================================
+
+let rulerToolActive = false;
+let rulerSelectedAc1 = null;
+let rulerSelectedAc2 = null;
+
+function toggleRulerTool() {
+  rulerToolActive = !rulerToolActive;
+  const btn = document.getElementById('btn-toggle-ruler');
+  if (rulerToolActive) {
+    rulerSelectedAc1 = null;
+    rulerSelectedAc2 = null;
+    if (btn) {
+      btn.className = "px-1.5 py-0.5 rounded bg-emerald-700 border border-emerald-400 text-white font-bold mr-1 text-[10px]";
+      btn.innerHTML = `<i class="fa-solid fa-ruler-combined"></i> RULER: ON`;
+    }
+    const pttStatus = document.getElementById('ptt-status');
+    if (pttStatus) {
+      pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> TACTICAL RULER: Klik pesawat pertama, lalu klik pesawat kedua di radar untuk ukur separasi!</span>`;
+    }
+  } else {
+    rulerSelectedAc1 = null;
+    rulerSelectedAc2 = null;
+    if (btn) {
+      btn.className = "px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-bold hover:bg-slate-700 mr-1 text-[10px]";
+      btn.innerHTML = `<i class="fa-solid fa-ruler-combined"></i> RULER`;
+    }
+    renderAllScreens();
+  }
+}
+
+// Tactical Vectoring: Immediate heading assignment with radar projection line
+function issueRadarVector(idx, targetHdgStr) {
+  const ac = aircraft[idx];
+  if (!ac) return "";
+
+  if (targetHdgStr === "RESUME") {
+    ac._tacticalVector = null;
+    if (ac.fde) ac.fde.directFix = null;
+    console.log(`[TACTICAL VECTOR] ${ac.id} resuming standard navigation.`);
+    const rb = `Resuming own navigation, ${ac.callsign}`;
+    renderFlightStrips();
+    renderAllScreens();
+    speakPilotReadback(rb);
+    return rb;
+  }
+
+  const targetHdg = parseInt(targetHdgStr, 10);
+  if (isNaN(targetHdg)) return "";
+
+  ac._tacticalVector = targetHdg;
+  ac.heading = targetHdg; // Immediate heading turn
+  if (!ac.fde) ac.fde = {};
+  ac.fde.directFix = `H${String(targetHdg).padStart(3, '0')}`;
+
+  const hdgPhonetic = String(targetHdg).padStart(3, '0').split('').map(d => ["zero","one","two","three","four","five","six","seven","eight","nine"][parseInt(d)]).join(' ');
+  const readback = `Fly heading ${hdgPhonetic}, ${ac.callsign}`;
+
+  console.log(`[TACTICAL VECTOR] ${ac.id} assigned heading ${targetHdg}°`);
+  renderFlightStrips();
+  renderAllScreens();
+  speakPilotReadback(readback);
+  return readback;
+}
+
+// Tactical Speed Control: Immediate airspeed adjustment
+function issueSpeedControl(idx, targetSpdStr) {
+  const ac = aircraft[idx];
+  if (!ac) return "";
+
+  if (targetSpdStr === "RESUME") {
+    ac._assignedSpeed = null;
+    if (ac.fde) ac.fde.assignedSpd = null;
+    const rb = `No speed restriction, resuming normal speed, ${ac.callsign}`;
+    renderFlightStrips();
+    renderAllScreens();
+    speakPilotReadback(rb);
+    return rb;
+  }
+
+  const targetSpd = parseInt(targetSpdStr, 10);
+  if (isNaN(targetSpd)) return "";
+
+  ac._assignedSpeed = targetSpd;
+  ac.groundSpeed = targetSpd;
+  if (!ac.fde) ac.fde = {};
+  ac.fde.assignedSpd = `${targetSpd}K`;
+
+  const spdPhonetic = String(targetSpd).split('').map(d => ["zero","one","two","three","four","five","six","seven","eight","nine"][parseInt(d)]).join(' ');
+  const readback = `Maintain speed ${spdPhonetic} knots, ${ac.callsign}`;
+
+  console.log(`[TACTICAL SPEED] ${ac.id} assigned speed ${targetSpd} kts`);
+  renderFlightStrips();
+  renderAllScreens();
+  speakPilotReadback(readback);
+  return readback;
+}
+
+// Tactical Altitude Step: Immediate altitude step instruction
+function issueAltitudeStep(idx, targetAltStr) {
+  const ac = aircraft[idx];
+  if (!ac) return "";
+
+  let targetFeet = 3000;
+  if (targetAltStr.startsWith("FL")) {
+    targetFeet = parseInt(targetAltStr.replace("FL", ""), 10) * 100;
+  } else if (targetAltStr.startsWith("A")) {
+    targetFeet = parseInt(targetAltStr.replace("A", ""), 10) * 100;
+  }
+
+  ac.altitude = targetFeet;
+  if (!ac.fde) ac.fde = {};
+  ac.fde.assignedAlt = targetAltStr;
+
+  const isClimb = targetFeet > ac.altitude;
+  const verb = isClimb ? "Climb and maintain" : "Descend and maintain";
+  const readback = `${verb} ${targetAltStr}, ${ac.callsign}`;
+
+  console.log(`[TACTICAL ALT] ${ac.id} assigned altitude ${targetAltStr} (${targetFeet} ft)`);
+  renderFlightStrips();
+  renderAllScreens();
+  speakPilotReadback(readback);
+  return readback;
+}
+
+// Go-Around / Missed Approach Procedure: Abort final, climb straight to 3,000 ft, and enter re-sequencing holding
+function issueGoAround(idx) {
+  const ac = aircraft[idx];
+  if (!ac) return "";
+
+  if (ac._approachInterval) {
+    clearInterval(ac._approachInterval);
+    ac._approachInterval = null;
+  }
+
+  ac.state = "APPROACH";
+  ac.altitude = 3000;
+  ac.groundSpeed = 220;
+  if (!ac.fde) ac.fde = {};
+  ac.fde.assignedAlt = "A030";
+  ac.fde.directFix = "MISSED";
+
+  // Heading straight along runway heading for 2 NM, then re-sequence
+  const rwyKey = ac.clearedRwy || "25R";
+  const mech = (typeof airportData !== 'undefined' && airportData && airportData.runway_mechanisms) ? airportData.runway_mechanisms[rwyKey] : null;
+  const rwyHdg = mech ? mech.heading : 250;
+  ac.heading = rwyHdg;
+
+  const readback = `Going around, climb to three thousand feet on runway heading, ${ac.callsign}`;
+  console.log(`[GO-AROUND] ${ac.id} initiated missed approach procedure on runway ${rwyKey}!`);
+
+  const pttStatus = document.getElementById('ptt-status');
+  if (pttStatus) {
+    pttStatus.innerHTML = `<span class="text-red-400 font-bold animate-pulse"><i class="fa-solid fa-plane-circle-exclamation"></i> MISSED APPROACH: ${ac.callsign} GO-AROUND! CLIMBING 3000 FT.</span>`;
+  }
+
+  // Resume approach re-entry after climbing past runway
+  setTimeout(() => {
+    if (typeof executeApproachMovement === 'function') {
+      executeApproachMovement(ac);
+    }
+  }, 2500);
+
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+  speakPilotReadback(readback);
+  return readback;
+}
+
+// Draw Tactical Vectors & Ruler Tool Overlay on TMA Screen
+function drawTacticalOverlays(ctx, st) {
+  // 1. Draw Radar Tactical Vector Lines (Dashed amber trajectory forward along heading)
+  aircraft.forEach((ac) => {
+    if (ac._tacticalVector !== undefined && ac._tacticalVector !== null && ac.altitude > 100) {
+      const p = latLonToScreenCoord(ac.lat, ac.lon, st);
+      const rad = (ac._tacticalVector - 90) * (Math.PI / 180);
+      const vectorLenNm = 12; // 12 NM lookahead vector
+      const vectorLenPx = (vectorLenNm / 60) * BASE_SCALE * st.zoom;
+
+      ctx.save();
+      ctx.strokeStyle = "#fbbf24";
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + Math.cos(rad) * vectorLenPx, p.y + Math.sin(rad) * vectorLenPx);
+      ctx.stroke();
+
+      // Heading label at end of vector
+      ctx.font = "bold 9px 'Share Tech Mono'";
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillText(`HDG ${String(ac._tacticalVector).padStart(3, '0')}°`, p.x + Math.cos(rad) * vectorLenPx + 5, p.y + Math.sin(rad) * vectorLenPx - 3);
+      ctx.restore();
+    }
+  });
+
+  // 2. Tactical Separation Ruler (Visual Distance & Closing Rate Tool)
+  if (rulerSelectedAc1) {
+    const p1 = latLonToScreenCoord(rulerSelectedAc1.lat, rulerSelectedAc1.lon, st);
+
+    ctx.save();
+    ctx.strokeStyle = "#10b981";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(p1.x, p1.y, 22, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (rulerSelectedAc2) {
+      const p2 = latLonToScreenCoord(rulerSelectedAc2.lat, rulerSelectedAc2.lon, st);
+      ctx.beginPath();
+      ctx.arc(p2.x, p2.y, 22, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Connecting line between aircraft
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      // Calculate exact distance & altitude separation
+      const distNm = calculateDistanceNm(rulerSelectedAc1.lat, rulerSelectedAc1.lon, rulerSelectedAc2.lat, rulerSelectedAc2.lon);
+      const altDiffFt = Math.abs(rulerSelectedAc1.altitude - rulerSelectedAc2.altitude);
+
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+
+      // Distance Badge in Middle
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+      ctx.strokeStyle = distNm < 3.0 ? "#ef4444" : "#10b981";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(midX - 55, midY - 14, 110, 28);
+      ctx.strokeRect(midX - 55, midY - 14, 110, 28);
+
+      ctx.font = "bold 10px 'Share Tech Mono'";
+      ctx.fillStyle = distNm < 3.0 ? "#f87171" : "#34d399";
+      ctx.textAlign = "center";
+      ctx.fillText(`${distNm.toFixed(2)} NM | Δ${altDiffFt} FT`, midX, midY + 4);
+      ctx.textAlign = "start";
+    }
+    ctx.restore();
+  }
+}
+
 // ==========================================
 // MILESTONE 4: DYNAMIC WEATHER & ATIS ENGINE
 // ==========================================
@@ -3214,8 +3543,15 @@ function executeClimbEnroute(ac) {
       ac.altitude = Math.round(startAlt + (targetAlt - startAlt) * prog);
       ac.groundSpeed = Math.round(startSpd + (targetSpd - startSpd) * prog);
 
-      const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
-      ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
+      if (ac._tacticalVector !== undefined && ac._tacticalVector !== null) {
+        ac.heading = ac._tacticalVector;
+      } else {
+        const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
+        ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
+      }
+      if (ac._assignedSpeed !== undefined && ac._assignedSpeed !== null) {
+        ac.groundSpeed = ac._assignedSpeed;
+      }
 
       renderAllScreens();
 
@@ -3534,8 +3870,15 @@ function executeApproachMovement(ac) {
       ac.altitude = Math.round(startAlt + (targetAlt - startAlt) * prog);
       ac.groundSpeed = Math.round(startSpd + (targetSpd - startSpd) * prog);
 
-      const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
-      ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
+      if (ac._tacticalVector !== undefined && ac._tacticalVector !== null) {
+        ac.heading = ac._tacticalVector;
+      } else {
+        const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
+        ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
+      }
+      if (ac._assignedSpeed !== undefined && ac._assignedSpeed !== null) {
+        ac.groundSpeed = ac._assignedSpeed;
+      }
 
       renderAllScreens();
 

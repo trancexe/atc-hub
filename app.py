@@ -387,6 +387,12 @@ def sanitize_and_normalize(raw_text: str) -> dict:
     intent = "UNKNOWN"
     if any(k in normalized_str for k in ["push", "pushback", "start"]):
         intent = "PUSHBACK"
+    elif "go around" in normalized_str or "missed approach" in normalized_str or "go round" in normalized_str:
+        intent = "GO_AROUND"
+    elif "heading" in normalized_str or "turn left" in normalized_str or "turn right" in normalized_str or "fly heading" in normalized_str:
+        intent = "VECTOR"
+    elif "speed" in normalized_str or "knots" in normalized_str or "reduce speed" in normalized_str or "maintain speed" in normalized_str:
+        intent = "SPEED"
     elif "taxi" in normalized_str or "holding point" in normalized_str:
         intent = "TAXI"
     elif "line up" in normalized_str or "wait" in normalized_str:

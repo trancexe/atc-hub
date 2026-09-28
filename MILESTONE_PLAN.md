@@ -86,13 +86,15 @@
 
 **Tujuan:** Instruksi ATC aktif untuk mengelola separasi dan sequencing secara manual.
 
-- [ ] **Radar Vectoring:** Instruksi heading eksplisit (*"Turn left heading 180"*, *"Turn right heading 270"*) yang langsung mengubah lintasan pesawat di udara. Vektor taktis divisualisasikan sebagai garis putus-putus di radar.
-- [ ] **Immediate Altitude Step:** Instruksi *"Climb/Descend and maintain FL[xxx]"* yang dapat diberikan kapan saja selama fase approach atau departure, mengubah target ketinggian FDE secara real-time.
-- [ ] **Speed Control:** Instruksi *"Reduce speed to [xxx] knots"* / *"Maintain [xxx] knots"* / *"No speed restriction"* untuk mengatur jarak antar pesawat berurutan. Perubahan kecepatan tervisual di speed leader line radar.
-- [ ] **Go-Around / Missed Approach:** Instruksi pembatalan pendaratan di fase FINAL — pesawat memanjat kembali ke 3.000 ft, melintasi ujung landasan, dan memasuki holding/re-sequence.
-- [ ] **Visual Separation Monitoring:** Ruler tool untuk mengukur jarak antar pesawat di radar secara langsung (klik pesawat A ↔ B).
-- [ ] **Voice Command Integration:** Semua instruksi taktis dapat diberikan melalui Push-to-Talk speech recognition.
-- [ ] **Dry-run test suite:** Validasi perubahan heading, altitude step, speed braking, dan prosedur go-around.
+- [x] **Radar Vectoring:** Instruksi heading eksplisit (*"Turn left heading 180"*, *"Turn right heading 270"*, dropdown strip) yang langsung mengubah lintasan pesawat di udara. Vektor taktis divisualisasikan sebagai garis putus-putus di radar.
+- [x] **Immediate Altitude Step:** Instruksi *"Climb/Descend and maintain FL[xxx]"* yang dapat diberikan kapan saja selama fase approach atau departure, mengubah target ketinggian FDE secara real-time.
+- [x] **Speed Control:** Instruksi *"Reduce speed to [xxx] knots"* / *"Maintain [xxx] knots"* / *"No speed restriction"* untuk mengatur jarak antar pesawat berurutan. Perubahan kecepatan tervisual di speed leader line radar.
+- [x] **Go-Around / Missed Approach:** Instruksi pembatalan pendaratan di fase FINAL — pesawat memanjat kembali ke 3.000 ft, melintasi ujung landasan, dan memasuki re-sequence.
+- [x] **Visual Separation Monitoring:** Ruler tool untuk mengukur jarak antar pesawat di radar secara langsung (klik tombol RULER, lalu klik pesawat A ↔ B).
+- [x] **Voice Command Integration:** Semua instruksi taktis dapat diberikan melalui Push-to-Talk speech recognition (Whisper / intent matching).
+- [x] **Dry-run test suite:** `tests/dry_run_milestone5.js` — 5/5 PASS.
+
+**Commit:** Selesai (Milestone 5)
 
 ---
 
