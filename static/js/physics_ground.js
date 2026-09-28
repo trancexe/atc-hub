@@ -345,8 +345,8 @@ function executeTakeoffMovement(ac) {
   if (rollNodes.length > 0) {
     ac.lat = rollNodes[0].lat;
     ac.lon = rollNodes[0].lon;
-    ac.heading = targetHeading;
   }
+  ac.heading = targetHeading;
 
   let rIdx = 1;
   const totalRollPoints = rollNodes.length;

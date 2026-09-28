@@ -143,7 +143,15 @@ function executeClimbEnroute(ac) {
     const startSpd = ac.groundSpeed;
     const targetAlt = leg.alt;
     const targetSpd = leg.spd;
-    const targetHdg = leg.hdg;
+
+    // Calculate heading towards target departure fix
+    const dLat = leg.lat - startLat;
+    const dLon = leg.lon - startLon;
+    let targetHdg = (ac.heading !== undefined && !isNaN(ac.heading)) ? ac.heading : 250;
+    if (Math.abs(dLat) > 0.000001 || Math.abs(dLon) > 0.000001) {
+      const angleRad = Math.atan2(dLat, dLon * Math.cos(startLat * Math.PI / 180));
+      targetHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
+    }
 
     const legDistNm = calculateDistanceNm(startLat, startLon, leg.lat, leg.lon);
     const avgSpeedKts = Math.max(40, (startSpd + targetSpd) / 2);
@@ -166,8 +174,9 @@ function executeClimbEnroute(ac) {
       if (ac._tacticalVector !== undefined && ac._tacticalVector !== null) {
         ac.heading = ac._tacticalVector;
       } else {
-        const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
-        ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
+        const curHdg = (ac.heading !== undefined && !isNaN(ac.heading)) ? ac.heading : targetHdg;
+        const angleDelta = ((targetHdg - curHdg + 540) % 360) - 180;
+        ac.heading = Math.round((curHdg + angleDelta * 0.08 + 360) % 360);
       }
       if (ac._assignedSpeed !== undefined && ac._assignedSpeed !== null) {
         ac.groundSpeed = ac._assignedSpeed;
@@ -178,7 +187,9 @@ function executeClimbEnroute(ac) {
       if (step >= totalSteps) {
         clearInterval(ac._climbInterval);
         ac._climbInterval = null;
-        ac.heading = targetHdg;
+        if (ac._tacticalVector === undefined || ac._tacticalVector === null) {
+          ac.heading = targetHdg;
+        }
         ptIdx++;
         moveNextClimbLeg();
       }
