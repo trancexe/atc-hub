@@ -1,0 +1,560 @@
+function setStripBayFilter(bay) {
+  activeStripBayFilter = bay;
+  ["all", "dep", "twr", "app"].forEach(b => {
+    const el = document.getElementById(`bay-tab-${b}`);
+    if (el) {
+      if (b === bay.toLowerCase()) {
+        el.className = "flex-1 py-0.5 rounded font-bold transition bg-emerald-700 text-white";
+      } else {
+        el.className = "flex-1 py-0.5 rounded transition text-slate-400 hover:text-white";
+      }
+    }
+  });
+  renderFlightStrips();
+}
+
+function getAircraftBayCategory(ac) {
+  if (["GATE", "PUSHBACK", "READY_TAXI", "TAXI"].includes(ac.state)) return "DEP";
+  if (["HOLD_SHORT_CROSS", "HOLDING", "LINE_UP", "LINING_UP", "TAKEOFF", "LANDED"].includes(ac.state)) return "TWR";
+  if (["APPROACH", "FINAL", "AIRBORNE", "CLIMBING", "HANDOFF", "HANDED_OFF", "TAXI_IN", "PARKED"].includes(ac.state)) return "APP";
+  return "DEP";
+}
+
+function triggerSquawkIdent(idx) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  ac.isIdentActive = true;
+  ac.identEndTime = Date.now() + 18000; // IDENT flashes for 18 seconds (standard radar spec)
+  renderFlightStrips();
+  renderAllScreens();
+  playRadioChirp();
+}
+
+function updateAircraftScratchpad(idx, field, val) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  if (!ac.fde) ac.fde = {};
+  ac.fde[field] = val;
+  renderFlightStrips();
+  renderAllScreens();
+}
+
+function renderFlightStrips() {
+  const container = document.getElementById('flight-strips');
+  if (!container) return;
+
+  const filtered = aircraft.map((ac, idx) => ({ ac, idx })).filter(item => {
+    if (activeStripBayFilter === "ALL") return true;
+    return getAircraftBayCategory(item.ac) === activeStripBayFilter;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="p-3 text-center text-slate-500 text-xs italic">Tidak ada strip di Bay ${activeStripBayFilter}</div>`;
+    document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(({ ac, idx }) => {
+    const isPending = !ac.hasCheckedIn;
+    const isSel = idx === selectedAircraftIndex;
+    const bayCat = getAircraftBayCategory(ac);
+    const isIdent = ac.isIdentActive && Date.now() < (ac.identEndTime || 0);
+
+    const availableRwys = ["25R", "07L", "25L", "07R", "24", "06"];
+    const allSids = (airportData && airportData.sids) ? airportData.sids : [];
+    const validSidsForRwy = allSids.filter(s => !s.runways || s.runways.includes(ac.clearedRwy)).map(s => s.id);
+    const availableSids = validSidsForRwy.length > 0 ? validSidsForRwy : ["DOLTA 1C", "BUNTO 1C", "KRAKE 1C"];
+    if (!availableSids.includes(ac.clearedSid)) {
+      ac.clearedSid = availableSids[0];
+    }
+
+    const isArrival = ["APPROACH", "FINAL", "LANDED", "TAXI_IN", "PARKED"].includes(ac.state);
+    const allStars = (airportData && airportData.stars) ? airportData.stars : [];
+    const validStarsForRwy = allStars.filter(s => !s.runways || s.runways.includes(ac.clearedRwy)).map(s => s.id);
+    const availableStars = validStarsForRwy.length > 0 ? validStarsForRwy : ["DOLTA 1A", "BUNTO 1A", "KRAKE 1A"];
+    if (isArrival && !availableStars.includes(ac.clearedStar)) {
+      ac.clearedStar = availableStars[0];
+    }
+
+    const assignedAlt = (ac.fde && ac.fde.assignedAlt) ? ac.fde.assignedAlt : "";
+    const assignedSpd = (ac.fde && ac.fde.assignedSpd) ? ac.fde.assignedSpd : "";
+    const directFix = (ac.fde && ac.fde.directFix) ? ac.fde.directFix : "";
+
+    return `
+      <div onclick="selectAircraft(${idx})" class="p-2.5 rounded text-xs border transition cursor-pointer select-none ${isSel ? 'bg-amber-950/50 border-amber-500 shadow-lg ring-1 ring-amber-500/80' : 'bg-slate-950 border-emerald-950/80 hover:bg-slate-900/90 hover:border-emerald-800'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
+        <!-- Strip Header: Callsign, Type, Bay Badge, & Ident Button -->
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-1.5 ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
+            <span class="text-[9px] px-1 py-0.2 rounded ${bayCat === 'DEP' ? 'bg-blue-900/80 text-blue-200' : (bayCat === 'TWR' ? 'bg-emerald-900/80 text-emerald-200' : 'bg-purple-900/80 text-purple-200')} font-mono">
+              ${bayCat}
+            </span>
+            <span class="text-sm tracking-wide font-mono">${ac.id}</span>
+            <span class="text-[10px] text-slate-400 font-normal">(${ac.type})</span>
+            ${isSel ? '<span class="text-[9px] px-1 bg-amber-500 text-slate-950 font-bold rounded">ACTIVE</span>' : ''}
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="event.stopPropagation(); triggerSquawkIdent(${idx})" class="text-[9px] px-1.5 py-0.5 rounded border transition font-bold font-mono ${isIdent ? 'bg-amber-500 text-slate-950 border-amber-300 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" title="Squawk IDENT Flash">
+              ${isIdent ? '★ IDENT' : 'IDENT'}
+            </button>
+            <span class="text-[10px] ${isPending ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-400'}">
+              ${isPending ? 'CALLING...' : ac.airline}
+            </span>
+          </div>
+        </div>
+
+        <!-- Clearance & Procedure Controls -->
+        <div onclick="event.stopPropagation()" class="grid grid-cols-2 gap-1 text-[11px] text-slate-300 mt-1.5 bg-slate-900/90 p-1.5 rounded border border-slate-800">
+          <div>
+            <span class="text-[8px] text-slate-500 block uppercase">State</span>
+            <b class="text-emerald-400 font-mono text-[10px]">${ac.state}</b>
+          </div>
+          <div>
+            <span class="text-[8px] text-slate-500 block uppercase">Squawk Code</span>
+            <input type="text" maxlength="4" value="${ac.squawk || '4215'}" onchange="aircraft[${idx}].squawk = this.value; renderFlightStrips(); renderAllScreens();" class="w-14 bg-slate-950 border border-slate-700 text-amber-300 font-mono text-[10px] rounded px-1 py-0 text-center focus:outline-none" />
+          </div>
+          <div class="col-span-1">
+            <span class="text-[8px] text-slate-500 block uppercase">Cleared RWY</span>
+            <select onchange="changeAircraftRunway(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-amber-300 text-[10px] rounded px-1 py-0.5 focus:outline-none">
+              ${availableRwys.map(r => `<option value="${r}" ${ac.clearedRwy === r ? 'selected' : ''}>RWY ${r}</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-span-1">
+            <span class="text-[8px] text-slate-500 block uppercase">${isArrival ? 'Assigned STAR' : 'Assigned SID'}</span>
+            ${isArrival ? `
+              <select onchange="changeAircraftStar(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] rounded px-1 py-0.5 focus:outline-none">
+                ${availableStars.map(s => `<option value="${s}" ${(ac.clearedStar || 'DOLTA 1A') === s ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>
+            ` : `
+              <select onchange="changeAircraftSid(${idx}, this.value)" class="w-full bg-slate-950 border border-slate-700 text-sky-300 text-[10px] rounded px-1 py-0.5 focus:outline-none">
+                ${availableSids.map(s => `<option value="${s}" ${(ac.clearedSid || 'DOLTA 1C') === s ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>
+            `}
+          </div>
+        </div>
+
+        <!-- TACTICAL RESOLUTION CONTROLS (Milestone 5: Vector, Altitude Step, Speed, Go-Around) -->
+        ${(ac.altitude > 100 && !["PARKED", "GATE", "PUSHBACK", "TAXI", "READY_TAXI"].includes(ac.state)) ? `
+          <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
+            <!-- Tactical Vector Heading -->
+            <div class="flex items-center gap-0.5">
+              <span class="text-amber-400 font-mono font-bold">HDG:</span>
+              <select onchange="issueRadarVector(${idx}, this.value)" class="bg-slate-950 border border-slate-800 text-amber-300 font-mono text-[9px] rounded px-0.5 py-0 focus:outline-none focus:border-amber-500">
+                <option value="" disabled selected>Turn...</option>
+                <option value="090">090° (E)</option>
+                <option value="180">180° (S)</option>
+                <option value="250">250° (ILS)</option>
+                <option value="270">270° (W)</option>
+                <option value="360">360° (N)</option>
+                <option value="RESUME">Resume</option>
+              </select>
+            </div>
+            <!-- Tactical Speed Control -->
+            <div class="flex items-center gap-0.5">
+              <span class="text-sky-400 font-mono font-bold">SPD:</span>
+              <select onchange="issueSpeedControl(${idx}, this.value)" class="bg-slate-950 border border-slate-800 text-sky-300 font-mono text-[9px] rounded px-0.5 py-0 focus:outline-none focus:border-sky-500">
+                <option value="" disabled selected>Speed...</option>
+                <option value="160">160K</option>
+                <option value="180">180K</option>
+                <option value="210">210K</option>
+                <option value="250">250K</option>
+                <option value="RESUME">Resume</option>
+              </select>
+            </div>
+            <!-- Go-Around (Missed Approach Button) -->
+            ${ac.state === "FINAL" ? `
+              <button onclick="issueGoAround(${idx})" class="px-1.5 py-0 rounded bg-red-950/80 border border-red-600/80 text-red-300 font-bold hover:bg-red-900 text-[9px]" title="Initiate Missed Approach & Go-Around">
+                GO-AROUND
+              </button>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- FDE SCRATCHPAD (Flight Data Entry: CFL Altitude, Speed, Direct Fix) -->
+        <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
+          <div class="flex items-center gap-0.5">
+            <span class="text-slate-500 font-mono">CFL:</span>
+            <input type="text" placeholder="A040" value="${assignedAlt}" onchange="updateAircraftScratchpad(${idx}, 'assignedAlt', this.value)" class="w-11 bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-emerald-500" title="Cleared Flight Level / Altitude" />
+          </div>
+          <div class="flex items-center gap-0.5">
+            <span class="text-slate-500 font-mono">SPD:</span>
+            <input type="text" placeholder="210K" value="${assignedSpd}" onchange="updateAircraftScratchpad(${idx}, 'assignedSpd', this.value)" class="w-11 bg-slate-950 border border-slate-800 text-sky-300 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-sky-500" title="Assigned Airspeed" />
+          </div>
+          <div class="flex items-center gap-0.5">
+            <span class="text-slate-500 font-mono">DIR:</span>
+            <input type="text" placeholder="TOPIN" value="${directFix}" onchange="updateAircraftScratchpad(${idx}, 'directFix', this.value)" class="w-14 bg-slate-950 border border-slate-800 text-amber-200 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-amber-500" title="Direct-To Fix" />
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
+}
+
+function changeAircraftRunway(idx, newRwy) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  const oldRwy = ac.clearedRwy;
+  ac.clearedRwy = newRwy;
+
+  if (ac.state === "HOLD_SHORT_CROSS") {
+    ac._aiCrossIssued = false;
+  }
+
+  const isArrival = ["APPROACH", "FINAL", "LANDED", "TAXI_IN", "PARKED"].includes(ac.state);
+  if (isArrival) {
+    const allStars = (airportData && airportData.stars) ? airportData.stars : [];
+    const validStars = allStars.filter(s => !s.runways || s.runways.includes(newRwy)).map(s => s.id);
+    if (validStars.length > 0 && !validStars.includes(ac.clearedStar)) {
+      ac.clearedStar = validStars[0];
+    }
+
+    // DYNAMIC IN-FLIGHT RE-ROUTING FOR ARRIVALS
+    // If the aircraft is currently airborne approaching runway, recalculate flight path immediately to new runway!
+    if (ac.state === "APPROACH" || ac.state === "FINAL") {
+      console.log(`[ATC REROUTE] Dynamically splicing approach path for ${ac.id} from ${oldRwy} to ${newRwy}`);
+      executeApproachMovement(ac);
+    }
+  } else {
+    // Auto update clearedSid to a valid SID matching the new runway
+    const allSids = (airportData && airportData.sids) ? airportData.sids : [];
+    const validSids = allSids.filter(s => !s.runways || s.runways.includes(newRwy)).map(s => s.id);
+    if (validSids.length > 0 && !validSids.includes(ac.clearedSid)) {
+      ac.clearedSid = validSids[0];
+    }
+  }
+
+  const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[newRwy] : null;
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : newRwy;
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned Runway ${newRwy} (HP: ${hpName})`);
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+}
+
+function changeAircraftSid(idx, newSid) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  ac.clearedSid = newSid;
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned SID ${newSid}`);
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+}
+
+function changeAircraftStar(idx, newStar) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  const oldStar = ac.clearedStar;
+  ac.clearedStar = newStar;
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned STAR ${newStar}`);
+
+  // Clear tactical vector so aircraft turns to follow the new STAR
+  ac._tacticalVector = null;
+  if (ac.fde) ac.fde.directFix = null;
+
+  // If currently approaching, re-route trajectory to new STAR waypoints immediately
+  if (ac.state === "APPROACH" || ac.state === "FINAL") {
+    ac._forceRouteReset = (oldStar !== newStar);
+    executeApproachMovement(ac);
+  }
+
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+}
+
+let _cameraAnimFrame = null;
+
+function focusAircraftOnGround(ac, optimalZoom = null) {
+  if (!ac) return;
+  const st = viewState.ground;
+
+  if (_cameraAnimFrame) {
+    cancelAnimationFrame(_cameraAnimFrame);
+    _cameraAnimFrame = null;
+  }
+
+  const startZoom = st.zoom;
+  const startPanX = st.panX;
+  const startPanY = st.panY;
+
+  // Keep current user zoom level (or default 1.0) so no forced unwanted close-up zoom happens
+  const targetZoom = (optimalZoom !== null) ? optimalZoom : st.zoom;
+  const targetPanX = - (ac.lon - refLon) * BASE_SCALE * targetZoom;
+  const targetPanY = (ac.lat - refLat) * BASE_SCALE * targetZoom;
+
+  const duration = 400; // ms
+  const startTime = performance.now();
+
+  function easeOutCubic(x) {
+    return 1 - Math.pow(1 - x, 3);
+  }
+
+  function step(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(1, elapsed / duration);
+    const ease = easeOutCubic(progress);
+
+    st.zoom = startZoom + (targetZoom - startZoom) * ease;
+    st.panX = startPanX + (targetPanX - startPanX) * ease;
+    st.panY = startPanY + (targetPanY - startPanY) * ease;
+
+    renderAllScreens();
+
+    if (progress < 1) {
+      _cameraAnimFrame = requestAnimationFrame(step);
+    } else {
+      _cameraAnimFrame = null;
+    }
+  }
+
+  _cameraAnimFrame = requestAnimationFrame(step);
+}
+
+function selectAircraft(idx) {
+  selectedAircraftIndex = idx;
+  const ac = aircraft[idx];
+
+  // Update active VHF Frequency display based on selected aircraft sector
+  updateActiveFrequencyUI();
+
+  // Center smoothly on selected aircraft without modifying current zoom scale (stays 1.0)
+  if (ac) {
+    focusAircraftOnGround(ac);
+  }
+
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+
+  // If selected aircraft has not checked in, trigger check-in call!
+  if (ac && !ac.hasCheckedIn && !isRadioTransmitting) {
+    triggerPilotCheckIn(ac);
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  const radarView = document.getElementById('radar-view');
+  const academyView = document.getElementById('academy-view');
+  const radarBtn = document.getElementById('tab-radar-btn');
+  const acadBtn = document.getElementById('tab-academy-btn');
+
+  if (tab === 'radar') {
+    radarView.classList.remove('hidden');
+    academyView.classList.add('hidden');
+    radarBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white";
+    acadBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+    resizeCanvases();
+    updateEasyModePrompter();
+  } else {
+    radarView.classList.add('hidden');
+    academyView.classList.remove('hidden');
+    acadBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white";
+    radarBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+    loadAcademyLessons();
+  }
+}
+
+// Flight Academy Logic
+let lessons = [];
+let activeLesson = null;
+let lessonScores = {};
+
+async function loadAcademyLessons() {
+  try {
+    const resp = await fetch('/api/academy/lessons');
+    lessons = await resp.json();
+    renderLessonList();
+    if (lessons.length > 0 && !activeLesson) {
+      selectLesson(lessons[0].id);
+    }
+  } catch (e) {
+    console.error("Failed to load lessons:", e);
+  }
+}
+
+function renderLessonList() {
+  const container = document.getElementById('lesson-list');
+  if (!container) return;
+  container.innerHTML = lessons.map((l, idx) => {
+    const score = lessonScores[l.id];
+    const scoreBadge = score !== undefined ? `<span class="text-[10px] text-emerald-400 font-radar">${score}%</span>` : '';
+    const isActive = activeLesson && activeLesson.id === l.id;
+    return `
+      <div onclick="selectLesson('${l.id}')" class="p-2.5 rounded-lg border cursor-pointer transition flex items-center justify-between ${isActive ? 'bg-emerald-950/60 border-emerald-600 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'}">
+        <div>
+          <div class="text-[10px] font-radar uppercase text-emerald-500">${l.phase.split('/')[0]}</div>
+          <div class="text-xs font-semibold mt-0.5">${idx + 1}. ${l.title}</div>
+        </div>
+        ${scoreBadge}
+      </div>
+    `;
+  }).join('');
+}
+
+function selectLesson(id) {
+  activeLesson = lessons.find(l => l.id === id);
+  if (!activeLesson) return;
+
+  renderLessonList();
+  document.getElementById('drill-phase').textContent = activeLesson.phase;
+  document.getElementById('drill-title').textContent = activeLesson.title;
+  document.getElementById('drill-badge').textContent = `${activeLesson.aircraft.callsign} (${activeLesson.aircraft.type})`;
+  document.getElementById('drill-situation').textContent = activeLesson.situation;
+  document.getElementById('drill-target').textContent = activeLesson.target_text;
+  document.getElementById('drill-tips').textContent = activeLesson.phonetic_tips;
+
+  document.getElementById('academy-transcript').textContent = "Belum ada transmisi...";
+  document.getElementById('drill-score').textContent = lessonScores[id] !== undefined ? `${lessonScores[id]}%` : "--";
+  document.getElementById('readback-container').classList.add('hidden');
+}
+
+function playExampleSpeech() {
+  if (activeLesson) {
+    speakPilotReadback(activeLesson.target_text);
+  }
+}
+
+function handleAcademyResult(res) {
+  document.getElementById('academy-transcript').textContent = `"${res.text}"`;
+  document.getElementById('drill-score').textContent = `${res.score}%`;
+  lessonScores[activeLesson.id] = res.score;
+  renderLessonList();
+
+  if (res.score >= 55) {
+    const rbCont = document.getElementById('readback-container');
+    const rbText = document.getElementById('pilot-readback-text');
+    rbCont.classList.remove('hidden');
+    rbText.textContent = activeLesson.pilot_readback;
+    speakPilotReadback(activeLesson.pilot_readback);
+  }
+
+  const scores = Object.values(lessonScores);
+  const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  document.getElementById('academy-score-total').textContent = `${avg}%`;
+}
+
+function handleRadarVoiceCommand(text, parsedData) {
+  const parsed = parsedData || {};
+  const norm = (parsed.normalized || text).toLowerCase();
+  
+  // Find matching aircraft
+  let matchedAc = null;
+  if (parsed.callsign) {
+    const cs = parsed.callsign.toLowerCase().replace(/\s+/g, '');
+    matchedAc = aircraft.find(a => a.id.toLowerCase() === cs || a.callsign.toLowerCase().includes(cs));
+  }
+  if (!matchedAc) {
+    matchedAc = aircraft.find(a => norm.includes(a.id.toLowerCase()) || norm.includes(a.callsign.toLowerCase()));
+  }
+  if (!matchedAc) {
+    if (norm.includes("garuda") || norm.includes("indonesia") || norm.includes("502")) {
+      matchedAc = aircraft.find(a => a.id.includes("502") || a.callsign.includes("502"));
+    } else if (norm.includes("supergreen") || norm.includes("citilink") || norm.includes("123")) {
+      matchedAc = aircraft.find(a => a.id.includes("123") || a.callsign.includes("123"));
+    } else if (norm.includes("lion") || norm.includes("712")) {
+      matchedAc = aircraft.find(a => a.id.includes("712") || a.callsign.includes("712"));
+    } else if (norm.includes("batik") || norm.includes("650")) {
+      matchedAc = aircraft.find(a => a.id.includes("650") || a.callsign.includes("650"));
+    }
+  }
+
+  // Fallback: If no callsign in transmission, apply to currently selected aircraft
+  if (!matchedAc && selectedAircraftIndex >= 0 && selectedAircraftIndex < aircraft.length) {
+    matchedAc = aircraft[selectedAircraftIndex];
+  }
+  
+  if (matchedAc) {
+    let readback = "";
+    const intent = parsed.intent || "";
+
+    const rwyKey = matchedAc.clearedRwy || "25R";
+    const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
+    const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+
+    if (matchedAc.state === "GATE" && (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start"))) {
+      matchedAc.state = "PUSHBACK";
+      readback = "Push and start approved, facing west, " + matchedAc.callsign;
+      executePushbackMovement(matchedAc);
+    } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
+      matchedAc.state = "TAXI";
+      matchedAc._runwayCrossCleared = false;
+      readback = `Taxi to holding point runway ${rwyKey} via ${hpName}, ${matchedAc.callsign}`;
+      executeTaxiMovement(matchedAc);
+    } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
+      matchedAc.state = "TAXI";
+      matchedAc._runwayCrossCleared = true;
+      readback = `Cross runway two five right at November cross, report vacated, ${matchedAc.callsign}`;
+      executeTaxiMovement(matchedAc);
+    } else if ((matchedAc.state === "HOLDING" || matchedAc.state === "TAXI") && (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait"))) {
+      matchedAc.state = "LINE_UP";
+      readback = `Line up and wait runway ${rwyKey}, ${matchedAc.callsign}`;
+      executeLineUpMovement(matchedAc);
+    } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "LINING_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
+      readback = `Runway ${rwyKey} cleared for takeoff, ${matchedAc.callsign}`;
+      if (matchedAc.state === "LINING_UP") {
+        // Pilot acknowledges clearance, completes the lineup curve first to runway threshold, then rolls!
+        matchedAc.takeoffQueued = true;
+      } else {
+        matchedAc.state = "TAKEOFF";
+        executeTakeoffMovement(matchedAc);
+      }
+    } else if (matchedAc.state === "APPROACH" && (norm.includes("ils") || norm.includes("descend") || norm.includes("approach") || norm.includes("cleared"))) {
+      if (!matchedAc.fde) matchedAc.fde = {};
+      matchedAc.fde.assignedAlt = "A030";
+      readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwyKey}, ${matchedAc.callsign}`;
+    } else if (matchedAc.state === "FINAL" && (norm.includes("land") || norm.includes("cleared"))) {
+      if (!matchedAc.fde) matchedAc.fde = {};
+      matchedAc.fde.assignedAlt = "GND";
+      readback = `Runway ${rwyKey} cleared to land, ${matchedAc.callsign}`;
+    } else if (norm.includes("go around") || norm.includes("missed approach") || norm.includes("go round") || intent === "GO_AROUND") {
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = issueGoAround(idx);
+    } else if ((norm.includes("turn") || norm.includes("heading") || intent === "VECTOR") && matchedAc.altitude > 100) {
+      const hdgMatch = norm.match(/\b(?:heading|turn\s*(?:left|right)?(?:\s*heading)?)\s*(\d{2,3})\b/);
+      const targetHdg = hdgMatch ? parseInt(hdgMatch[1], 10) : 180;
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = issueRadarVector(idx, targetHdg);
+    } else if ((norm.includes("speed") || norm.includes("reduce") || norm.includes("maintain") || intent === "SPEED") && matchedAc.altitude > 100) {
+      const spdMatch = norm.match(/\b(?:speed|to|reduce|maintain)\s*(\d{2,3})\s*(?:knots|kts)?\b/);
+      const targetSpd = spdMatch ? parseInt(spdMatch[1], 10) : 210;
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = issueSpeedControl(idx, targetSpd);
+    } else if ((norm.includes("climb") || norm.includes("descend")) && matchedAc.altitude > 100) {
+      const flMatch = norm.match(/\b(?:flight\s*level|fl)\s*(\d{2,3})\b/);
+      const altMatch = norm.match(/\b(\d{1,2})\s*(?:thousand)?\s*(?:feet|ft)?\b/);
+      const targetAlt = flMatch ? `FL${flMatch[1]}` : (altMatch ? `A${String(parseInt(altMatch[1], 10) * 10).padStart(3, '0')}` : "A050");
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = issueAltitudeStep(idx, targetAlt);
+    } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121") || norm.includes("taxi"))) {
+      matchedAc.state = "TAXI_IN";
+      readback = `Vacating runway via November 4, contacting Ground 121 decimal 6, ${matchedAc.callsign}`;
+      executeTaxiInMovement(matchedAc);
+    } else if (matchedAc.state === "TAXI_IN" && (norm.includes("gate") || norm.includes("stand") || norm.includes("taxi") || norm.includes("continue"))) {
+      readback = `Taxi to Gate Echo 1 via November Charlie, ${matchedAc.callsign}`;
+      executeTaxiInMovement(matchedAc);
+    } else if (matchedAc.state === "AIRBORNE" && (norm.includes("approach") || norm.includes("radar") || norm.includes("119") || norm.includes("125"))) {
+      matchedAc.state = "CLIMBING";
+      if (!matchedAc.fde) matchedAc.fde = {};
+      matchedAc.fde.assignedAlt = "FL140";
+      readback = "Contact Jakarta Approach 119 decimal 75, good day, " + matchedAc.callsign;
+      executeClimbEnroute(matchedAc);
+    } else if ((matchedAc.state === "CLIMBING" || matchedAc.state === "HANDOFF") && (norm.includes("center") || norm.includes("128") || norm.includes("handoff") || norm.includes("good day"))) {
+      matchedAc.state = "HANDED_OFF";
+      if (!matchedAc.fde) matchedAc.fde = {};
+      matchedAc.fde.assignedAlt = "FL240";
+      readback = "Contact Jakarta Center 128 decimal 5, thank you for service, " + matchedAc.callsign;
+      executeHandoffComplete(matchedAc);
+    } else {
+      readback = "Roger instructions, " + matchedAc.callsign;
+    }
+
+    renderFlightStrips();
+    updateEasyModePrompter();
+    renderAllScreens();
+    speakPilotReadback(readback);
+  }
+}
+
+// Autonomous Flight Movement Sequences for GIA502
