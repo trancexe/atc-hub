@@ -3567,9 +3567,9 @@ function executeClimbEnroute(ac) {
 
     const legDistNm = calculateDistanceNm(startLat, startLon, leg.lat, leg.lon);
     const avgSpeedKts = Math.max(40, (startSpd + targetSpd) / 2);
-    // Unclamped linear physics: Simulation multiplier 4.0 (1 real second = 4 simulation seconds)
-    // Time (seconds) = (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT)
-    const SIM_SPEED_MULT = 4.0;
+    // Real-Time 1:1 Physics Engine (1 real second = 1 simulation second)
+    // Time (seconds) = (legDistNm / avgSpeedKts) * 3600
+    const SIM_SPEED_MULT = 1.0;
     const legDurationSec = Math.max(0.1, (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT));
     const stepIntervalMs = 50;
     const totalSteps = Math.max(2, Math.round((legDurationSec * 1000) / stepIntervalMs));
@@ -3894,9 +3894,9 @@ function executeApproachMovement(ac) {
 
     const legDistNm = calculateDistanceNm(startLat, startLon, leg.lat, leg.lon);
     const avgSpeedKts = Math.max(40, (startSpd + targetSpd) / 2);
-    // Unclamped linear physics: Simulation multiplier 4.0 (1 real second = 4 simulation seconds)
-    // Time (seconds) = (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT)
-    const SIM_SPEED_MULT = 4.0;
+    // Real-Time 1:1 Physics Engine (1 real second = 1 simulation second)
+    // Time (seconds) = (legDistNm / avgSpeedKts) * 3600
+    const SIM_SPEED_MULT = 1.0;
     const legDurationSec = Math.max(0.1, (legDistNm / avgSpeedKts) * (3600 / SIM_SPEED_MULT));
     const stepIntervalMs = 50;
     const totalSteps = Math.max(2, Math.round((legDurationSec * 1000) / stepIntervalMs));
