@@ -70,13 +70,15 @@
 
 **Tujuan:** Kondisi operasi bandara yang berubah sesuai cuaca dan notifikasi ATIS otomatis.
 
-- [ ] **METAR Parser & Weather Engine:** Dekode data METAR real-time (angin, visibilitas, awan, QNH) atau skenario cuaca preset.
-- [ ] **Konfigurasi Runway Berbasis Angin:** Otomatis menyarankan runway aktif berdasarkan komponen headwind/crosswind (threshold 10 kt tailwind).
-- [ ] **ATIS Broadcast (128.0 MHz):** Informasi alfa-bravo-charlie yang terus diperbarui dan dibacakan via Edge-TTS pada frekuensi keempat.
-- [ ] **Visual Cuaca di Radar:** Overlay hujan (cell hijau/kuning/merah), lapisan awan, dan indikator visibilitas rendah.
-- [ ] **Efek Cuaca pada Operasi:** Separasi IFR/VFR yang berubah, CAT III autoland saat low visibility, dan pembatasan runway basah.
-- [ ] **QNH Transition Altitude:** Otomatis transisi altimeter antara QNH dan standard pressure (FL) pada 11.000 ft.
-- [ ] **Dry-run test suite:** Validasi decode METAR, pemilihan runway, dan perubahan separasi.
+- [x] **METAR Parser & Weather Engine:** Dekode data METAR real-time (angin, visibilitas, awan, QNH) atau skenario cuaca preset (CAVOK, WIND SHIFT, STORM, LVP).
+- [x] **Konfigurasi Runway Berbasis Angin:** Otomatis menyarankan runway aktif berdasarkan komponen headwind/crosswind (threshold 10 kt tailwind).
+- [x] **ATIS Broadcast (128.0 MHz):** Informasi alfa-bravo-charlie yang terus diperbarui dan dibacakan via Edge-TTS pada frekuensi keempat.
+- [x] **Visual Cuaca di Radar:** Overlay hujan (cell hijau/kuning/merah), lapisan awan/kabut LVP, dan toggle WX ON/OFF.
+- [x] **Efek Cuaca pada Operasi:** Separasi IFR bertambah dari 3.0 NM menjadi 5.0 NM saat badai konvektif / LVP CAT III.
+- [x] **QNH Transition Altitude:** Otomatis transisi label altimeter antara QNH (`A...`) dan standard pressure (`FL...`) pada 11.000 ft WIII.
+- [x] **Dry-run test suite:** `tests/dry_run_milestone4.js` — 4/4 PASS.
+
+**Commit:** Selesai (Milestone 4)
 
 ---
 

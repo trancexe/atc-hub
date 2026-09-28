@@ -66,6 +66,22 @@
         <span id="active-sector-tag" class="ml-1.5 text-[9px] px-1 py-0.2 rounded bg-blue-900/80 text-blue-200 font-mono">GND</span>
       </div>
 
+      <!-- WEATHER PRESET SELECTOR & ATIS -->
+      <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 font-radar text-xs">
+        <span class="text-[10px] text-sky-400 px-1.5 uppercase font-bold flex items-center gap-1">
+          <i class="fa-solid fa-cloud-sun-rain text-sky-400"></i> WX:
+        </span>
+        <select id="weather-preset-select" onchange="setWeatherPreset(this.value)" class="bg-slate-900 border border-slate-700 text-sky-300 text-[11px] font-semibold rounded px-1.5 py-0.5 focus:outline-none focus:border-sky-500">
+          <option value="CAVOK">☀️ CAVOK (250/08KT)</option>
+          <option value="TAILWIND_SHIFT">🔄 WIND SHIFT (070/14KT)</option>
+          <option value="TROPICAL_STORM">⛈️ STORM (280/20G30KT)</option>
+          <option value="LOW_VISIBILITY">🌫️ LVP / CAT III (040/03KT)</option>
+        </select>
+        <button id="btn-listen-atis" onclick="playAtisBroadcast()" class="ml-1 px-2 py-0.5 rounded bg-sky-950/80 border border-sky-600/70 text-sky-300 hover:text-white hover:bg-sky-900 text-[11px] font-bold flex items-center gap-1" title="Dengarkan ATIS Info (128.000 MHz)">
+          <i class="fa-solid fa-tower-broadcast text-sky-400"></i> ATIS
+        </button>
+      </div>
+
       <!-- EASY MODE TOGGLE -->
       <button id="easy-mode-btn" onclick="toggleEasyMode()" class="px-3 py-1.5 rounded-lg border font-radar text-xs font-bold flex items-center gap-1.5 transition bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-lg">
         <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
@@ -100,7 +116,7 @@
     <div class="flex items-center space-x-4 font-radar text-xs">
       <div class="text-right">
         <div class="text-emerald-400 font-bold" id="utc-clock">00:00:00 UTC</div>
-        <div class="text-[10px] text-slate-500">QNH 1011 | WIND 250/08KT</div>
+        <div class="text-[10px] text-slate-400" id="metar-bar">QNH 1011 | WIND 250/08KT</div>
       </div>
       <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-950 border border-emerald-900/60 text-emerald-400">
         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -144,7 +160,8 @@
               <span class="font-bold tracking-wider"><i class="fa-solid fa-satellite-dish text-sky-400 mr-1"></i>TMA RADAR (APP/DEP)</span>
               <span class="text-[10px] text-slate-400">| 100 NM RANGE</span>
             </div>
-            <div class="bg-slate-900/90 backdrop-blur border border-slate-800 px-2 py-0.5 rounded text-[11px] font-radar text-slate-400 flex gap-1.5">
+            <div class="bg-slate-900/90 backdrop-blur border border-slate-800 px-2 py-0.5 rounded text-[11px] font-radar text-slate-400 flex gap-1.5 items-center">
+              <button onclick="toggleWeatherRadar()" id="btn-toggle-wx" class="px-1.5 py-0.5 rounded bg-sky-950/70 border border-sky-600/80 text-sky-300 font-bold hover:bg-sky-900 mr-1 text-[10px]">WX: ON</button>
               <button onclick="zoomScreen('tma', 1.25)" class="hover:text-sky-300 font-bold">+</button>
               <button onclick="zoomScreen('tma', 0.8)" class="hover:text-sky-300 font-bold">-</button>
               <button onclick="resetScreen('tma')" class="hover:text-sky-300 ml-1">Center</button>
