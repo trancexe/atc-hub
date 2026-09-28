@@ -2058,11 +2058,17 @@ function changeAircraftSid(idx, newSid) {
 function changeAircraftStar(idx, newStar) {
   const ac = aircraft[idx];
   if (!ac) return;
+  const oldStar = ac.clearedStar;
   ac.clearedStar = newStar;
   console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned STAR ${newStar}`);
 
+  // Clear tactical vector so aircraft turns to follow the new STAR
+  ac._tacticalVector = null;
+  if (ac.fde) ac.fde.directFix = null;
+
   // If currently approaching, re-route trajectory to new STAR waypoints immediately
   if (ac.state === "APPROACH" || ac.state === "FINAL") {
+    ac._forceRouteReset = (oldStar !== newStar);
     executeApproachMovement(ac);
   }
 
@@ -2937,6 +2943,9 @@ function issueRadarVector(idx, targetHdgStr) {
     if (ac.fde) ac.fde.directFix = null;
     console.log(`[TACTICAL VECTOR] ${ac.id} resuming standard navigation.`);
     const rb = `Resuming own navigation, ${ac.callsign}`;
+    if (ac.state === "APPROACH" && typeof executeApproachMovement === 'function') {
+      executeApproachMovement(ac);
+    }
     renderFlightStrips();
     renderAllScreens();
     speakPilotReadback(rb);
@@ -2955,6 +2964,12 @@ function issueRadarVector(idx, targetHdgStr) {
   const readback = `Fly heading ${hdgPhonetic}, ${ac.callsign}`;
 
   console.log(`[TACTICAL VECTOR] ${ac.id} assigned heading ${targetHdg}°`);
+  
+  // Re-trigger movement under tactical vectoring mode immediately
+  if (ac.state === "APPROACH" && ac._approachInterval && typeof executeApproachMovement === 'function') {
+    executeApproachMovement(ac);
+  }
+
   renderFlightStrips();
   renderAllScreens();
   speakPilotReadback(readback);
@@ -3813,11 +3828,14 @@ function executeApproachMovement(ac) {
 
   // In-flight Dynamic Splice:
   // If aircraft is already airborne, smoothly transition towards the new flight plan:
-  // 1. If switching runway/STAR to an entirely different entry corridor (e.g. from East BUNTO to West KRAKE),
-  //    never jump straight to touchdown! Always join from the initial entry/feeder or earliest intercept fix.
+  // 1. If switching runway/STAR to an entirely different entry corridor (e.g. from East BUNTO to North GOMBA),
+  //    join the new route from its first entry/enroute fix (ptIdx = 0 or 1).
   // 2. Only splice forward if the aircraft is already aligned on that corridor's sequence.
   let ptIdx = 0;
-  if (ac.lat && ac.lon) {
+  if (ac._forceRouteReset) {
+    ac._forceRouteReset = false;
+    ptIdx = 0; // Direct aircraft to fly towards the entry waypoint of the new STAR!
+  } else if (ac.lat && ac.lon) {
     let closestIdx = 0;
     let minD = Infinity;
     // Only search among enroute/intercept legs (indices 0 to FAF index), never rollout/touchdown legs!
@@ -3903,34 +3921,45 @@ function executeApproachMovement(ac) {
     let step = 0;
 
     ac._approachInterval = setInterval(() => {
-      step++;
-      const prog = step / totalSteps;
-      ac.lat = startLat + (leg.lat - startLat) * prog;
-      ac.lon = startLon + (leg.lon - startLon) * prog;
-      ac.altitude = Math.round(startAlt + (targetAlt - startAlt) * prog);
-      ac.groundSpeed = Math.round(startSpd + (targetSpd - startSpd) * prog);
-
       if (ac._tacticalVector !== undefined && ac._tacticalVector !== null) {
+        // TACTICAL RADAR VECTORING: Fly along assigned heading vector!
+        const spd = (ac._assignedSpeed !== undefined && ac._assignedSpeed !== null) ? ac._assignedSpeed : ac.groundSpeed;
         ac.heading = ac._tacticalVector;
+        ac.groundSpeed = spd;
+        // Distance traveled in 50ms (0.05s) at speed kts:
+        const distNmStep = (spd / 3600.0) * (stepIntervalMs / 1000.0);
+        const radHdg = (ac.heading * Math.PI) / 180.0;
+        // 1 deg lat = 60 NM; 1 deg lon = 60 * cos(lat) NM
+        ac.lat += (distNmStep * Math.cos(radHdg)) / 60.0;
+        ac.lon += (distNmStep * Math.sin(radHdg)) / (60.0 * Math.cos(ac.lat * Math.PI / 180.0));
       } else {
+        step++;
+        const prog = step / totalSteps;
+        ac.lat = startLat + (leg.lat - startLat) * prog;
+        ac.lon = startLon + (leg.lon - startLon) * prog;
+        ac.altitude = Math.round(startAlt + (targetAlt - startAlt) * prog);
+        ac.groundSpeed = Math.round(startSpd + (targetSpd - startSpd) * prog);
+
         const angleDelta = ((targetHdg - ac.heading + 540) % 360) - 180;
         ac.heading = Math.round((ac.heading + angleDelta * 0.08 + 360) % 360);
-      }
-      if (ac._assignedSpeed !== undefined && ac._assignedSpeed !== null) {
-        ac.groundSpeed = ac._assignedSpeed;
+
+        if (ac._assignedSpeed !== undefined && ac._assignedSpeed !== null) {
+          ac.groundSpeed = ac._assignedSpeed;
+        }
+
+        if (step >= totalSteps) {
+          clearInterval(ac._approachInterval);
+          ac._approachInterval = null;
+          ac.lat = leg.lat;
+          ac.lon = leg.lon;
+          ac.heading = targetHdg;
+          ptIdx++;
+          moveNextArrivalLeg();
+          return;
+        }
       }
 
       renderAllScreens();
-
-      if (step >= totalSteps) {
-        clearInterval(ac._approachInterval);
-        ac._approachInterval = null;
-        ac.lat = leg.lat;
-        ac.lon = leg.lon;
-        ac.heading = targetHdg;
-        ptIdx++;
-        moveNextArrivalLeg();
-      }
     }, stepIntervalMs);
   }
 
