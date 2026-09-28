@@ -1,3 +1,161 @@
+// Min-Heap Priority Queue for high-performance Dijkstra pathfinding
+class TaxiMinHeap {
+  constructor() { this.data = []; }
+  push(item) {
+    this.data.push(item);
+    this.up(this.data.length - 1);
+  }
+  pop() {
+    if (this.data.length === 0) return null;
+    const top = this.data[0];
+    const bottom = this.data.pop();
+    if (this.data.length > 0) {
+      this.data[0] = bottom;
+      this.down(0);
+    }
+    return top;
+  }
+  up(i) {
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (this.data[i].d < this.data[p].d) {
+        [this.data[i], this.data[p]] = [this.data[p], this.data[i]];
+        i = p;
+      } else break;
+    }
+  }
+  down(i) {
+    const len = this.data.length;
+    while ((i << 1) + 1 < len) {
+      let left = (i << 1) + 1;
+      let right = left + 1;
+      let best = (right < len && this.data[right].d < this.data[left].d) ? right : left;
+      if (this.data[best].d < this.data[i].d) {
+        [this.data[i], this.data[best]] = [this.data[best], this.data[i]];
+        i = best;
+      } else break;
+    }
+  }
+  isEmpty() { return this.data.length === 0; }
+}
+
+// Authentic Dijkstra Taxiway Routing on WIII OSM Graph
+function findTaxiwayPath(startLat, startLon, endLat, endLon) {
+  if (!airportData || !airportData.taxi_graph) return null;
+  const graph = airportData.taxi_graph;
+  const nodes = graph.nodes;
+  const adj = graph.adj;
+
+  let startNode = null, minDistStart = Infinity;
+  let endNode = null, minDistEnd = Infinity;
+
+  for (const nid in nodes) {
+    const pt = nodes[nid];
+    const dStart = (pt[0] - startLat) ** 2 + (pt[1] - startLon) ** 2;
+    if (dStart < minDistStart) {
+      minDistStart = dStart;
+      startNode = nid;
+    }
+    const dEnd = (pt[0] - endLat) ** 2 + (pt[1] - endLon) ** 2;
+    if (dEnd < minDistEnd) {
+      minDistEnd = dEnd;
+      endNode = nid;
+    }
+  }
+
+  if (!startNode || !endNode || startNode === endNode) {
+    return [[startLat, startLon], [endLat, endLon]];
+  }
+
+  const dist = {};
+  const prev = {};
+  const pq = new TaxiMinHeap();
+  dist[startNode] = 0;
+  pq.push({ id: startNode, d: 0 });
+
+  while (!pq.isEmpty()) {
+    const cur = pq.pop();
+    const u = cur.id;
+    if (u === endNode) break;
+    if (cur.d > dist[u]) continue;
+
+    const neighbors = adj[u];
+    if (!neighbors) continue;
+    const uPt = nodes[u];
+
+    for (let i = 0; i < neighbors.length; i++) {
+      const v = neighbors[i];
+      const vPt = nodes[v];
+      const dLat = (vPt[0] - uPt[0]) * 111000;
+      const dLon = (vPt[1] - uPt[1]) * 111000 * Math.cos(uPt[0] * Math.PI / 180);
+      const weight = Math.hypot(dLat, dLon);
+      const newDist = cur.d + weight;
+
+      if (dist[v] === undefined || newDist < dist[v]) {
+        dist[v] = newDist;
+        prev[v] = u;
+        pq.push({ id: v, d: newDist });
+      }
+    }
+  }
+
+  if (dist[endNode] === undefined) {
+    return [[startLat, startLon], [endLat, endLon]];
+  }
+
+  const path = [];
+  let curr = endNode;
+  while (curr) {
+    const pt = nodes[curr];
+    path.push([pt[0], pt[1]]);
+    curr = prev[curr];
+  }
+  path.reverse();
+  return [[startLat, startLon], ...path, [endLat, endLon]];
+}
+
+// Real-world Airline & Terminal Allocation for Soekarno-Hatta (WIII)
+function assignRealisticGate(airline, callsign) {
+  const gates = (airportData && airportData.gates) ? airportData.gates : [];
+  if (!gates.length) return { ref: "E1", lat: -6.121757, lon: 106.651077, terminal: "T2" };
+
+  const t1A = gates.filter(g => g.ref && g.ref.startsWith("A"));
+  const t1B = gates.filter(g => g.ref && g.ref.startsWith("B"));
+  const t1C = gates.filter(g => g.ref && g.ref.startsWith("C"));
+  const t2D = gates.filter(g => g.ref && g.ref.startsWith("D"));
+  const t2E = gates.filter(g => g.ref && g.ref.startsWith("E"));
+  const t2F = gates.filter(g => g.ref && g.ref.startsWith("F"));
+  const t3 = gates.filter(g => g.ref && !["A","B","C","D","E","F"].includes(g.ref[0]));
+
+  const airUpper = (airline || "").toUpperCase();
+  const csUpper = (callsign || "").toUpperCase();
+
+  let pool = [];
+  if (airUpper.includes("GARUDA") || csUpper.includes("GIA")) {
+    pool = t3;
+  } else if (airUpper.includes("CITILINK") || csUpper.includes("CTV") || csUpper.includes("SUPERGREEN")) {
+    pool = t1C.length ? t1C : t3;
+  } else if (airUpper.includes("LION") || csUpper.includes("LNI") || airUpper.includes("SUPER AIR") || csUpper.includes("SJV")) {
+    pool = t1A.length ? t1A : t1B;
+  } else if (airUpper.includes("BATIK") || csUpper.includes("BTK")) {
+    pool = t2D.length ? t2D : t2E;
+  } else if (airUpper.includes("AIRASIA") || csUpper.includes("AWQ") || csUpper.includes("AXM")) {
+    pool = t2F.length ? t2F : t2E;
+  } else if (airUpper.includes("SINGAPORE") || csUpper.includes("SIA") || airUpper.includes("CARGOLUX") || csUpper.includes("CLX")) {
+    pool = t3;
+  } else {
+    pool = gates;
+  }
+
+  if (!pool.length) pool = gates;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getGateByName(ref) {
+  if (!airportData || !airportData.gates) return null;
+  return airportData.gates.find(g => g.ref === ref) || null;
+}
+
 function executePushbackMovement(ac) {
   // Clear any existing interval
   if (ac._pushInterval) clearInterval(ac._pushInterval);
@@ -94,14 +252,25 @@ function executeTaxiMovement(ac) {
     ? airportData.runway_mechanisms[rwyKey]
     : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+  const hpCoord = mech && mech.holding_point ? [mech.holding_point.lat, mech.holding_point.lon] : [-6.1104895, 106.6679684];
 
-  const dynamicRoutes = airportData && airportData.taxi_routes_by_runway ? airportData.taxi_routes_by_runway[rwyKey] : null;
+  // Dynamically compute authentic taxiway path via Dijkstra if departed from any gate
+  let points = null;
+  if (airportData && airportData.taxi_graph && ac.lat && ac.lon) {
+    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1]);
+    if (calculated && calculated.length > 3) {
+      points = calculated.map(p => ({ lat: p[0], lon: p[1] }));
+    }
+  }
 
-  const points = (dynamicRoutes && dynamicRoutes.coords)
-    ? dynamicRoutes.coords.map(p => ({ lat: p[0], lon: p[1] }))
-    : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2)
-        ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
-        : flightRouteMission.taxiwayPoints);
+  if (!points) {
+    const dynamicRoutes = airportData && airportData.taxi_routes_by_runway ? airportData.taxi_routes_by_runway[rwyKey] : null;
+    points = (dynamicRoutes && dynamicRoutes.coords)
+      ? dynamicRoutes.coords.map(p => ({ lat: p[0], lon: p[1] }))
+      : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2)
+          ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
+          : flightRouteMission.taxiwayPoints);
+  }
 
   let ptIdx = (ac._crossSavedIndex !== undefined && ac._crossSavedIndex !== null) ? ac._crossSavedIndex : 0;
   ac._crossSavedIndex = null;

@@ -130,6 +130,12 @@ function renderFlightStrips() {
               </select>
             `}
           </div>
+          <div class="col-span-2 flex items-center justify-between gap-1 bg-slate-950/80 px-1.5 py-0.5 rounded border border-slate-800">
+            <span class="text-[8px] text-teal-400 font-mono font-bold uppercase">Stand / Gate</span>
+            <select onchange="changeAircraftGate(${idx}, this.value)" class="bg-slate-950 border border-slate-700 text-teal-300 text-[10px] rounded px-1 py-0 focus:outline-none max-w-[140px]">
+              ${(airportData.gates || []).map(g => `<option value="${g.ref}" ${(ac.assignedGate || 'E1') === g.ref ? 'selected' : ''}>${g.terminal ? g.terminal + ' · ' : ''}Gate ${g.ref}</option>`).join('')}
+            </select>
+          </div>
         </div>
 
         <!-- TACTICAL RESOLUTION CONTROLS (Milestone 5: Vector, Altitude Step, Speed, Go-Around) -->
@@ -258,6 +264,24 @@ function changeAircraftStar(idx, newStar) {
     executeApproachMovement(ac);
   }
 
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+}
+
+function changeAircraftGate(idx, newGateRef) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  ac.assignedGate = newGateRef;
+  const gObj = (airportData && airportData.gates) ? airportData.gates.find(g => g.ref === newGateRef) : null;
+  if (gObj) {
+    ac.assignedGateCoord = [gObj.lat, gObj.lon];
+    if (ac.state === "GATE" || ac.state === "PARKED") {
+      ac.lat = gObj.lat;
+      ac.lon = gObj.lon;
+    }
+  }
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned Gate ${newGateRef}`);
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();

@@ -352,6 +352,10 @@ function spawnInboundArrival() {
   const angleRad = Math.atan2(wp0[0] - spawnLat, (wp0[1] - spawnLon) * Math.cos(spawnLat * Math.PI / 180));
   const initialHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
 
+  const assignedGate = (typeof assignRealisticGate === "function")
+    ? assignRealisticGate(chosen.airline, chosen.callsign)
+    : { ref: "E1", lat: -6.121757, lon: 106.651077, terminal: "T2" };
+
   const newAc = {
     id: chosen.id,
     callsign: chosen.callsign,
@@ -365,6 +369,8 @@ function spawnInboundArrival() {
     state: "APPROACH",
     clearedRwy: targetRwy,
     clearedStar: defaultStar,
+    assignedGate: assignedGate.ref,
+    assignedGateCoord: [assignedGate.lat, assignedGate.lon],
     squawk: String(Math.floor(1000 + Math.random() * 8000)),
     hasCheckedIn: false,
     checkInPhrase: `Jakarta Approach, ${chosen.callsign}, 15 miles before ${starObj.waypoints ? starObj.waypoints[0] : 'entry fix'}, inbound flight level one two zero.`
@@ -550,16 +556,38 @@ function executeTaxiInMovement(ac) {
     ? airportData.taxi_in_routes[rwyKey]
     : null;
 
-  // Use the verified OSM Dijkstra path from runway exit point to Gate E1 stand
-  const taxiInPoints = (taxiInData && taxiInData.coords)
-    ? taxiInData.coords.map(p => ({ lat: p[0], lon: p[1] }))
-    : [
-        { lat: ac.lat, lon: ac.lon },
-        { lat: -6.118502, lon: 106.652425 },
-        { lat: -6.121013, lon: 106.650012 },
-        { lat: -6.121480, lon: 106.650280 },
-        { lat: -6.121757, lon: 106.651077 }
-      ];
+  // Resolve target gate stand
+  let targetGate = null;
+  if (ac.assignedGate && airportData && airportData.gates) {
+    targetGate = airportData.gates.find(g => g.ref === ac.assignedGate);
+  }
+  if (!targetGate && typeof assignRealisticGate === "function") {
+    targetGate = assignRealisticGate(ac.airline, ac.callsign);
+    ac.assignedGate = targetGate.ref;
+    ac.assignedGateCoord = [targetGate.lat, targetGate.lon];
+  }
+
+  // Calculate dynamic authentic taxiway path via Dijkstra to target gate
+  let taxiInPoints = null;
+  if (targetGate && typeof findTaxiwayPath === "function") {
+    const calculated = findTaxiwayPath(ac.lat, ac.lon, targetGate.lat, targetGate.lon);
+    if (calculated && calculated.length > 3) {
+      taxiInPoints = calculated.map(p => ({ lat: p[0], lon: p[1] }));
+    }
+  }
+
+  // Fallback to static verified taxi_in_routes if needed
+  if (!taxiInPoints) {
+    taxiInPoints = (taxiInData && taxiInData.coords)
+      ? taxiInData.coords.map(p => ({ lat: p[0], lon: p[1] }))
+      : [
+          { lat: ac.lat, lon: ac.lon },
+          { lat: -6.118502, lon: 106.652425 },
+          { lat: -6.121013, lon: 106.650012 },
+          { lat: -6.121480, lon: 106.650280 },
+          { lat: -6.121757, lon: 106.651077 }
+        ];
+  }
 
   let nodeIdx = 0;
   ac.groundSpeed = 15;
@@ -574,7 +602,9 @@ function executeTaxiInMovement(ac) {
       ac.groundSpeed = 0;
       ac.altitude = 0;
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, parked at Gate Echo 1, engines shutdown, good day.`;
+      const gateStr = ac.assignedGate ? `Gate ${ac.assignedGate}` : "Gate Echo 1";
+      const termStr = (targetGate && targetGate.terminal) ? `(${targetGate.terminal})` : "";
+      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, parked at ${gateStr} ${termStr}, engines shutdown, good day.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();

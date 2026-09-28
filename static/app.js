@@ -1944,6 +1944,12 @@ function renderFlightStrips() {
               </select>
             `}
           </div>
+          <div class="col-span-2 flex items-center justify-between gap-1 bg-slate-950/80 px-1.5 py-0.5 rounded border border-slate-800">
+            <span class="text-[8px] text-teal-400 font-mono font-bold uppercase">Stand / Gate</span>
+            <select onchange="changeAircraftGate(${idx}, this.value)" class="bg-slate-950 border border-slate-700 text-teal-300 text-[10px] rounded px-1 py-0 focus:outline-none max-w-[140px]">
+              ${(airportData.gates || []).map(g => `<option value="${g.ref}" ${(ac.assignedGate || 'E1') === g.ref ? 'selected' : ''}>${g.terminal ? g.terminal + ' · ' : ''}Gate ${g.ref}</option>`).join('')}
+            </select>
+          </div>
         </div>
 
         <!-- TACTICAL RESOLUTION CONTROLS (Milestone 5: Vector, Altitude Step, Speed, Go-Around) -->
@@ -2072,6 +2078,24 @@ function changeAircraftStar(idx, newStar) {
     executeApproachMovement(ac);
   }
 
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+}
+
+function changeAircraftGate(idx, newGateRef) {
+  const ac = aircraft[idx];
+  if (!ac) return;
+  ac.assignedGate = newGateRef;
+  const gObj = (airportData && airportData.gates) ? airportData.gates.find(g => g.ref === newGateRef) : null;
+  if (gObj) {
+    ac.assignedGateCoord = [gObj.lat, gObj.lon];
+    if (ac.state === "GATE" || ac.state === "PARKED") {
+      ac.lat = gObj.lat;
+      ac.lon = gObj.lon;
+    }
+  }
+  console.log(`[ATC ROUTE] Aircraft ${ac.id} assigned Gate ${newGateRef}`);
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
@@ -2372,6 +2396,164 @@ function handleRadarVoiceCommand(text, parsedData) {
 }
 
 // Autonomous Flight Movement Sequences for GIA502
+// Min-Heap Priority Queue for high-performance Dijkstra pathfinding
+class TaxiMinHeap {
+  constructor() { this.data = []; }
+  push(item) {
+    this.data.push(item);
+    this.up(this.data.length - 1);
+  }
+  pop() {
+    if (this.data.length === 0) return null;
+    const top = this.data[0];
+    const bottom = this.data.pop();
+    if (this.data.length > 0) {
+      this.data[0] = bottom;
+      this.down(0);
+    }
+    return top;
+  }
+  up(i) {
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (this.data[i].d < this.data[p].d) {
+        [this.data[i], this.data[p]] = [this.data[p], this.data[i]];
+        i = p;
+      } else break;
+    }
+  }
+  down(i) {
+    const len = this.data.length;
+    while ((i << 1) + 1 < len) {
+      let left = (i << 1) + 1;
+      let right = left + 1;
+      let best = (right < len && this.data[right].d < this.data[left].d) ? right : left;
+      if (this.data[best].d < this.data[i].d) {
+        [this.data[i], this.data[best]] = [this.data[best], this.data[i]];
+        i = best;
+      } else break;
+    }
+  }
+  isEmpty() { return this.data.length === 0; }
+}
+
+// Authentic Dijkstra Taxiway Routing on WIII OSM Graph
+function findTaxiwayPath(startLat, startLon, endLat, endLon) {
+  if (!airportData || !airportData.taxi_graph) return null;
+  const graph = airportData.taxi_graph;
+  const nodes = graph.nodes;
+  const adj = graph.adj;
+
+  let startNode = null, minDistStart = Infinity;
+  let endNode = null, minDistEnd = Infinity;
+
+  for (const nid in nodes) {
+    const pt = nodes[nid];
+    const dStart = (pt[0] - startLat) ** 2 + (pt[1] - startLon) ** 2;
+    if (dStart < minDistStart) {
+      minDistStart = dStart;
+      startNode = nid;
+    }
+    const dEnd = (pt[0] - endLat) ** 2 + (pt[1] - endLon) ** 2;
+    if (dEnd < minDistEnd) {
+      minDistEnd = dEnd;
+      endNode = nid;
+    }
+  }
+
+  if (!startNode || !endNode || startNode === endNode) {
+    return [[startLat, startLon], [endLat, endLon]];
+  }
+
+  const dist = {};
+  const prev = {};
+  const pq = new TaxiMinHeap();
+  dist[startNode] = 0;
+  pq.push({ id: startNode, d: 0 });
+
+  while (!pq.isEmpty()) {
+    const cur = pq.pop();
+    const u = cur.id;
+    if (u === endNode) break;
+    if (cur.d > dist[u]) continue;
+
+    const neighbors = adj[u];
+    if (!neighbors) continue;
+    const uPt = nodes[u];
+
+    for (let i = 0; i < neighbors.length; i++) {
+      const v = neighbors[i];
+      const vPt = nodes[v];
+      const dLat = (vPt[0] - uPt[0]) * 111000;
+      const dLon = (vPt[1] - uPt[1]) * 111000 * Math.cos(uPt[0] * Math.PI / 180);
+      const weight = Math.hypot(dLat, dLon);
+      const newDist = cur.d + weight;
+
+      if (dist[v] === undefined || newDist < dist[v]) {
+        dist[v] = newDist;
+        prev[v] = u;
+        pq.push({ id: v, d: newDist });
+      }
+    }
+  }
+
+  if (dist[endNode] === undefined) {
+    return [[startLat, startLon], [endLat, endLon]];
+  }
+
+  const path = [];
+  let curr = endNode;
+  while (curr) {
+    const pt = nodes[curr];
+    path.push([pt[0], pt[1]]);
+    curr = prev[curr];
+  }
+  path.reverse();
+  return [[startLat, startLon], ...path, [endLat, endLon]];
+}
+
+// Real-world Airline & Terminal Allocation for Soekarno-Hatta (WIII)
+function assignRealisticGate(airline, callsign) {
+  const gates = (airportData && airportData.gates) ? airportData.gates : [];
+  if (!gates.length) return { ref: "E1", lat: -6.121757, lon: 106.651077, terminal: "T2" };
+
+  const t1A = gates.filter(g => g.ref && g.ref.startsWith("A"));
+  const t1B = gates.filter(g => g.ref && g.ref.startsWith("B"));
+  const t1C = gates.filter(g => g.ref && g.ref.startsWith("C"));
+  const t2D = gates.filter(g => g.ref && g.ref.startsWith("D"));
+  const t2E = gates.filter(g => g.ref && g.ref.startsWith("E"));
+  const t2F = gates.filter(g => g.ref && g.ref.startsWith("F"));
+  const t3 = gates.filter(g => g.ref && !["A","B","C","D","E","F"].includes(g.ref[0]));
+
+  const airUpper = (airline || "").toUpperCase();
+  const csUpper = (callsign || "").toUpperCase();
+
+  let pool = [];
+  if (airUpper.includes("GARUDA") || csUpper.includes("GIA")) {
+    pool = t3;
+  } else if (airUpper.includes("CITILINK") || csUpper.includes("CTV") || csUpper.includes("SUPERGREEN")) {
+    pool = t1C.length ? t1C : t3;
+  } else if (airUpper.includes("LION") || csUpper.includes("LNI") || airUpper.includes("SUPER AIR") || csUpper.includes("SJV")) {
+    pool = t1A.length ? t1A : t1B;
+  } else if (airUpper.includes("BATIK") || csUpper.includes("BTK")) {
+    pool = t2D.length ? t2D : t2E;
+  } else if (airUpper.includes("AIRASIA") || csUpper.includes("AWQ") || csUpper.includes("AXM")) {
+    pool = t2F.length ? t2F : t2E;
+  } else if (airUpper.includes("SINGAPORE") || csUpper.includes("SIA") || airUpper.includes("CARGOLUX") || csUpper.includes("CLX")) {
+    pool = t3;
+  } else {
+    pool = gates;
+  }
+
+  if (!pool.length) pool = gates;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getGateByName(ref) {
+  if (!airportData || !airportData.gates) return null;
+  return airportData.gates.find(g => g.ref === ref) || null;
+}
+
 function executePushbackMovement(ac) {
   // Clear any existing interval
   if (ac._pushInterval) clearInterval(ac._pushInterval);
@@ -2468,14 +2650,25 @@ function executeTaxiMovement(ac) {
     ? airportData.runway_mechanisms[rwyKey]
     : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+  const hpCoord = mech && mech.holding_point ? [mech.holding_point.lat, mech.holding_point.lon] : [-6.1104895, 106.6679684];
 
-  const dynamicRoutes = airportData && airportData.taxi_routes_by_runway ? airportData.taxi_routes_by_runway[rwyKey] : null;
+  // Dynamically compute authentic taxiway path via Dijkstra if departed from any gate
+  let points = null;
+  if (airportData && airportData.taxi_graph && ac.lat && ac.lon) {
+    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1]);
+    if (calculated && calculated.length > 3) {
+      points = calculated.map(p => ({ lat: p[0], lon: p[1] }));
+    }
+  }
 
-  const points = (dynamicRoutes && dynamicRoutes.coords)
-    ? dynamicRoutes.coords.map(p => ({ lat: p[0], lon: p[1] }))
-    : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2)
-        ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
-        : flightRouteMission.taxiwayPoints);
+  if (!points) {
+    const dynamicRoutes = airportData && airportData.taxi_routes_by_runway ? airportData.taxi_routes_by_runway[rwyKey] : null;
+    points = (dynamicRoutes && dynamicRoutes.coords)
+      ? dynamicRoutes.coords.map(p => ({ lat: p[0], lon: p[1] }))
+      : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2)
+          ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
+          : flightRouteMission.taxiwayPoints);
+  }
 
   let ptIdx = (ac._crossSavedIndex !== undefined && ac._crossSavedIndex !== null) ? ac._crossSavedIndex : 0;
   ac._crossSavedIndex = null;
@@ -3787,6 +3980,10 @@ function spawnInboundArrival() {
   const angleRad = Math.atan2(wp0[0] - spawnLat, (wp0[1] - spawnLon) * Math.cos(spawnLat * Math.PI / 180));
   const initialHdg = Math.round((90 - (angleRad * 180 / Math.PI) + 360) % 360);
 
+  const assignedGate = (typeof assignRealisticGate === "function")
+    ? assignRealisticGate(chosen.airline, chosen.callsign)
+    : { ref: "E1", lat: -6.121757, lon: 106.651077, terminal: "T2" };
+
   const newAc = {
     id: chosen.id,
     callsign: chosen.callsign,
@@ -3800,6 +3997,8 @@ function spawnInboundArrival() {
     state: "APPROACH",
     clearedRwy: targetRwy,
     clearedStar: defaultStar,
+    assignedGate: assignedGate.ref,
+    assignedGateCoord: [assignedGate.lat, assignedGate.lon],
     squawk: String(Math.floor(1000 + Math.random() * 8000)),
     hasCheckedIn: false,
     checkInPhrase: `Jakarta Approach, ${chosen.callsign}, 15 miles before ${starObj.waypoints ? starObj.waypoints[0] : 'entry fix'}, inbound flight level one two zero.`
@@ -3985,16 +4184,38 @@ function executeTaxiInMovement(ac) {
     ? airportData.taxi_in_routes[rwyKey]
     : null;
 
-  // Use the verified OSM Dijkstra path from runway exit point to Gate E1 stand
-  const taxiInPoints = (taxiInData && taxiInData.coords)
-    ? taxiInData.coords.map(p => ({ lat: p[0], lon: p[1] }))
-    : [
-        { lat: ac.lat, lon: ac.lon },
-        { lat: -6.118502, lon: 106.652425 },
-        { lat: -6.121013, lon: 106.650012 },
-        { lat: -6.121480, lon: 106.650280 },
-        { lat: -6.121757, lon: 106.651077 }
-      ];
+  // Resolve target gate stand
+  let targetGate = null;
+  if (ac.assignedGate && airportData && airportData.gates) {
+    targetGate = airportData.gates.find(g => g.ref === ac.assignedGate);
+  }
+  if (!targetGate && typeof assignRealisticGate === "function") {
+    targetGate = assignRealisticGate(ac.airline, ac.callsign);
+    ac.assignedGate = targetGate.ref;
+    ac.assignedGateCoord = [targetGate.lat, targetGate.lon];
+  }
+
+  // Calculate dynamic authentic taxiway path via Dijkstra to target gate
+  let taxiInPoints = null;
+  if (targetGate && typeof findTaxiwayPath === "function") {
+    const calculated = findTaxiwayPath(ac.lat, ac.lon, targetGate.lat, targetGate.lon);
+    if (calculated && calculated.length > 3) {
+      taxiInPoints = calculated.map(p => ({ lat: p[0], lon: p[1] }));
+    }
+  }
+
+  // Fallback to static verified taxi_in_routes if needed
+  if (!taxiInPoints) {
+    taxiInPoints = (taxiInData && taxiInData.coords)
+      ? taxiInData.coords.map(p => ({ lat: p[0], lon: p[1] }))
+      : [
+          { lat: ac.lat, lon: ac.lon },
+          { lat: -6.118502, lon: 106.652425 },
+          { lat: -6.121013, lon: 106.650012 },
+          { lat: -6.121480, lon: 106.650280 },
+          { lat: -6.121757, lon: 106.651077 }
+        ];
+  }
 
   let nodeIdx = 0;
   ac.groundSpeed = 15;
@@ -4009,7 +4230,9 @@ function executeTaxiInMovement(ac) {
       ac.groundSpeed = 0;
       ac.altitude = 0;
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, parked at Gate Echo 1, engines shutdown, good day.`;
+      const gateStr = ac.assignedGate ? `Gate ${ac.assignedGate}` : "Gate Echo 1";
+      const termStr = (targetGate && targetGate.terminal) ? `(${targetGate.terminal})` : "";
+      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, parked at ${gateStr} ${termStr}, engines shutdown, good day.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
