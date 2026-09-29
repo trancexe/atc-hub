@@ -202,6 +202,15 @@ function changeAircraftRunway(idx, newRwy) {
   const oldRwy = ac.clearedRwy;
   ac.clearedRwy = newRwy;
 
+  if (typeof logTelemetry === 'function') {
+    logTelemetry('BEHAVIOR', `${ac.id} Runway Changed: ${oldRwy} -> ${newRwy}`, {
+      state: ac.state,
+      oldRunway: oldRwy,
+      newRunway: newRwy,
+      reroute: ['APPROACH', 'FINAL'].includes(ac.state) ? 'In-Flight ILS Recalculated' : 'Ground/SID Updated'
+    });
+  }
+
   if (ac.state === "HOLD_SHORT_CROSS") {
     ac._aiCrossIssued = false;
   }
@@ -540,23 +549,38 @@ function handleRadarVoiceCommand(text, parsedData) {
     if (matchedAc.state === "GATE" && (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start"))) {
       matchedAc.state = "PUSHBACK";
       readback = "Push and start approved, facing west, " + matchedAc.callsign;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Pushback & Start Approved`, 'Facing West | State -> PUSHBACK');
+      }
       executePushbackMovement(matchedAc);
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = false;
       readback = `Taxi to holding point runway ${rwySpoken} via ${hpName}, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) | State -> TAXI`);
+      }
       executeTaxiMovement(matchedAc);
     } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = true;
       readback = `Cross runway two five right at November cross, report vacated, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Runway Crossing Approved`, 'Cross RWY 25R at November Cross');
+      }
       executeTaxiMovement(matchedAc);
     } else if ((matchedAc.state === "HOLDING" || matchedAc.state === "TAXI") && (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait"))) {
       matchedAc.state = "LINE_UP";
       readback = `Line up and wait runway ${rwySpoken}, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Line Up and Wait`, `Runway: ${rwySpoken} | State -> LINE_UP`);
+      }
       executeLineUpMovement(matchedAc);
     } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "LINING_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
       readback = `Runway ${rwySpoken} cleared for takeoff, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared for Takeoff`, `Runway: ${rwySpoken} | State -> TAKEOFF (Rolling)`);
+      }
       if (matchedAc.state === "LINING_UP") {
         // Pilot acknowledges clearance, completes the lineup curve first to runway threshold, then rolls!
         matchedAc.takeoffQueued = true;
@@ -568,31 +592,52 @@ function handleRadarVoiceCommand(text, parsedData) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "A030";
       readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwySpoken}, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared ILS Approach`, `Runway: ${rwySpoken} | Assigned Alt: A030 (3000ft)`);
+      }
     } else if ((matchedAc.state === "FINAL" || matchedAc.state === "APPROACH") && (norm.includes("land") || norm.includes("cleared"))) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "GND";
       readback = `Runway ${rwySpoken} cleared to land, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared to Land`, `Runway: ${rwySpoken} | Landing Rollout Authorized`);
+      }
     } else if (commandedRwy) {
       readback = `Expect runway ${rwySpoken}, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Runway Assignment Updated`, `Runway: ${rwySpoken}`);
+      }
     } else if (norm.includes("go around") || norm.includes("missed approach") || norm.includes("go round") || intent === "GO_AROUND") {
       const idx = aircraft.findIndex(a => a.id === matchedAc.id);
       readback = issueGoAround(idx);
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('SAFETY', `${matchedAc.id} Go-Around / Missed Approach`, 'Immediate Climb & Abort Landing');
+      }
     } else if ((norm.includes("turn") || norm.includes("heading") || intent === "VECTOR") && matchedAc.altitude > 100) {
       const hdgMatch = norm.match(/\b(?:heading|turn\s*(?:left|right)?(?:\s*heading)?)\s*(\d{2,3})\b/);
       const targetHdg = hdgMatch ? parseInt(hdgMatch[1], 10) : 180;
       const idx = aircraft.findIndex(a => a.id === matchedAc.id);
       readback = issueRadarVector(idx, targetHdg);
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Tactical Vector Heading`, `Assigned Heading: ${targetHdg}°`);
+      }
     } else if ((norm.includes("speed") || norm.includes("reduce") || norm.includes("maintain") || intent === "SPEED") && matchedAc.altitude > 100) {
       const spdMatch = norm.match(/\b(?:speed|to|reduce|maintain)\s*(\d{2,3})\s*(?:knots|kts)?\b/);
       const targetSpd = spdMatch ? parseInt(spdMatch[1], 10) : 210;
       const idx = aircraft.findIndex(a => a.id === matchedAc.id);
       readback = issueSpeedControl(idx, targetSpd);
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Tactical Speed Adjustment`, `Target Airspeed: ${targetSpd} kts`);
+      }
     } else if ((norm.includes("climb") || norm.includes("descend")) && matchedAc.altitude > 100) {
       const flMatch = norm.match(/\b(?:flight\s*level|fl)\s*(\d{2,3})\b/);
       const altMatch = norm.match(/\b(\d{1,2})\s*(?:thousand)?\s*(?:feet|ft)?\b/);
       const targetAlt = flMatch ? `FL${flMatch[1]}` : (altMatch ? `A${String(parseInt(altMatch[1], 10) * 10).padStart(3, '0')}` : "A050");
       const idx = aircraft.findIndex(a => a.id === matchedAc.id);
       readback = issueAltitudeStep(idx, targetAlt);
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Altitude Step Adjustment`, `Assigned Altitude: ${targetAlt}`);
+      }
     } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121") || norm.includes("taxi"))) {
       matchedAc.state = "TAXI_IN";
       readback = `Vacating runway via November 4, contacting Ground 121 decimal 6, ${matchedAc.callsign}`;

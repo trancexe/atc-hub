@@ -4,6 +4,7 @@ set -e
 # Concatenate all modules in exact logical sequence to bundle static/app.js
 cat \
   static/js/state.js \
+  static/js/logger.js \
   static/js/audio.js \
   static/js/radar.js \
   static/js/strips.js \

@@ -10,6 +10,26 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import edge_tts
+import logging
+from logging.handlers import RotatingFileHandler
+
+BASE_DIR = Path(__file__).resolve().parent
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "atc_activity.log"
+
+# Centralized ATC Activity & Telemetry Logger
+logger = logging.getLogger("atc-hub")
+logger.setLevel(logging.INFO)
+log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3)
+file_handler.setFormatter(log_formatter)
+if not logger.handlers:
+    logger.addHandler(file_handler)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_formatter)
+    logger.addHandler(console_handler)
 
 # Initialize Faster-Whisper
 whisper_model = None
@@ -259,6 +279,8 @@ async def transcribe_audio(
         parsed = sanitize_and_normalize(transcript)
         score = calculate_score(transcript, target_text) if target_text else 100
 
+        logger.info(f"[VOICE IN] dur={duration}s | raw='{transcript.strip()}' | norm='{parsed['normalized']}' | callsign={parsed['callsign']} | rwy={parsed['runway']} | intent={parsed['intent']}")
+
         return JSONResponse({
             "success": True,
             "text": transcript.strip(),
@@ -437,6 +459,25 @@ def calculate_score(transcript: str, target: str) -> int:
     if parsed_actual["intent"] != "UNKNOWN" and parsed_actual["intent"] == parsed_target["intent"]:
         accuracy = max(accuracy, 75)
     return min(100, max(0, accuracy))
+
+@app.post("/api/telemetry/event")
+async def log_telemetry_event(payload: dict):
+    cat = payload.get("category", "SYSTEM")
+    title = payload.get("title", "")
+    details = payload.get("details", "")
+    logger.info(f"[{cat}] {title} | {details}")
+    return {"status": "ok"}
+
+@app.get("/api/telemetry/recent")
+async def get_recent_telemetry_logs(limit: int = 50):
+    if not LOG_FILE.exists():
+        return {"logs": []}
+    try:
+        with open(LOG_FILE, "r") as f:
+            lines = f.readlines()
+        return {"logs": [l.strip() for l in lines[-limit:]]}
+    except Exception as e:
+        return {"error": str(e), "logs": []}
 
 # Serve static frontend
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

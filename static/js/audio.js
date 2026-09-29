@@ -97,6 +97,9 @@ async function speakPilotTransmission(text) {
 }
 
 async function speakPilotReadback(text) {
+  if (typeof logTelemetry === 'function') {
+    logTelemetry('READBACK', `Pilot Readback`, text);
+  }
   return new Promise((resolve) => {
     enqueueRadioTransmission({
       type: "READBACK",
@@ -605,6 +608,14 @@ async function sendAudioToWhisper(blob, ext) {
       if (currentTab === 'radar') {
         document.getElementById('recognized-text').textContent = `"${res.text}"`;
         document.getElementById('ptt-status').textContent = `Transmitted (${res.duration}s)`;
+        if (typeof logTelemetry === 'function') {
+          logTelemetry('VOICE', `Voice Input: "${res.text}"`, {
+            callsign: res.parsed?.callsign || 'N/A',
+            runway: res.parsed?.runway || 'N/A',
+            intent: res.parsed?.intent || 'N/A',
+            duration: `${res.duration}s`
+          });
+        }
         handleRadarVoiceCommand(res.text, res.parsed);
       } else {
         handleAcademyResult(res);
