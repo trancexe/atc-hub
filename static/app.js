@@ -4161,233 +4161,263 @@ function drawHoldingPatternOverlays(ctx, st) {
     ctx.restore();
   });
 }
-// ATC HUB - Milestone 7: Learning Academy & Guided Interactive Training Engine
+// ATC HUB - Milestone 7: Interactive Scenario-Driven Flight Academy
 
-const TUTORIAL_LESSONS = [
+// 6 Interactive Hands-on Training Scenarios with live simulation spawning & objective tracking
+const INTERACTIVE_SCENARIOS = [
   {
     id: "lesson-1",
     num: 1,
-    title: "Lesson 1: Pengenalan Radar & Layar ATC",
+    title: "Lesson 1: Pengenalan Radar & Seleksi Target",
     category: "Radar Basics",
-    desc: "Memahami navigasi peta, kontrol zoom & pan, serta membaca data block (callsign, altitude, speed, squawk).",
-    steps: [
-      {
-        targetId: "pane-ground",
-        title: "1. Ground Radar (ASDE)",
-        text: "Layar kiri menampilkan Surface Movement / Ground Radar Bandara Soekarno-Hatta (WIII). Di sini Anda memantau pergerakan apron, taxiway, dan gate.",
-        position: "center"
-      },
-      {
-        targetId: "pane-tma",
-        title: "2. Terminal Radar (TMA)",
-        text: "Layar kanan menampilkan Terminal Control Area (TMA 50 NM). Menampilkan jalur kedatangan (STAR), keberangkatan (SID), dan holding fix.",
-        position: "center"
-      },
-      {
-        targetId: "flight-strips-panel",
-        title: "3. Electronic Flight Progress Strips",
-        text: "Panel kanan adalah strip penerbangan digital. Menampilkan Callsign, Tipe Pesawat, Squawk Code, Runway tujuan, serta sisa bahan bakar (Endurance). Klik salah satu strip untuk memilih pesawat aktif!",
-        position: "left"
-      },
-      {
-        targetId: "btn-toggle-tw-labels",
-        title: "4. Navigasi & Label Taxiway",
-        text: "Gunakan tombol zoom (+/-) atau mouse wheel untuk zoom in/out. Tombol TWY dapat mengaktifkan atau menyembunyikan nama jalur taxiway.",
-        position: "bottom"
-      }
-    ]
+    desc: "Latihan langsung memilih pesawat di radar/strip, membaca data block, dan mengidentifikasi squawk code.",
+    instruction: "Klik strip penerbangan atau klik simbol pesawat <b>GIA502</b> pada radar untuk memilih target aktif.",
+    targetPhrase: "Klik strip GIA502",
+    spawnAircraft: () => {
+      resetScenarioAircraft();
+      aircraft.push({
+        id: "GIA502",
+        callsign: "INDONESIA 502",
+        airline: "Garuda Indonesia",
+        type: "B738",
+        gate: "Gate E1",
+        lat: -6.1255,
+        lon: 106.6558,
+        heading: 90,
+        altitude: 0,
+        groundSpeed: 0,
+        state: "PARKED",
+        clearedRwy: "25R",
+        squawk: "4215",
+        fde: { assignedAlt: "FL140", assignedSpd: "250K" }
+      });
+      selectedAircraftIndex = -1;
+      renderFlightStrips();
+      renderAllScreens();
+    },
+    checkSuccess: () => {
+      return selectedAircraftIndex !== -1 && aircraft[selectedAircraftIndex] && aircraft[selectedAircraftIndex].id === "GIA502";
+    },
+    successMessage: "Bagus! Target GIA502 berhasil dipilih. Data block aktif dan siap menerima instruksi."
   },
   {
     id: "lesson-2",
     num: 2,
-    title: "Lesson 2: Komunikasi Radio & Fraseologi ICAO",
+    title: "Lesson 2: Komunikasi Radio PTT & IFR Clearance",
     category: "Radio Phraseology",
-    desc: "Mekanisme Push-to-Talk (PTT), alfabet fonetik penerbangan, dan konvensi angka standar ICAO Doc 4444.",
-    steps: [
-      {
-        targetId: "ptt-status",
-        title: "1. Mekanisme Push-to-Talk (PTT)",
-        text: "Tekan dan tahan tombol SPASI pada keyboard atau klik dan tahan tombol mikrofon hijau untuk memulai transmisi suara.",
-        position: "top"
-      },
-      {
-        targetId: "easy-mode-prompter",
-        title: "2. Easy Mode Prompter",
-        text: "Untuk pemula, Easy Mode Prompter menampilkan frasa ICAO standar yang disarankan sesuai kondisi pesawat. Anda bisa membaca langsung teks tersebut ke mikrofon.",
-        position: "top"
-      },
-      {
-        targetId: "whisper-status",
-        title: "3. Faster-Whisper AI Recognizer",
-        text: "Suara Anda diproses secara on-device oleh model Whisper AI untuk mencocokkan intent kontrol (pushback, taxi, takeoff, approach).",
-        position: "bottom"
-      },
-      {
-        targetId: "toggle-logger-btn",
-        title: "4. Live Telemetry & Pilot Readback",
-        text: "Klik tombol LOGS untuk melihat apa yang didengar Whisper dan mendengarkan respon readback radio pilot VHF via audio sintetis real-time.",
-        position: "bottom"
-      }
-    ]
+    desc: "Praktek langsung menekan tombol SPASI (PTT) dan berbicara ke mikrofon atau klik Kirim ATC untuk memberikan izin IFR.",
+    instruction: "Pilih <b>GIA502</b>, lalu ucapkan ke Mic atau tekan tombol Kirim ATC:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521\"</span>",
+    targetPhrase: "Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521",
+    spawnAircraft: () => {
+      resetScenarioAircraft();
+      aircraft.push({
+        id: "GIA502",
+        callsign: "INDONESIA 502",
+        airline: "Garuda Indonesia",
+        type: "B738",
+        gate: "Gate E1",
+        lat: -6.1255,
+        lon: 106.6558,
+        heading: 90,
+        altitude: 0,
+        groundSpeed: 0,
+        state: "PARKED",
+        clearedRwy: "25R",
+        squawk: "1000",
+        fde: {}
+      });
+      selectedAircraftIndex = 0;
+      renderFlightStrips();
+      renderAllScreens();
+      updateEasyModePrompter();
+    },
+    checkSuccess: () => {
+      const ac = aircraft.find(a => a.id === "GIA502");
+      return ac && (ac.squawk === "4521" || (ac.fde && ac.fde.assignedAlt === "FL140"));
+    },
+    successMessage: "Pilot GIA502 membaca readback resmi dan menyetel squawk 4521! IFR clearance sukses."
   },
   {
     id: "lesson-3",
     num: 3,
-    title: "Lesson 3: Ground Control — Pushback & Taxi Routing",
+    title: "Lesson 3: Ground Control — Pushback & Taxi",
     category: "Ground Control",
-    desc: "Prosedur pelepasan gate, izin dorong mundur menghadap arah tertentu, dan perutean taxiway menuju holding point.",
-    steps: [
-      {
-        targetId: "bay-filter-dep",
-        title: "1. Filter Bay Keberangkatan (DEP)",
-        text: "Filter strip ke bay 'DEP' untuk melihat pesawat yang sedang parkir di terminal atau sedang bersiap untuk keberangkatan.",
-        position: "bottom"
-      },
-      {
-        targetId: "flight-strips",
-        title: "2. Izin Pushback & Engine Start",
-        text: "Ucapkan: '[Callsign], push and start approved, facing west'. Pesawat akan mulai didorong mundur dari gate oleh pushback tug.",
-        position: "left"
-      },
-      {
-        targetId: "pane-ground",
-        title: "3. Taxi Routing & Holding Point",
-        text: "Instruksikan taxi: '[Callsign], taxi to holding point runway 25R via NC1'. Pesawat akan mengikuti centerline taxiway menuju ujung landasan.",
-        position: "center"
-      },
-      {
-        targetId: "pane-ground",
-        title: "4. Runway Crossing Protocol",
-        text: "Sebelum menyeberangi runway aktif, pesawat wajib berhenti di holding point hingga ATC memberikan instruksi: 'Cross runway 25R at November Cross'.",
-        position: "center"
-      }
-    ]
+    desc: "Instruksikan pesawat untuk dorong mundur dan taxi ke holding point Runway 25R.",
+    instruction: "Ucapkan ke mic atau kirim instruksi:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 push and start approved, facing west\"</span> kemudian setelah pushback berikan <span class='text-sky-300 font-bold'>\"Indonesia 502 taxi to holding point runway 25R\"</span>",
+    targetPhrase: "Indonesia 502 push and start approved, facing west",
+    spawnAircraft: () => {
+      resetScenarioAircraft();
+      aircraft.push({
+        id: "GIA502",
+        callsign: "INDONESIA 502",
+        airline: "Garuda Indonesia",
+        type: "B738",
+        gate: "Gate E1",
+        lat: -6.1255,
+        lon: 106.6558,
+        heading: 90,
+        altitude: 0,
+        groundSpeed: 0,
+        state: "PARKED",
+        clearedRwy: "25R",
+        fde: {}
+      });
+      selectedAircraftIndex = 0;
+      renderFlightStrips();
+      renderAllScreens();
+      updateEasyModePrompter();
+    },
+    checkSuccess: () => {
+      const ac = aircraft.find(a => a.id === "GIA502");
+      return ac && ["PUSHBACK", "TAXI", "HOLDING"].includes(ac.state);
+    },
+    successMessage: "Pesawat GIA502 bergerak keluar dari gate dan mulai taxi di taxiway menuju holding point!"
   },
   {
     id: "lesson-4",
     num: 4,
-    title: "Lesson 4: Tower Control — Lineup & Clearances",
+    title: "Lesson 4: Tower Control — Line Up & Takeoff",
     category: "Tower Control",
-    desc: "Manajemen landasan pacu aktif, instruksi masuk landasan (Line up & wait), dan izin lepas landas / mendarat.",
-    steps: [
-      {
-        targetId: "bay-filter-twr",
-        title: "1. Tower Strip Bay (TWR)",
-        text: "Pesawat di ujung landasan dan di jalur final berada di bawah wewenang Tower Controller.",
-        position: "bottom"
-      },
-      {
-        targetId: "flight-strips",
-        title: "2. Line Up and Wait",
-        text: "Ucapkan: '[Callsign], line up and wait runway 25R'. Pesawat akan memasuki centerline runway dan berhenti bersiap takeoff.",
-        position: "left"
-      },
-      {
-        targetId: "metar-bar",
-        title: "3. Cuaca & Izin Takeoff",
-        text: "Pastikan runway bebas, sebutkan arah dan kecepatan angin: '[Callsign], wind 250 at 8 knots, runway 25R cleared for takeoff'.",
-        position: "bottom"
-      },
-      {
-        targetId: "pane-tma",
-        title: "4. Cleared to Land & Runway Vacate",
-        text: "Untuk pesawat kedatangan di final approach: '[Callsign], runway 25R cleared to land'. Setelah roda menyentuh runway, instruksikan untuk keluar di taxiway terdekat.",
-        position: "center"
-      }
-    ]
+    desc: "Berikan izin masuk ke runway aktif dan otorisasi lepas landas setelah kondisi aman.",
+    instruction: "GIA502 berada di holding point 25R. Berikan izin lepas landas:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 runway 25R cleared for takeoff\"</span>",
+    targetPhrase: "Indonesia 502 runway 25R cleared for takeoff",
+    spawnAircraft: () => {
+      resetScenarioAircraft();
+      aircraft.push({
+        id: "GIA502",
+        callsign: "INDONESIA 502",
+        airline: "Garuda Indonesia",
+        type: "B738",
+        gate: "Holding Point 25R",
+        lat: -6.1130,
+        lon: 106.6710,
+        heading: 250,
+        altitude: 0,
+        groundSpeed: 0,
+        state: "HOLDING",
+        clearedRwy: "25R",
+        fde: {}
+      });
+      selectedAircraftIndex = 0;
+      renderFlightStrips();
+      renderAllScreens();
+      updateEasyModePrompter();
+    },
+    checkSuccess: () => {
+      const ac = aircraft.find(a => a.id === "GIA502");
+      return ac && ["TAKEOFF", "CLIMB", "AIRBORNE"].includes(ac.state);
+    },
+    successMessage: "GIA502 full throttle, lepas landas dan mengudara menuju initial altitude!"
   },
   {
     id: "lesson-5",
     num: 5,
-    title: "Lesson 5: Approach Control — STAR & ILS Sequencing",
+    title: "Lesson 5: Approach Control — ILS Clearance",
     category: "Approach Control",
-    desc: "Navigasi rute kedatangan baku (STAR), otorisasi ILS glide slope, dan pengaturan jarak kedatangan via AMAN.",
-    steps: [
-      {
-        targetId: "bay-filter-app",
-        title: "1. Approach Strip Bay (APP)",
-        text: "Semua pesawat kedatangan (Arrivals) yang memasuki TMA masuk dalam kategori APP.",
-        position: "bottom"
-      },
-      {
-        targetId: "pane-tma",
-        title: "2. Standard Terminal Arrival Route (STAR)",
-        text: "Pesawat masuk via fix navigasi seperti DOLTA, BUNTO, atau KRAKE sesuai STAR yang tertera pada strip penerbangan.",
-        position: "center"
-      },
-      {
-        targetId: "toggle-aman-btn",
-        title: "3. Arrival Manager (AMAN)",
-        text: "Buka panel AMAN untuk melihat urutan pendaratan berdasarkan Estimated Landing Time (ELDT) dan saran Spacing Advisor (5.0 NM separation).",
-        position: "bottom"
-      },
-      {
-        targetId: "prompt-tactical-chips",
-        title: "4. ILS Approach Clearance",
-        text: "Saat pesawat mengarah ke localizer: '[Callsign], descend to 3000 feet, cleared ILS runway 25R'. Pesawat akan mengunci glide slope dan turun secara otomatis.",
-        position: "top"
-      }
-    ]
+    desc: "Pandu pesawat kedatangan (Arrival) yang mendekati localizer untuk intercept glide slope dan mendarat.",
+    instruction: "Lion Inter 650 sedang berada di TMA mendekati runway 25L. Berikan ILS clearance:<br><span class='text-amber-300 font-bold'>\"Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L\"</span>",
+    targetPhrase: "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L",
+    spawnAircraft: () => {
+      resetScenarioAircraft();
+      aircraft.push({
+        id: "LNI650",
+        callsign: "LION INTER 650",
+        airline: "Lion Air",
+        type: "A333",
+        lat: -6.135,
+        lon: 106.900,
+        heading: 250,
+        altitude: 5000,
+        groundSpeed: 210,
+        state: "APPROACH",
+        clearedRwy: "25L",
+        fde: {}
+      });
+      selectedAircraftIndex = 0;
+      renderFlightStrips();
+      renderAllScreens();
+      updateEasyModePrompter();
+    },
+    checkSuccess: () => {
+      const ac = aircraft.find(a => a.id === "LNI650");
+      return ac && ac.fde && ac.fde.assignedAlt === "A030";
+    },
+    successMessage: "LNI650 menangkap localizer dan glide slope ILS runway 25L serta turun ke 3000 ft!"
   },
   {
     id: "lesson-6",
     num: 6,
-    title: "Lesson 6: Emergency & Tactical Separation",
+    title: "Lesson 6: Emergency Handling — Go-Around",
     category: "Emergency & Safety",
-    desc: "Prosedur Go-Around (pendaratan batal), instruksi Holding Pattern saat runway padat, dan peringatan STCA / Bingo Fuel.",
-    steps: [
-      {
-        targetId: "prompt-tactical-chips",
-        title: "1. Go-Around / Missed Approach",
-        text: "Jika runway terhalang pesawat lain saat pesawat sudah dekat: Ucapkan '[Callsign], go around!' Pesawat akan langsung full throttle, mendaki ke 3000 ft dan berputar kembali.",
-        position: "top"
-      },
-      {
-        targetId: "toggle-aman-btn",
-        title: "2. Holding Pattern & Holding Stack",
-        text: "Jika antrean pendaratan padat, masukkan pesawat ke racetrack holding: '[Callsign], hold over TEGID, maintain FL100'. Pesawat akan berputar di fix TEGID.",
-        position: "bottom"
-      },
-      {
-        targetId: "flight-strips",
-        title: "3. Bingo Fuel Alert & Emergency Priority",
-        text: "Pantau indikator bahan bakar (ikon pompa bensin). Jika endurance tersisa < 15 menit, segera keluarkan dari holding ('Leave holding, resume approach') dan prioritaskan pendaratan!",
-        position: "left"
-      }
-    ]
+    desc: "Runway terhalang! Batalkan pendaratan pesawat di short final dengan instruksi Go-Around darurat.",
+    instruction: "Garuda 502 berada di short final tetapi runway tidak steril. Segera instruksikan:<br><span class='text-red-400 font-bold'>\"Indonesia 502 go around!\"</span>",
+    targetPhrase: "Indonesia 502 go around",
+    spawnAircraft: () => {
+      resetScenarioAircraft();
+      aircraft.push({
+        id: "GIA502",
+        callsign: "INDONESIA 502",
+        airline: "Garuda Indonesia",
+        type: "B738",
+        lat: -6.110,
+        lon: 106.720,
+        heading: 250,
+        altitude: 800,
+        groundSpeed: 145,
+        state: "FINAL",
+        clearedRwy: "25R",
+        fde: {}
+      });
+      selectedAircraftIndex = 0;
+      renderFlightStrips();
+      renderAllScreens();
+      updateEasyModePrompter();
+    },
+    checkSuccess: () => {
+      const ac = aircraft.find(a => a.id === "GIA502");
+      return ac && (ac.state === "GO_AROUND" || (ac.fde && ac.fde.directFix === "GO_AROUND"));
+    },
+    successMessage: "Pesawat segera batalkan pendaratan, mendaki tajam ke 3000 ft dan menjauh dari runway!"
   }
 ];
 
-let activeTutorialLesson = null;
-let currentTutorialStepIndex = 0;
-let isTutorialOverlayActive = false;
+let activePracticeScenario = null;
+let practiceCheckInterval = null;
 
-// Initialize Academy Tutorial View in UI
-function initAcademyTutorial() {
-  renderTutorialLessonsList();
+function resetScenarioAircraft() {
+  if (typeof aircraft !== 'undefined' && Array.isArray(aircraft)) {
+    aircraft.forEach(ac => {
+      if (ac._approachInterval) clearInterval(ac._approachInterval);
+      if (ac._holdInterval) clearInterval(ac._holdInterval);
+      if (ac._groundTimer) clearInterval(ac._groundTimer);
+    });
+    aircraft.length = 0;
+  }
+  selectedAircraftIndex = -1;
 }
 
-function renderTutorialLessonsList() {
+// Render Scenario Cards on Academy Page
+function initAcademyTutorial() {
   const container = document.getElementById('academy-tutorial-grid');
   if (!container) return;
 
-  container.innerHTML = TUTORIAL_LESSONS.map(l => {
+  container.innerHTML = INTERACTIVE_SCENARIOS.map(s => {
     return `
       <div class="bg-slate-900 border border-slate-800 hover:border-emerald-700/80 p-4 rounded-xl transition flex flex-col justify-between space-y-3 group shadow-lg">
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 uppercase">
-              ${l.category}
+              ${s.category}
             </span>
-            <span class="text-xs font-mono text-slate-500">${l.steps.length} Steps</span>
+            <span class="text-[10px] font-mono text-amber-400 font-bold">PRAKTEK LANGSUNG</span>
           </div>
-          <h4 class="text-sm font-bold text-white font-radar mt-2 group-hover:text-emerald-400 transition">${l.title}</h4>
-          <p class="text-xs text-slate-400 mt-1 leading-relaxed">${l.desc}</p>
+          <h4 class="text-sm font-bold text-white font-radar mt-2 group-hover:text-emerald-400 transition">${s.title}</h4>
+          <p class="text-xs text-slate-400 mt-1 leading-relaxed">${s.desc}</p>
         </div>
         <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-          <span class="text-[10px] text-slate-500 font-mono"><i class="fa-solid fa-graduation-cap text-emerald-500 mr-1"></i>Guided Demo</span>
-          <button onclick="startInteractiveTutorial('${l.id}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold font-radar flex items-center gap-1.5 shadow transition active:scale-95">
-            <i class="fa-solid fa-play text-[10px]"></i> Mulai Panduan
+          <span class="text-[10px] text-slate-500 font-mono"><i class="fa-solid fa-plane-departure text-emerald-500 mr-1"></i>Live Scenario</span>
+          <button onclick="startHandsOnScenario('${s.id}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold font-radar flex items-center gap-1.5 shadow transition active:scale-95">
+            <i class="fa-solid fa-gamepad text-[11px]"></i> Mainkan Misi
           </button>
         </div>
       </div>
@@ -4395,96 +4425,139 @@ function renderTutorialLessonsList() {
   }).join('');
 }
 
-// Start Interactive Tutorial Walkthrough
-function startInteractiveTutorial(lessonId) {
-  const lesson = TUTORIAL_LESSONS.find(l => l.id === lessonId);
-  if (!lesson) return;
+// Launch Hands-on Practice Scenario
+function startHandsOnScenario(scenarioId) {
+  const scenario = INTERACTIVE_SCENARIOS.find(s => s.id === scenarioId);
+  if (!scenario) return;
 
-  activeTutorialLesson = lesson;
-  currentTutorialStepIndex = 0;
-  isTutorialOverlayActive = true;
+  activePracticeScenario = scenario;
 
-  // Switch to Radar view tab so elements are visible
+  // 1. Spawn live scenario aircraft
+  scenario.spawnAircraft();
+
+  // 2. Switch to Radar View
   if (typeof switchTab === 'function') {
     switchTab('radar');
   }
 
-  showTutorialOverlayStep();
-}
+  // 3. Show Mission HUD Overlay on Radar View
+  showPracticeMissionHUD(scenario);
 
-function showTutorialOverlayStep() {
-  if (!activeTutorialLesson || !isTutorialOverlayActive) return;
-
-  const step = activeTutorialLesson.steps[currentTutorialStepIndex];
-  if (!step) {
-    endInteractiveTutorial();
-    return;
-  }
-
-  const overlay = document.getElementById('tutorial-spotlight-overlay');
-  const card = document.getElementById('tutorial-guidance-card');
-  if (!overlay || !card) return;
-
-  overlay.classList.remove('hidden');
-
-  // Set card contents
-  document.getElementById('tutorial-step-indicator').textContent = `Langkah ${currentTutorialStepIndex + 1} dari ${activeTutorialLesson.steps.length}`;
-  document.getElementById('tutorial-lesson-title').textContent = activeTutorialLesson.title;
-  document.getElementById('tutorial-step-title').textContent = step.title;
-  document.getElementById('tutorial-step-desc').textContent = step.text;
-
-  // Position highlighting on target element if found
-  const targetEl = document.getElementById(step.targetId);
-  const spotlight = document.getElementById('tutorial-spotlight-box');
-
-  if (targetEl && typeof targetEl.getBoundingClientRect === 'function' && spotlight) {
-    const rect = targetEl.getBoundingClientRect();
-    spotlight.style.top = `${Math.max(0, rect.top - 6)}px`;
-    spotlight.style.left = `${Math.max(0, rect.left - 6)}px`;
-    spotlight.style.width = `${rect.width + 12}px`;
-    spotlight.style.height = `${rect.height + 12}px`;
-    spotlight.classList.remove('hidden');
-
-    // Auto-scroll target into view if needed
-    if (typeof targetEl.scrollIntoView === 'function') {
-      targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // 4. Start Continuous Evaluator Loop
+  if (practiceCheckInterval) clearInterval(practiceCheckInterval);
+  practiceCheckInterval = setInterval(() => {
+    if (!activePracticeScenario) {
+      clearInterval(practiceCheckInterval);
+      return;
     }
-  } else if (spotlight) {
-    spotlight.classList.add('hidden');
-  }
 
-  // Update button labels
-  const nextBtn = document.getElementById('tutorial-next-btn');
-  if (nextBtn) {
-    nextBtn.innerHTML = (currentTutorialStepIndex === activeTutorialLesson.steps.length - 1)
-      ? 'Selesai <i class="fa-solid fa-check ml-1"></i>'
-      : 'Berikutnya <i class="fa-solid fa-arrow-right ml-1"></i>';
-  }
-}
+    if (activePracticeScenario.checkSuccess()) {
+      clearInterval(practiceCheckInterval);
+      showMissionSuccessModal(activePracticeScenario);
+    }
+  }, 500);
 
-function nextTutorialStep() {
-  if (!activeTutorialLesson) return;
-  currentTutorialStepIndex++;
-  if (currentTutorialStepIndex >= activeTutorialLesson.steps.length) {
-    endInteractiveTutorial();
-  } else {
-    showTutorialOverlayStep();
+  if (typeof logTelemetry === 'function') {
+    logTelemetry('SYSTEM', `Academy Practice Started: ${scenario.title}`, 'Spawning mission simulation');
   }
 }
 
-function prevTutorialStep() {
-  if (!activeTutorialLesson) return;
-  if (currentTutorialStepIndex > 0) {
-    currentTutorialStepIndex--;
-    showTutorialOverlayStep();
+// Show Mission HUD Banner atop Radar
+function showPracticeMissionHUD(scenario) {
+  let hud = document.getElementById('practice-mission-hud');
+  if (!hud) {
+    hud = document.createElement('div');
+    hud.id = 'practice-mission-hud';
+    hud.className = 'fixed top-14 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[95vw] bg-slate-950/95 backdrop-blur border border-amber-500/80 rounded-xl shadow-2xl p-3 text-white font-radar transition-all';
+    document.body.appendChild(hud);
+  }
+
+  hud.classList.remove('hidden');
+  hud.innerHTML = `
+    <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-crosshairs mr-1"></i>MISI PRAKTEK: ${scenario.title}</span>
+      </div>
+      <button onclick="quitPracticeScenario()" class="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded bg-slate-800" title="Keluar Misi">
+        <i class="fa-solid fa-xmark"></i> Batal
+      </button>
+    </div>
+    <div class="text-xs text-slate-200 leading-relaxed font-sans mb-2">
+      ${scenario.instruction}
+    </div>
+    <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800/80">
+      <span class="text-slate-400 font-mono">Status Misi: <b class="text-amber-400 animate-pulse">MENUNGGU AKSI ANDA...</b></span>
+      <button onclick="autoExecuteScenarioHelp()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold font-mono text-[10px]" title="Kirim otomatis perintah target">
+        <i class="fa-solid fa-bolt mr-1"></i>Bantu Kirim
+      </button>
+    </div>
+  `;
+}
+
+// Helper button to execute target voice command
+function autoExecuteScenarioHelp() {
+  if (!activePracticeScenario || !activePracticeScenario.targetPhrase) return;
+  const phrase = activePracticeScenario.targetPhrase;
+  if (typeof handleRadarVoiceCommand === 'function') {
+    handleRadarVoiceCommand(phrase, { intent: "AUTO_LESSON" });
   }
 }
 
-function endInteractiveTutorial() {
-  isTutorialOverlayActive = false;
-  activeTutorialLesson = null;
-  const overlay = document.getElementById('tutorial-spotlight-overlay');
-  if (overlay) overlay.classList.add('hidden');
+// Success Modal upon mission accomplishment
+function showMissionSuccessModal(scenario) {
+  let modal = document.getElementById('practice-success-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'practice-success-modal';
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm font-radar p-4';
+    document.body.appendChild(modal);
+  }
+
+  modal.classList.remove('hidden');
+  modal.innerHTML = `
+    <div class="bg-slate-900 border-2 border-emerald-500 rounded-2xl p-6 max-w-md w-full text-center space-y-4 shadow-2xl text-white">
+      <div class="w-16 h-16 rounded-full bg-emerald-950 border-2 border-emerald-400 text-emerald-300 mx-auto flex items-center justify-center text-3xl shadow-lg">
+        <i class="fa-solid fa-trophy"></i>
+      </div>
+      <div>
+        <span class="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">Misi Berhasil Diselesaikan!</span>
+        <h3 class="text-lg font-bold text-white mt-2">${scenario.title}</h3>
+        <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+          ${scenario.successMessage}
+        </p>
+      </div>
+      <div class="pt-2 flex items-center justify-center gap-3">
+        <button onclick="quitPracticeScenario()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold font-mono">
+          Tutup
+        </button>
+        <button onclick="nextPracticeScenario('${scenario.id}')" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-mono shadow-lg flex items-center gap-1.5">
+          Lanjut Misi Berikutnya <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  `;
+
+  if (typeof logTelemetry === 'function') {
+    logTelemetry('SYSTEM', `🏆 Mission Accomplished: ${scenario.title}`, 'Student successfully performed required ATC action');
+  }
+}
+
+function nextPracticeScenario(currentId) {
+  const idx = INTERACTIVE_SCENARIOS.findIndex(s => s.id === currentId);
+  const next = INTERACTIVE_SCENARIOS[idx + 1] || INTERACTIVE_SCENARIOS[0];
+  const modal = document.getElementById('practice-success-modal');
+  if (modal) modal.classList.add('hidden');
+  startHandsOnScenario(next.id);
+}
+
+function quitPracticeScenario() {
+  activePracticeScenario = null;
+  if (practiceCheckInterval) clearInterval(practiceCheckInterval);
+  const hud = document.getElementById('practice-mission-hud');
+  if (hud) hud.classList.add('hidden');
+  const modal = document.getElementById('practice-success-modal');
+  if (modal) modal.classList.add('hidden');
 }
 function toggleWeatherRadar() {
   showWeatherRadar = !showWeatherRadar;

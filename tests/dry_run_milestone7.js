@@ -16,26 +16,27 @@ assert.ok(appPy.includes('"id": "app-2"'), "Contains Holding Pattern Lesson (app
 assert.ok(appPy.includes('"id": "emg-1"'), "Contains Go-Around Missed Approach Lesson (emg-1)");
 console.log("✓ PASS: Backend Academy Syllabus contains full progression (IFR, Pushback, Taxi, Lineup, Takeoff, ILS, Holding, Go-Around)");
 
-// 2. Validate Interactive Tutorial Engine in academy.js
+// 2. Validate Interactive Hands-on Scenario Engine in academy.js
 const academyJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/js/academy.js', 'utf8');
 
 // Global mock DOM environment
+global.aircraft = [];
+global.selectedAircraftIndex = -1;
+global.renderFlightStrips = () => {};
+global.renderAllScreens = () => {};
+global.updateEasyModePrompter = () => {};
+global.handleRadarVoiceCommand = () => {};
+global.logTelemetry = () => {};
+
 let domElements = {
-  'pane-ground': { getBoundingClientRect: () => ({ top: 100, left: 50, width: 400, height: 300 }), scrollIntoView: () => {} },
-  'pane-tma': { getBoundingClientRect: () => ({ top: 100, left: 460, width: 400, height: 300 }), scrollIntoView: () => {} },
-  'flight-strips-panel': { getBoundingClientRect: () => ({ top: 50, left: 900, width: 250, height: 600 }), scrollIntoView: () => {} },
-  'tutorial-spotlight-overlay': { classList: { add: () => {}, remove: () => {} } },
-  'tutorial-spotlight-box': { style: {}, classList: { add: () => {}, remove: () => {} } },
-  'tutorial-guidance-card': { classList: { add: () => {}, remove: () => {} } },
-  'tutorial-step-indicator': { textContent: '' },
-  'tutorial-lesson-title': { textContent: '' },
-  'tutorial-step-title': { textContent: '' },
-  'tutorial-step-desc': { textContent: '' },
-  'tutorial-next-btn': { innerHTML: '' },
-  'academy-tutorial-grid': { innerHTML: '' }
+  'academy-tutorial-grid': { innerHTML: '' },
+  'practice-mission-hud': { classList: { add: () => {}, remove: () => {} }, innerHTML: '' },
+  'practice-success-modal': { classList: { add: () => {}, remove: () => {} }, innerHTML: '' }
 };
 
 global.document = {
+  body: { appendChild: () => {} },
+  createElement: () => ({ classList: { add: () => {}, remove: () => {} }, innerHTML: '', style: {} }),
   getElementById: (id) => domElements[id] || { innerHTML: '', textContent: '', className: '', classList: { add: () => {}, remove: () => {} } }
 };
 global.switchTab = (tab) => {
@@ -46,70 +47,73 @@ global.switchTab = (tab) => {
 const vm = require('vm');
 vm.runInThisContext(academyJs);
 
-// TEST 1: Tutorial Lessons Structure
-console.log("\n--- TEST 1: Interactive Tutorial Syllabus & Structure ---");
-assert.strictEqual(TUTORIAL_LESSONS.length, 6, "Must define exactly 6 structured tutorial modules (Lessons 1-6)");
+// TEST 1: Hands-on Scenarios Structure
+console.log("\n--- TEST 1: Interactive Hands-on Scenarios Syllabus ---");
+assert.strictEqual(INTERACTIVE_SCENARIOS.length, 6, "Must define exactly 6 hands-on practice missions");
 
-const l1 = TUTORIAL_LESSONS[0];
-assert.strictEqual(l1.id, "lesson-1");
-assert.ok(l1.title.includes("Lesson 1: Pengenalan Radar"), "Lesson 1 covers Radar");
-assert.strictEqual(l1.steps.length, 4, "Lesson 1 has 4 interactive steps");
+const s1 = INTERACTIVE_SCENARIOS[0];
+assert.strictEqual(s1.id, "lesson-1");
+assert.ok(s1.title.includes("Lesson 1: Pengenalan Radar"), "Lesson 1 covers Radar");
 
-const l2 = TUTORIAL_LESSONS[1];
-assert.strictEqual(l2.id, "lesson-2");
-assert.ok(l2.title.includes("Lesson 2: Komunikasi Radio"), "Lesson 2 covers Radio Phraseology");
+const s2 = INTERACTIVE_SCENARIOS[1];
+assert.strictEqual(s2.id, "lesson-2");
+assert.ok(s2.title.includes("Lesson 2: Komunikasi Radio"), "Lesson 2 covers Radio Phraseology & IFR");
 
-const l3 = TUTORIAL_LESSONS[2];
-assert.strictEqual(l3.id, "lesson-3");
-assert.ok(l3.title.includes("Lesson 3: Ground Control"), "Lesson 3 covers Ground Pushback & Taxi");
+const s3 = INTERACTIVE_SCENARIOS[2];
+assert.strictEqual(s3.id, "lesson-3");
+assert.ok(s3.title.includes("Lesson 3: Ground Control"), "Lesson 3 covers Ground Pushback & Taxi");
 
-const l4 = TUTORIAL_LESSONS[3];
-assert.strictEqual(l4.id, "lesson-4");
-assert.ok(l4.title.includes("Lesson 4: Tower Control"), "Lesson 4 covers Lineup & Takeoff/Landing");
+const s4 = INTERACTIVE_SCENARIOS[3];
+assert.strictEqual(s4.id, "lesson-4");
+assert.ok(s4.title.includes("Lesson 4: Tower Control"), "Lesson 4 covers Lineup & Takeoff");
 
-const l5 = TUTORIAL_LESSONS[4];
-assert.strictEqual(l5.id, "lesson-5");
-assert.ok(l5.title.includes("Lesson 5: Approach Control"), "Lesson 5 covers STAR & ILS");
+const s5 = INTERACTIVE_SCENARIOS[4];
+assert.strictEqual(s5.id, "lesson-5");
+assert.ok(s5.title.includes("Lesson 5: Approach Control"), "Lesson 5 covers STAR & ILS");
 
-const l6 = TUTORIAL_LESSONS[5];
-assert.strictEqual(l6.id, "lesson-6");
-assert.ok(l6.title.includes("Lesson 6: Emergency"), "Lesson 6 covers Go-around & Holding");
+const s6 = INTERACTIVE_SCENARIOS[5];
+assert.strictEqual(s6.id, "lesson-6");
+assert.ok(s6.title.includes("Lesson 6: Emergency"), "Lesson 6 covers Go-around");
 
-console.log("✓ PASS: All 6 interactive tutorial syllabus lessons verified!");
+console.log("✓ PASS: All 6 hands-on interactive scenarios verified!");
 
-// TEST 2: Spotlight Engine & Step Navigation
-console.log("\n--- TEST 2: Interactive Spotlight Walkthrough Progression ---");
-startInteractiveTutorial("lesson-1");
-assert.strictEqual(isTutorialOverlayActive, true, "Overlay active");
-assert.strictEqual(currentTutorialStepIndex, 0, "Starts at step 0");
-assert.strictEqual(domElements['tutorial-step-indicator'].textContent, "Langkah 1 dari 4");
-assert.strictEqual(domElements['tutorial-step-title'].textContent, "1. Ground Radar (ASDE)");
-console.log(`✓ Step 1 Spotlight: "${domElements['tutorial-step-title'].textContent}"`);
+// TEST 2: Hands-on Mission Execution & Aircraft Spawning
+console.log("\n--- TEST 2: Mission Launch, Aircraft Spawning & Objective Evaluation ---");
 
-nextTutorialStep();
-assert.strictEqual(currentTutorialStepIndex, 1, "Advanced to step 1");
-assert.strictEqual(domElements['tutorial-step-indicator'].textContent, "Langkah 2 dari 4");
-assert.strictEqual(domElements['tutorial-step-title'].textContent, "2. Terminal Radar (TMA)");
-console.log(`✓ Step 2 Spotlight: "${domElements['tutorial-step-title'].textContent}"`);
+// Test Mission 1: Select Aircraft Target
+startHandsOnScenario("lesson-1");
+assert.strictEqual(global.aircraft.length, 1, "Scenario spawned 1 target aircraft GIA502");
+assert.strictEqual(global.aircraft[0].id, "GIA502");
+assert.strictEqual(s1.checkSuccess(), false, "Not completed before user selects aircraft");
 
-nextTutorialStep();
-assert.strictEqual(currentTutorialStepIndex, 2, "Advanced to step 2");
-assert.strictEqual(domElements['tutorial-step-title'].textContent, "3. Electronic Flight Progress Strips");
-console.log(`✓ Step 3 Spotlight: "${domElements['tutorial-step-title'].textContent}"`);
+// User selects aircraft
+global.selectedAircraftIndex = 0;
+assert.strictEqual(s1.checkSuccess(), true, "Objective completed when user clicks strip / selects aircraft");
+console.log(`✓ Mission 1 Success Evaluator: "${s1.successMessage}"`);
 
-prevTutorialStep();
-assert.strictEqual(currentTutorialStepIndex, 1, "Navigated back to step 1");
-console.log(`✓ Prev step works: back to step ${currentTutorialStepIndex + 1}`);
+// Test Mission 3: Ground Pushback & Taxi
+startHandsOnScenario("lesson-3");
+assert.strictEqual(global.aircraft[0].state, "PARKED");
+assert.strictEqual(s3.checkSuccess(), false, "Not completed while parked");
 
-// Advance to finish
-nextTutorialStep(); // to step 2
-nextTutorialStep(); // to step 3 (last step)
-assert.strictEqual(currentTutorialStepIndex, 3);
-assert.ok(domElements['tutorial-next-btn'].innerHTML.includes("Selesai"), "Next button changes to 'Selesai' on final step");
-nextTutorialStep(); // finishes
-assert.strictEqual(isTutorialOverlayActive, false, "Tutorial completed and closed overlay");
-console.log("✓ PASS: Step-by-step navigation, spotlight focus, and completion flow verified!");
+// Controller approves pushback
+global.aircraft[0].state = "PUSHBACK";
+assert.strictEqual(s3.checkSuccess(), true, "Objective completed when pushback starts");
+console.log(`✓ Mission 3 Success Evaluator: "${s3.successMessage}"`);
+
+// Test Mission 6: Emergency Go-Around
+startHandsOnScenario("lesson-6");
+assert.strictEqual(global.aircraft[0].state, "FINAL");
+assert.strictEqual(s6.checkSuccess(), false, "Not completed while on final");
+
+// Controller issues Go-Around
+global.aircraft[0].state = "GO_AROUND";
+assert.strictEqual(s6.checkSuccess(), true, "Objective completed when aircraft executes Go-Around");
+console.log(`✓ Mission 6 Success Evaluator: "${s6.successMessage}"`);
+
+quitPracticeScenario();
+assert.strictEqual(activePracticeScenario, null, "Scenario quit successfully");
 
 console.log("\n=======================================================");
-console.log("ALL MILESTONE 7 ACCEPTANCE TESTS PASSED SUCCESSFULLY!");
+console.log("ALL HANDS-ON ACADEMY ACCEPTANCE TESTS PASSED (100%)!");
 console.log("=======================================================");
