@@ -94,7 +94,16 @@ Menggantikan marker dot bulat konvensional dengan siluet pesawat aerodinamis ber
 
 ## 🚀 Menjalankan Simulator
 
-### Menjalankan via Systemd User Services:
+### A. Windows (1-Click Run untuk Pengguna Awam):
+1. **Cara Termudah (Script Otomatis):**
+   * Download repository (ZIP) lalu ekstrak.
+   * Klik ganda pada berkas **`start_windows.bat`**.
+   * Script akan otomatis menginisialisasi Python venv, mengunduh pustaka yang diperlukan, menjalankan server lokal, dan langsung membuka browser ke `http://localhost:8010`.
+2. **Standalone Executable (.exe):**
+   * Di-build otomatis via GitHub Actions (`.github/workflows/build-windows.yml`) menjadi `atc-hub-windows-x64.zip`.
+   * Ekstrak dan jalankan `atc-hub.exe` tanpa perlu install Python maupun Git.
+
+### B. Linux / Server (Systemd User Services):
 ```bash
 # Restart HTTP Service
 systemctl --user restart atc-hub
