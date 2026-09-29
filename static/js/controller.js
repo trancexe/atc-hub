@@ -14,6 +14,8 @@ function bindPTT() {
   addListeners(acadMicBtn);
 
   // Global Keydown for Spacebar PTT
+  let isSpaceHeld = false;
+
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Tab' && currentTab === 'radar') {
       e.preventDefault();
@@ -26,6 +28,8 @@ function bindPTT() {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
       e.preventDefault();
+      if (e.repeat || isSpaceHeld) return; // Ignore continuous OS key repeat
+      isSpaceHeld = true;
       if (!isRecording) {
         startRecording();
       }
@@ -38,9 +42,18 @@ function bindPTT() {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
       e.preventDefault();
+      isSpaceHeld = false;
       if (isRecording) {
         stopRecording();
       }
+    }
+  });
+
+  // Guard against focus loss while holding space
+  window.addEventListener('blur', () => {
+    if (isSpaceHeld || isRecording) {
+      isSpaceHeld = false;
+      stopRecording();
     }
   });
 }

@@ -448,6 +448,7 @@ function fallbackBrowserSpeech(text) {
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
+let isStartingRecording = false;
 
 async function setupRecording() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -515,7 +516,8 @@ function updateMicStatusWarning(msg) {
 }
 
 async function startRecording() {
-  if (isRecording) return;
+  if (isRecording || isStartingRecording) return;
+  isStartingRecording = true;
   const pttStatus = document.getElementById('ptt-status');
 
   if (!mediaRecorder) {
@@ -525,6 +527,7 @@ async function startRecording() {
     } catch (e) {
       console.error("Mic setup failed:", e);
       if (pttStatus) pttStatus.innerHTML = `<span class="text-red-400 font-bold">GAGAL AKSES MIC (${e.name || e.message})</span>`;
+      isStartingRecording = false;
       return;
     }
   }
@@ -533,34 +536,41 @@ async function startRecording() {
     if (pttStatus) {
       pttStatus.innerHTML = `<span class="text-amber-400 font-bold">KLIK TOMBOL MIC DI BAWAH DULU UNTUK IZIN MIC!</span>`;
     }
+    isStartingRecording = false;
     return;
   }
 
   try {
-    isRecording = true;
-    audioChunks = [];
-    mediaRecorder.start();
-    playRadioChirp();
+    if (mediaRecorder.state !== 'recording') {
+      audioChunks = [];
+      mediaRecorder.start();
+      isRecording = true;
+      playRadioChirp();
 
-    const pttStatus = document.getElementById('ptt-status');
-    if (pttStatus) {
-      pttStatus.textContent = "TRANSMITTING ON 118.10 MHz...";
-      pttStatus.className = "text-xs font-radar mb-1.5 px-3 py-1 rounded border transition-all bg-red-950 text-red-400 border-red-700 animate-pulse";
+      if (pttStatus) {
+        pttStatus.textContent = "TRANSMITTING ON 118.10 MHz...";
+        pttStatus.className = "text-xs font-radar mb-1.5 px-3 py-1 rounded border transition-all bg-red-950 text-red-400 border-red-700 animate-pulse";
+      }
+      const acadRecStatus = document.getElementById('academy-rec-status');
+      if (acadRecStatus) acadRecStatus.textContent = "Merekam suara... Lepas SPACEBAR untuk kirim.";
     }
-    const acadRecStatus = document.getElementById('academy-rec-status');
-    if (acadRecStatus) acadRecStatus.textContent = "Merekam suara... Lepas SPACEBAR untuk kirim.";
   } catch (e) {
     console.error("Start recording failed:", e);
     isRecording = false;
+  } finally {
+    isStartingRecording = false;
   }
 }
 
 function stopRecording() {
+  isStartingRecording = false;
   if (!isRecording || !mediaRecorder) return;
   isRecording = false;
   try {
-    mediaRecorder.stop();
-    playRadioChirp();
+    if (mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      playRadioChirp();
+    }
 
     const pttStatus = document.getElementById('ptt-status');
     if (pttStatus) {
