@@ -313,6 +313,28 @@
           </div>
         </div>
 
+        <!-- SECTION 1: GUIDED INTERACTIVE TUTORIAL (MILESTONE 7A) -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-xs font-radar uppercase px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full border border-sky-500/30">Guided Training</span>
+              <h3 class="text-lg font-bold font-radar text-white mt-1">Modul 7A: Tutorial Interaktif Berpemandu</h3>
+              <p class="text-xs text-slate-400">Tur interaktif langkah demi langkah dengan visual spotlight elemen radar, panel kontrol, dan fraseologi resmi.</p>
+            </div>
+          </div>
+          <div id="academy-tutorial-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <!-- Rendered by academy.js -->
+          </div>
+        </div>
+
+        <div class="border-t border-slate-800 my-6"></div>
+
+        <!-- SECTION 2: ICAO PHRASEOLOGY VOICE DRILLS -->
+        <div class="space-y-3">
+          <span class="text-xs font-radar uppercase px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30">Microphone Drills</span>
+          <h3 class="text-lg font-bold font-radar text-white mt-1">Latihan Fraseologi Radio ICAO</h3>
+        </div>
+
         <!-- Lessons Container -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="space-y-2">
@@ -476,6 +498,49 @@
     </div>
   </div>
 
+  <!-- GUIDED TUTORIAL INTERACTIVE OVERLAY & SPOTLIGHT (MILESTONE 7A) -->
+  <div id="tutorial-spotlight-overlay" class="hidden fixed inset-0 z-50 pointer-events-none transition-all duration-300 font-radar">
+    <!-- Dark Backdrop with Cutout Spotlight box -->
+    <div id="tutorial-spotlight-box" class="absolute border-2 border-emerald-400 bg-emerald-500/10 rounded-lg shadow-[0_0_0_9999px_rgba(2,6,23,0.85)] pointer-events-auto transition-all duration-300"></div>
+
+    <!-- Guidance Instruction Card / Tooltip Modal -->
+    <div id="tutorial-guidance-card" class="absolute bottom-10 left-1/2 -translate-x-1/2 w-full max-w-lg bg-slate-900/95 backdrop-blur-md border border-emerald-500/60 p-4 rounded-xl shadow-2xl pointer-events-auto space-y-3 z-10 text-white">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-900 border border-emerald-500 text-emerald-300 flex items-center justify-center text-xs font-bold font-mono">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </span>
+          <div>
+            <div id="tutorial-lesson-title" class="text-xs font-bold text-emerald-400">Lesson 1: Pengenalan Radar</div>
+            <div id="tutorial-step-indicator" class="text-[10px] text-slate-400 font-mono">Langkah 1 dari 4</div>
+          </div>
+        </div>
+        <button onclick="endInteractiveTutorial()" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-slate-800" title="Keluar dari tutorial">
+          <i class="fa-solid fa-xmark mr-1"></i> Tutup
+        </button>
+      </div>
+
+      <div>
+        <h4 id="tutorial-step-title" class="text-sm font-bold text-white mb-1">1. Ground Radar (ASDE)</h4>
+        <p id="tutorial-step-desc" class="text-xs text-slate-300 leading-relaxed font-sans">
+          Layar radar ground menampilkan denah pergerakan bandara...
+        </p>
+      </div>
+
+      <!-- Action Navigation Buttons -->
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+        <button onclick="prevTutorialStep()" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition flex items-center gap-1">
+          <i class="fa-solid fa-arrow-left text-[10px]"></i> Sebelumnya
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="nextTutorialStep()" id="tutorial-next-btn" class="px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1.5 shadow">
+            Berikutnya <i class="fa-solid fa-arrow-right text-[10px]"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modular ATC Frontend Scripts -->
   <script src="/js/state.js?v=20260928_modular"></script>
   <script src="/js/logger.js?v=20260928_modular"></script>
@@ -486,6 +551,7 @@
   <script src="/js/safety.js?v=20260928_modular"></script>
   <script src="/js/tactical.js?v=20260928_modular"></script>
   <script src="/js/aman.js?v=20260928_modular"></script>
+  <script src="/js/academy.js?v=20260928_modular"></script>
   <script src="/js/weather.js?v=20260928_modular"></script>
   <script src="/js/physics_air.js?v=20260928_modular"></script>
   <script src="/js/controller.js?v=20260928_modular"></script>

@@ -396,6 +396,9 @@ function switchTab(tab) {
     acadBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition bg-emerald-600 text-white";
     radarBtn.className = "px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
     loadAcademyLessons();
+    if (typeof initAcademyTutorial === 'function') {
+      initAcademyTutorial();
+    }
   }
 }
 

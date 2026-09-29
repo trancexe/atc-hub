@@ -182,6 +182,40 @@ LESSONS = [
         "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, runway two five left cleared to land, wind two five zero degrees six knots'",
         "keywords": ["lion inter", "650", "cleared to land", "25l"],
         "pilot_readback": "Runway 25L cleared to land, Lion Inter 650."
+    },
+    {
+        "id": "app-2",
+        "phase": "Approach / Holding Pattern",
+        "title": "Enter Holding at TEGID",
+        "aircraft": {
+            "callsign": "LNI650",
+            "telephony": "LION INTER 650",
+            "airline": "Lion Air",
+            "type": "A333",
+            "gate": "TMA Holding"
+        },
+        "situation": "Antrean kedatangan padat. Instruksikan LION INTER 650 untuk masuk holding pattern di atas fix TEGID maintain FL100.",
+        "target_text": "Lion Inter 650 hold over TEGID, maintain FL 100",
+        "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, hold over Tango Echo Golf India Delta, maintain flight level one zero zero'",
+        "keywords": ["lion inter", "650", "hold", "tegid", "100"],
+        "pilot_readback": "Hold at TEGID, inbound track 250 degrees, right hand pattern, maintain FL 100, Lion Inter 650."
+    },
+    {
+        "id": "emg-1",
+        "phase": "Emergency / Missed Approach",
+        "title": "Go-Around / Abort Landing",
+        "aircraft": {
+            "callsign": "GIA502",
+            "telephony": "INDONESIA 502",
+            "airline": "Garuda Indonesia",
+            "type": "B738",
+            "gate": "Short Final 25R"
+        },
+        "situation": "Terdapat pesawat lain terlambat keluar runway. Segera instruksikan INDONESIA 502 untuk Go-Around dan mendaki ke 3000 feet!",
+        "target_text": "Indonesia 502 go around, climb and maintain 3000 feet",
+        "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, go around, climb and maintain three thousand feet'",
+        "keywords": ["indonesia", "502", "go around", "climb", "3000"],
+        "pilot_readback": "Going around, climb to 3000 feet, Indonesia 502."
     }
 ]
 
