@@ -31,17 +31,24 @@ Menggantikan marker dot bulat konvensional dengan siluet pesawat aerodinamis ber
 * **Forward Bearing Check:** Analisis vektor *dot product* arah haluan memastikan pesawat hanya mengerem bila terdapat rintangan di depan jalurnya (*traffic ahead*).
 * **Automatic Hold & Resume:** Pengereman darat otomatis (`groundSpeed = 0`) dengan indikator peringatan merah `HOLD (TRAFFIC AHEAD)` hingga jalur steril.
 
-### 4. Navigasi Darat Presisi OSM & Runway Crossing Protocol
-* **Dijkstra Taxiway Routing:** Jalur taxiway dihitung menggunakan 2.642 simpul graf OpenStreetMap nyata dari stand parkir menuju seluruh 6 holding point runway.
+### 4. Navigasi Darat Presisi OSM, Dynamic Multi-Terminal Routing & Runway Crossing
+* **Dijkstra Taxiway Routing (2.642 Nodes OSM):** Jalur taxiway dihitung secara real-time menggunakan graf OpenStreetMap presisi bandara Soekarno-Hatta (North/South Taxiway, cross corridors, apron taxilanes).
+* **Multi-Terminal & 66 Gate Network (T1, T2, T3):**
+  * **Terminal 1 (21 Stand):** Concourse A, B, C (alokasi maskapai Lion Air, Super Air Jet).
+  * **Terminal 2 (21 Stand):** Concourse D, E, F (alokasi maskapai Batik Air, AirAsia, Umrah/Regional).
+  * **Terminal 3 (24 Stand):** Pier 1 & 2 (alokasi Garuda Indonesia, SkyTeam, penerbangan internasional & kargo).
+  * Pemilihan stand otomatis berbasis maskapai riil dan dapat disesuaikan manual via Electronic Flight Strip.
 * **Mandatory Runway Crossing Protocol:** Rute taxi apron utara menuju Runway Selatan (25L/07R) secara otomatis berhenti di stop bar Taxiway NP1 (`HOLD_SHORT_CROSS`). Pilot melapor di stop bar dan membutuhkan instruksi resmi ATC (*"Cross runway [rwy] at [taxiway], report vacated"*) sebelum melintas.
-* **Full Taxi-In Cycle:** Pesawat mendarat meluncur menyusuri *rapid exit taxiway* (N4) dan taxi masuk ke stand Gate E1 hingga mesin dimatikan (`PARKED`).
+* **Full Taxi-In Cycle:** Pesawat mendarat meluncur menyusuri *rapid exit taxiway* (N4, S4, dsb.) dan taxi masuk ke stand gate tujuan yang ditugaskan hingga mesin dimatikan (`PARKED`).
 
-### 5. Aerodynamic SID & STAR Departure/Arrival Physics
+### 5. Aerodynamic SID & STAR Departure/Arrival Physics (Real-Time 1:1)
+* **Real-Time 1:1 Physics Engine:** Kecepatan navigasi dan separasi dihitung murni $1:1$ sesuai kondisi nyata di dunia penerbangan (waktu tempuh approach ~3.8 menit dari BUNTO ke ILS 25R pada 210–180 kts).
+* **Dead-Reckoning Tactical Vectoring:** Saat radar vectoring diaktifkan, pesawat melepaskan keterikatan interpolasi waypoint dan beralih ke navigasi dead-reckoning murni berdasarkan sudut haluan (*heading*) dan kecepatan (*groundspeed*).
+* **Dynamic Departure Alignment:** Tracking sumbu landasan otomatis (*centerline snap*) saat takeoff roll dan perhitungan sudut heading dinamis pada fase climbing SID, mencegah deviasi orientasi ikon pesawat.
 * **Eliminasi Belokan Patah 90°:**
   * *Departure (SID):* Pesawat melaju lurus di sumbu perpanjangan landasan pacu (*runway track initial climb*) sejauh ~2,1 NM (3 km) hingga ketinggian aman ~2.200 kaki, disusul kurva busur belok kubik Bézier (*standard rate turn arc*, ~3°/detik) dengan rotasi haluan bertahap menuju fix pertama.
   * *Arrival (STAR):* Transisi halus dari ujung STAR menyusuri kurva tangen busur Bézier yang mengintersep localizer ILS pada sudut ~30° menuju Final Approach Fix (FAF, 5 NM, 2.500 kaki), diikuti luncuran glideslope 3° kontinu.
 * **Landing Rollout Realistis:** Touchdown pada kecepatan 135 knot dengan momentum nyata, meluncur di atas garis sumbu tengah landasan sambil mengerem gradual hingga 60 knot sebelum belok ke *rapid exit*.
-* **Mesin Fisika Speed-Distance Geodesik:** Durasi pergerakan tiap simpul dihitung murni menggunakan jarak geodesik Haversine Nautical Miles terhadap kecepatan rata-rata ($4\times$ simulation multiplier), memastikan tempo jelajah dan belokan seimbang.
 
 ### 6. Voice Recognition & Pilot Audio Feedback
 * **Push-to-Talk (PTT) Speech Recognition:** Mendukung tombol spasi (*Spacebar*), tombol mouse, dan sentuh layar (*touch*) dengan intent matching perintah ATC ICAO.
@@ -75,9 +82,9 @@ Menggantikan marker dot bulat konvensional dengan siluet pesawat aerodinamis ber
 
 ## 🛠️ Arsitektur & Teknologi
 
-* **Frontend:** Vanilla JavaScript (ES6+), HTML5 Canvas 2D, Tailwind CSS, FontAwesome.
+* **Frontend:** Arsitektur Modular ES6+ di `static/js/` (`state.js`, `audio.js`, `radar.js`, `strips.js`, `physics_ground.js`, `safety.js`, `tactical.js`, `weather.js`, `physics_air.js`, `controller.js`) dengan pipeline bundler `build.sh` ke `static/app.js`, HTML5 Canvas 2D, Tailwind CSS, FontAwesome.
 * **Backend:** FastAPI, Python 3.13, Uvicorn, Faster-Whisper, Edge-TTS.
-* **Aeronautical Data:** `wiii_data.json` diekstraksi dari OpenStreetMap XML (`wiii_osm.xml`) dan publikasi AIP Indonesia.
+* **Aeronautical Data & Navigation Graph:** `wiii_data.json` memuat graf Dijkstra taxiway 2.642 node, 66 gate resmi (T1, T2, T3), runway mechanisms, holding points, rute SID/STAR, dan koordinat AIP Indonesia.
 * **Service Ports:**
   * HTTP Radar Interface: Port `8010`
   * HTTPS SSL Radar Interface: Port `8011`

@@ -11,9 +11,9 @@
 | 1 | Radar Separation & Safety Alerts | ✅ Selesai |
 | 2 | Electronic Flight Strip & FDE Scratchpad | ✅ Selesai |
 | 3 | Multi-Sektor, Frekuensi VHF & AI Spectator | ✅ Selesai |
-| 4 | Cuaca Dinamis, ATIS & Konfigurasi Runway | 🔜 Berikutnya |
-| 5 | Perintah Taktis Resolusi Konflik | 📋 Direncanakan |
-| 6 | Arrival Sequencer (AMAN) & Holding Pattern | 📋 Direncanakan |
+| 4 | Cuaca Dinamis, ATIS & Konfigurasi Runway | ✅ Selesai |
+| 5 | Perintah Taktis Resolusi Konflik | ✅ Selesai |
+| 6 | Arrival Sequencer (AMAN) & Holding Pattern | 🔜 Berikutnya |
 | 7 | Learning Academy & Guided Training | 📋 Direncanakan |
 | 8 | Multiplayer, Skenario & Scoring | 📋 Direncanakan |
 | 9 | Bandara Tambahan & Ekspor Data | 📋 Direncanakan |
