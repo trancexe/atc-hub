@@ -2308,16 +2308,56 @@ function handleRadarVoiceCommand(text, parsedData) {
     }
   }
 
-  // Fallback: If no callsign in transmission, apply to currently selected aircraft
-  if (!matchedAc && selectedAircraftIndex >= 0 && selectedAircraftIndex < aircraft.length) {
-    matchedAc = aircraft[selectedAircraftIndex];
+  // Fallback: If no callsign in transmission, apply to currently selected aircraft or solitary active aircraft
+  if (!matchedAc) {
+    if (selectedAircraftIndex >= 0 && selectedAircraftIndex < aircraft.length) {
+      matchedAc = aircraft[selectedAircraftIndex];
+    } else if (aircraft.length === 1) {
+      matchedAc = aircraft[0];
+    } else {
+      const approachAc = aircraft.filter(a => ["APPROACH", "FINAL"].includes(a.state));
+      if (approachAc.length === 1) {
+        matchedAc = approachAc[0];
+      }
+    }
   }
   
   if (matchedAc) {
     let readback = "";
     const intent = parsed.intent || "";
 
-    const rwyKey = matchedAc.clearedRwy || "25R";
+    // Extract commanded runway if specified in speech
+    let commandedRwy = null;
+    if (parsed.runway) {
+      const cr = parsed.runway.toUpperCase().replace(/\s+/g, '');
+      if (["25L", "25R", "07L", "07R", "24", "06"].includes(cr)) {
+        commandedRwy = cr;
+      }
+    }
+    if (!commandedRwy) {
+      if (/\b(?:25\s*l(?:eft)?|two\s*five\s*left)\b/i.test(norm)) commandedRwy = "25L";
+      else if (/\b(?:25\s*r(?:ight)?|two\s*five\s*right)\b/i.test(norm)) commandedRwy = "25R";
+      else if (/\b(?:0?7\s*l(?:eft)?|zero\s*seven\s*left|seven\s*left)\b/i.test(norm)) commandedRwy = "07L";
+      else if (/\b(?:0?7\s*r(?:ight)?|zero\s*seven\s*right|seven\s*right)\b/i.test(norm)) commandedRwy = "07R";
+      else if (/\b(?:24|two\s*four)\b/i.test(norm)) commandedRwy = "24";
+      else if (/\b(?:0?6|zero\s*six)\b/i.test(norm)) commandedRwy = "06";
+    }
+
+    const acIdx = aircraft.findIndex(a => a.id === matchedAc.id);
+    if (commandedRwy && acIdx >= 0 && commandedRwy !== matchedAc.clearedRwy) {
+      changeAircraftRunway(acIdx, commandedRwy);
+    }
+
+    const rwyKey = matchedAc.clearedRwy || commandedRwy || "25R";
+    const rwyPhoneticMap = {
+      "25R": "two five right",
+      "25L": "two five left",
+      "07L": "zero seven left",
+      "07R": "zero seven right",
+      "24": "two four",
+      "06": "zero six"
+    };
+    const rwySpoken = rwyPhoneticMap[rwyKey] || rwyKey;
     const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
     const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
 
@@ -2328,7 +2368,7 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = false;
-      readback = `Taxi to holding point runway ${rwyKey} via ${hpName}, ${matchedAc.callsign}`;
+      readback = `Taxi to holding point runway ${rwySpoken} via ${hpName}, ${matchedAc.callsign}`;
       executeTaxiMovement(matchedAc);
     } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
       matchedAc.state = "TAXI";
@@ -2337,10 +2377,10 @@ function handleRadarVoiceCommand(text, parsedData) {
       executeTaxiMovement(matchedAc);
     } else if ((matchedAc.state === "HOLDING" || matchedAc.state === "TAXI") && (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait"))) {
       matchedAc.state = "LINE_UP";
-      readback = `Line up and wait runway ${rwyKey}, ${matchedAc.callsign}`;
+      readback = `Line up and wait runway ${rwySpoken}, ${matchedAc.callsign}`;
       executeLineUpMovement(matchedAc);
     } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "LINING_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
-      readback = `Runway ${rwyKey} cleared for takeoff, ${matchedAc.callsign}`;
+      readback = `Runway ${rwySpoken} cleared for takeoff, ${matchedAc.callsign}`;
       if (matchedAc.state === "LINING_UP") {
         // Pilot acknowledges clearance, completes the lineup curve first to runway threshold, then rolls!
         matchedAc.takeoffQueued = true;
@@ -2351,11 +2391,13 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "APPROACH" && (norm.includes("ils") || norm.includes("descend") || norm.includes("approach") || norm.includes("cleared"))) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "A030";
-      readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwyKey}, ${matchedAc.callsign}`;
-    } else if (matchedAc.state === "FINAL" && (norm.includes("land") || norm.includes("cleared"))) {
+      readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwySpoken}, ${matchedAc.callsign}`;
+    } else if ((matchedAc.state === "FINAL" || matchedAc.state === "APPROACH") && (norm.includes("land") || norm.includes("cleared"))) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "GND";
-      readback = `Runway ${rwyKey} cleared to land, ${matchedAc.callsign}`;
+      readback = `Runway ${rwySpoken} cleared to land, ${matchedAc.callsign}`;
+    } else if (commandedRwy) {
+      readback = `Expect runway ${rwySpoken}, ${matchedAc.callsign}`;
     } else if (norm.includes("go around") || norm.includes("missed approach") || norm.includes("go round") || intent === "GO_AROUND") {
       const idx = aircraft.findIndex(a => a.id === matchedAc.id);
       readback = issueGoAround(idx);

@@ -343,13 +343,17 @@ def sanitize_and_normalize(raw_text: str) -> dict:
 
     normalized_str = " ".join(norm_tokens)
 
-    # Detect Runway (e.g. 25R, 25 left, 07L, 06)
-    rwy_match = re.search(r'\b(runway\s+)?(0[67][LR]?|2[45][LR]?|\d{2}\s*(?:left|right|center|L|R|C)?)\b', normalized_str, re.I)
+    # Detect Runway (e.g. 25R, 25 left, 07L, 06, 24)
+    rwy_match = re.search(r'\b(?:runway\s+)?(0[67]|2[45]|\d{2})\s*(left|right|center|l|r|c)?\b', normalized_str, re.I)
     runway = None
     if rwy_match:
-        rwy_raw = rwy_match.group(2).replace(" ", "").upper()
-        rwy_raw = rwy_raw.replace("LEFT", "L").replace("RIGHT", "R").replace("CENTER", "C")
-        runway = rwy_raw
+        rwy_num = rwy_match.group(1).upper()
+        rwy_side = (rwy_match.group(2) or "").upper()
+        if rwy_side:
+            rwy_side = "L" if "L" in rwy_side else ("R" if "R" in rwy_side else ("C" if "C" in rwy_side else ""))
+        rwy_candidate = f"{rwy_num}{rwy_side}"
+        if rwy_candidate in ["25L", "25R", "07L", "07R", "24", "06"]:
+            runway = rwy_candidate
 
     # Detect Callsign with Full ICAO Telephony Mapping
     # GIA -> INDONESIA, LNI -> LION INTER, CTV -> SUPERGREEN, BTK -> BATIK, AWQ -> WAGON AIR
