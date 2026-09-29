@@ -40,6 +40,12 @@ function updateAircraftScratchpad(idx, field, val) {
 }
 
 function renderFlightStrips() {
+  if (typeof updateAircraftFuelEndurance === 'function') {
+    updateAircraftFuelEndurance();
+  }
+  if (typeof renderAmanSequencerPanel === 'function') {
+    renderAmanSequencerPanel();
+  }
   const container = document.getElementById('flight-strips');
   if (!container) return;
 
@@ -82,7 +88,7 @@ function renderFlightStrips() {
 
     return `
       <div onclick="selectAircraft(${idx})" class="p-2.5 rounded text-xs border transition cursor-pointer select-none ${isSel ? 'bg-amber-950/50 border-amber-500 shadow-lg ring-1 ring-amber-500/80' : 'bg-slate-950 border-emerald-950/80 hover:bg-slate-900/90 hover:border-emerald-800'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
-        <!-- Strip Header: Callsign, Type, Bay Badge, & Ident Button -->
+        <!-- Strip Header: Callsign, Type, Bay Badge, Fuel, & Ident Button -->
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-1.5 ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
             <span class="text-[9px] px-1 py-0.2 rounded ${bayCat === 'DEP' ? 'bg-blue-900/80 text-blue-200' : (bayCat === 'TWR' ? 'bg-emerald-900/80 text-emerald-200' : 'bg-purple-900/80 text-purple-200')} font-mono">
@@ -93,6 +99,10 @@ function renderFlightStrips() {
             ${isSel ? '<span class="text-[9px] px-1 bg-amber-500 text-slate-950 font-bold rounded">ACTIVE</span>' : ''}
           </div>
           <div class="flex items-center gap-1">
+            <!-- Fuel / Endurance Indicator -->
+            <span class="text-[9px] px-1 py-0.2 rounded border font-mono ${ac.fuelMinutes < 15 ? 'bg-red-950 text-red-300 border-red-700 animate-pulse font-bold' : 'bg-slate-950 text-emerald-400 border-slate-800'}" title="Fuel Remaining / Endurance">
+              <i class="fa-solid fa-gas-pump text-[8px] mr-0.5"></i>${(ac.fuelMinutes !== undefined ? ac.fuelMinutes : 45).toFixed(0)}m
+            </span>
             <button onclick="event.stopPropagation(); triggerSquawkIdent(${idx})" class="text-[9px] px-1.5 py-0.5 rounded border transition font-bold font-mono ${isIdent ? 'bg-amber-500 text-slate-950 border-amber-300 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" title="Squawk IDENT Flash">
               ${isIdent ? '★ IDENT' : 'IDENT'}
             </button>
@@ -602,6 +612,17 @@ function handleRadarVoiceCommand(text, parsedData) {
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared to Land`, `Runway: ${rwySpoken} | Landing Rollout Authorized`);
       }
+    } else if (norm.includes("leave hold") || norm.includes("resume approach") || norm.includes("cancel hold")) {
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      readback = leaveHoldingPattern(idx);
+    } else if (norm.includes("hold") || norm.includes("holding")) {
+      const idx = aircraft.findIndex(a => a.id === matchedAc.id);
+      let fix = "TEGID";
+      if (norm.includes("bunto")) fix = "BUNTO";
+      else if (norm.includes("dolta")) fix = "DOLTA";
+      else if (norm.includes("topin")) fix = "TOPIN";
+      else if (norm.includes("rakit")) fix = "RAKIT";
+      readback = issueHoldingPattern(idx, fix, "FL100");
     } else if (commandedRwy) {
       readback = `Expect runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {

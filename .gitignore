@@ -1,4 +1,5 @@
 .venv/
 __pycache__/
 *.pyc
-wiii_osm.xml
+logs/*.log
+logs/*.log.*

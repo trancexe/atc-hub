@@ -122,6 +122,13 @@
         <span class="text-[10px] hidden md:inline" id="whisper-status">READY</span>
       </div>
 
+      <!-- AMAN SEQUENCER TOGGLE BUTTON -->
+      <button id="toggle-aman-btn" onclick="toggleAmanPanel()" class="px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:text-white font-radar text-xs flex items-center gap-1.5 transition shadow" title="Arrival Manager (AMAN) & Holding Stack">
+        <i class="fa-solid fa-list-ol text-sky-400 text-[10px]"></i>
+        <span class="font-bold">AMAN</span>
+        <span id="aman-count-badge" class="px-1 py-0.2 rounded-full bg-sky-900 text-sky-200 font-mono text-[9px] font-bold">0</span>
+      </button>
+
       <!-- TELEMETRY / FLIGHT BLACKBOX LOGGER BUTTON -->
       <button id="toggle-logger-btn" onclick="toggleTelemetryLogger()" class="px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:text-white font-radar text-xs flex items-center gap-1.5 transition shadow" title="Buka Live Logger / Telemetry Audit Trail">
         <i class="fa-solid fa-satellite text-amber-400 text-[10px]"></i>
@@ -397,6 +404,42 @@
     </div>
   </main>
 
+  <!-- AMAN (ARRIVAL MANAGER) & HOLDING STACK DRAWER PANEL -->
+  <div id="aman-sequencer-panel" class="hidden absolute top-14 right-16 z-50 w-96 max-w-[95vw] bg-slate-950/95 backdrop-blur-md border border-sky-800/80 rounded-xl shadow-2xl flex flex-col max-h-[82vh] font-radar">
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between px-3 py-2 border-b border-sky-900/60 bg-sky-950/40 rounded-t-xl">
+      <div class="flex items-center gap-1.5">
+        <i class="fa-solid fa-list-ol text-sky-400 text-xs"></i>
+        <span class="text-xs font-bold text-sky-200 tracking-wide">ARRIVAL MANAGER (AMAN) & HOLDING STACK</span>
+      </div>
+      <button onclick="toggleAmanPanel()" class="px-1.5 py-0.5 rounded text-[10px] text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Close AMAN">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Holding Stack Visualizer Section -->
+    <div class="p-2 border-b border-slate-800/80 bg-slate-950">
+      <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+        <span><i class="fa-solid fa-layer-group text-purple-400 mr-1"></i>Holding Altitude Stack</span>
+        <span class="text-[9px] text-slate-500">1000ft Vertical Step</span>
+      </div>
+      <div id="holding-stack-visualizer" class="space-y-0.5 bg-slate-900/80 p-1.5 rounded border border-slate-800">
+        <div class="text-slate-500 text-[10px] italic p-1 text-center">Holding stack kosong.</div>
+      </div>
+    </div>
+
+    <!-- Arrival Sequence & Spacing List -->
+    <div class="flex-1 p-2 space-y-1.5 overflow-y-auto max-h-[50vh]">
+      <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+        <span><i class="fa-solid fa-plane-arrival text-emerald-400 mr-1"></i>Landing Sequence (ELDT)</span>
+        <span class="text-[9px] text-slate-500">Spacing Advisor</span>
+      </div>
+      <div id="aman-sequence-list" class="space-y-1.5">
+        <div class="p-3 text-center text-slate-500 text-xs italic">Tidak ada pesawat arrival inbound saat ini.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- TELEMETRY / FLIGHT BLACKBOX LOGGER MODAL / SLIDE-OVER DRAWER -->
   <div id="telemetry-logger-panel" class="hidden absolute top-14 right-3 z-50 w-96 max-w-[95vw] bg-slate-950/95 backdrop-blur-md border border-slate-800 rounded-xl shadow-2xl flex flex-col max-h-[80vh] font-radar">
     <!-- Panel Header -->
@@ -442,6 +485,7 @@
   <script src="/js/physics_ground.js?v=20260928_modular"></script>
   <script src="/js/safety.js?v=20260928_modular"></script>
   <script src="/js/tactical.js?v=20260928_modular"></script>
+  <script src="/js/aman.js?v=20260928_modular"></script>
   <script src="/js/weather.js?v=20260928_modular"></script>
   <script src="/js/physics_air.js?v=20260928_modular"></script>
   <script src="/js/controller.js?v=20260928_modular"></script>

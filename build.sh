@@ -11,6 +11,7 @@ cat \
   static/js/physics_ground.js \
   static/js/safety.js \
   static/js/tactical.js \
+  static/js/aman.js \
   static/js/weather.js \
   static/js/physics_air.js \
   static/js/controller.js \

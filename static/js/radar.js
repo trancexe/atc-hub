@@ -568,6 +568,9 @@ function drawTmaScreen() {
   // Milestone 5: Tactical Vectors & Separation Ruler Tool
   drawTacticalOverlays(ctx, st);
 
+  // Milestone 6: Draw Holding Pattern Racetracks on Active Holding Fixes
+  drawHoldingPatternOverlays(ctx, st);
+
   if (!airportData) return;
 
   // Runways simplified
