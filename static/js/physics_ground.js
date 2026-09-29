@@ -188,7 +188,7 @@ function executePushbackMovement(ac) {
       ac.heading = 355; // Aligned along Taxiway NC6 facing north
       ac.state = "READY_TAXI";
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = "Ground, INDONESIA 502, ready to taxi, request clearance.";
+      ac.checkInPhrase = "Jakarta Ground, INDONESIA 502, ready to taxi, runway 25R.";
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();

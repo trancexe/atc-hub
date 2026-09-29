@@ -75,11 +75,11 @@ LESSONS = [
             "type": "B738",
             "gate": "Gate E1"
         },
-        "situation": "INDONESIA 502 di Gate E1 meminta IFR clearance tujuan Surabaya (WARR) via DOLTA 1C departure, initial climb FL140, squawk 4521.",
+        "situation": "INDONESIA 502 di Stand E1 melakukan initial call: 'Jakarta Delivery, INDONESIA 502, Stand Echo 1, Information Bravo, POB 156, destination Surabaya via DOLTA 1C departure, request clearance.' Berikan IFR clearance resmi.",
         "target_text": "Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, cleared to Surabaya via DOLTA one Charlie departure, climb flight level one four zero, squawk four five two one'",
         "keywords": ["indonesia", "502", "surabaya", "dolta", "140", "4521"],
-        "pilot_readback": "Cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521, Indonesia 502."
+        "pilot_readback": "Cleared Surabaya, DOLTA 1C, runway 25R, climb FL 140, squawk 4521, Indonesia 502."
     },
     {
         "id": "gnd-1",
@@ -113,7 +113,7 @@ LESSONS = [
         "target_text": "Indonesia 502 taxi to holding point runway 25R via NC1, N2",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, taxi to holding point runway two five right via North Charlie one, November two'",
         "keywords": ["indonesia", "502", "taxi", "holding point", "25r", "nc1"],
-        "pilot_readback": "Taxi to holding point runway 25R via NC1 and N2, Indonesia 502."
+        "pilot_readback": "Taxi holding point runway 25R via NC1, N2, Indonesia 502."
     },
     {
         "id": "twr-1",
@@ -130,7 +130,7 @@ LESSONS = [
         "target_text": "Indonesia 502 line up and wait runway 25R",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, line up and wait runway two five right'",
         "keywords": ["indonesia", "502", "line up", "wait", "25r"],
-        "pilot_readback": "Line up and wait runway 25R, Indonesia 502."
+        "pilot_readback": "Line up and wait, runway 25R, Indonesia 502."
     },
     {
         "id": "twr-2",
@@ -147,7 +147,7 @@ LESSONS = [
         "target_text": "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, wind two five zero degrees eight knots, runway two five right cleared for takeoff'",
         "keywords": ["indonesia", "502", "wind", "cleared for takeoff", "25r"],
-        "pilot_readback": "Runway 25R cleared for takeoff, Indonesia 502."
+        "pilot_readback": "Cleared for takeoff runway 25R, Indonesia 502."
     },
     {
         "id": "app-1",
@@ -162,9 +162,9 @@ LESSONS = [
         },
         "situation": "LION INTER 650 mendekati bandara via DOLTA 1A. Berikan izin ILS approach Runway 25L dan instruksi descend ke 3000 feet.",
         "target_text": "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L",
-        "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, descend and maintain three thousand feet, cleared ILS runway two five left'",
+        "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, descend to three thousand feet, cleared ILS runway two five left'",
         "keywords": ["lion inter", "650", "descend", "3000", "cleared", "ils", "25l"],
-        "pilot_readback": "Descend to 3000 feet, cleared ILS runway 25L, Lion Inter 650."
+        "pilot_readback": "Descend 3000 feet, cleared ILS runway 25L, Lion Inter 650."
     },
     {
         "id": "twr-3",
@@ -181,7 +181,7 @@ LESSONS = [
         "target_text": "Lion Inter 650 runway 25L cleared to land, wind 250 at 6",
         "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, runway two five left cleared to land, wind two five zero degrees six knots'",
         "keywords": ["lion inter", "650", "cleared to land", "25l"],
-        "pilot_readback": "Runway 25L cleared to land, Lion Inter 650."
+        "pilot_readback": "Cleared to land runway 25L, Lion Inter 650."
     },
     {
         "id": "app-2",
@@ -203,19 +203,19 @@ LESSONS = [
     {
         "id": "emg-1",
         "phase": "Emergency / Missed Approach",
-        "title": "Go-Around / Abort Landing",
+        "title": "Go-Around / Missed Approach",
         "aircraft": {
-            "callsign": "GIA502",
-            "telephony": "INDONESIA 502",
-            "airline": "Garuda Indonesia",
-            "type": "B738",
-            "gate": "Short Final 25R"
+            "callsign": "LNI650",
+            "telephony": "LION INTER 650",
+            "airline": "Lion Air",
+            "type": "A333",
+            "gate": "Short Final RWY 25L"
         },
-        "situation": "Terdapat pesawat lain terlambat keluar runway. Segera instruksikan INDONESIA 502 untuk Go-Around dan mendaki ke 3000 feet!",
-        "target_text": "Indonesia 502 go around, climb and maintain 3000 feet",
-        "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, go around, climb and maintain three thousand feet'",
-        "keywords": ["indonesia", "502", "go around", "climb", "3000"],
-        "pilot_readback": "Going around, climb to 3000 feet, Indonesia 502."
+        "situation": "Landasan terhalang kendaraan inspeksi di short final. Batalkan pendaratan segera!",
+        "target_text": "Lion Inter 650 go around, climb to 3000 feet",
+        "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, go around, climb to three thousand feet'",
+        "keywords": ["lion inter", "650", "go around", "climb", "3000"],
+        "pilot_readback": "Going around, climb to 3000 feet, Lion Inter 650."
     }
 ]
 

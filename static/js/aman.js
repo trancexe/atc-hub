@@ -289,7 +289,7 @@ function leaveHoldingPattern(acIdx) {
     executeApproachMovement(ac);
   }
 
-  const readback = `Leave holding, resume approach runway ${ac.clearedRwy}, descend and maintain 3000 feet, ${ac.callsign}`;
+  const readback = `Leave holding, resume approach runway ${ac.clearedRwy}, descend 3000 feet, ${ac.callsign}`;
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();

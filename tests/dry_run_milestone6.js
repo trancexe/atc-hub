@@ -146,6 +146,7 @@ assert.strictEqual(acHold.isHolding, false, "isHolding flag cleared");
 assert.strictEqual(acHold.state, "APPROACH", "State transitioned back to APPROACH");
 assert.strictEqual(acHold.fde.assignedAlt, "A030", "Cleared descend to 3000 ft (A030)");
 assert.ok(rbLeave.includes("Leave holding, resume approach"), "Pilot readback confirms approach resumption");
+assert.ok(rbLeave.includes("descend 3000 feet"), "Pilot readback contains concise altitude instruction");
 console.log(`✓ PASS: Hold exit clearance issued: "${rbLeave}"`);
 
 // TEST 7: Fuel & Endurance Timer & Bingo Advisory

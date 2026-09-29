@@ -76,6 +76,7 @@ const rbAlt = issueAltitudeStep(1, "FL100");
 assert.strictEqual(global.aircraft[1].altitude, 10000, "Altitude updated to 10,000 ft (FL100)");
 assert.strictEqual(global.aircraft[1].fde.assignedAlt, "FL100", "FDE assignedAlt updated");
 assert.ok(rbAlt.includes("FL100"), "Readback contains target FL");
+assert.ok(rbAlt.includes("Descend FL100"), "Readback uses concise ICAO verb Descend");
 console.log(`✓ PASS: Altitude step FL100 berhasil: "${rbAlt}"`);
 
 // TEST 4: Go-Around / Missed Approach

@@ -48,6 +48,10 @@ let aircraft = [
     callsign: "INDONESIA 502",
     airline: "Garuda Indonesia",
     type: "B738",
+    dest: "WARR (Surabaya)",
+    pob: 156,
+    sid: "DOLTA 1C",
+    initialAlt: "FL140",
     lat: -6.121757,
     lon: 106.651077,
     heading: 70, // Parked facing concourse Gate E1 (east-northeast)
@@ -56,10 +60,11 @@ let aircraft = [
     targetHeading: 70,
     state: "GATE",
     clearedRwy: "25R",
-    squawk: "4215",
+    clearedSid: "DOLTA 1C",
+    squawk: "4521",
     hasCheckedIn: false,
-    checkInPhrase: "Jakarta Ground, INDONESIA 502, Gate Echo 1, information Bravo, request push and start.",
-    responsePrompt: "Indonesia 502 push and start approved, facing west"
+    checkInPhrase: "Jakarta Delivery, INDONESIA 502, Gate Echo 1, information Bravo, Boeing 737-800, destination Surabaya via DOLTA 1C departure, POB 156, request ATC clearance.",
+    responsePrompt: "Indonesia 502 cleared to Surabaya, DOLTA 1C departure, runway 25R, climb FL140, squawk 4521"
   }
 ];
 
@@ -560,20 +565,20 @@ function getDynamicEasyModePrompt(ac) {
   switch (ac.state) {
     case "GATE":
       return {
-        context: `Pesawat parkir di Gate, siap pushback dan engine start untuk Runway ${rwyKey} via ${sidKey}.`,
+        context: `Pesawat di Gate E1 telah melaporkan initial check-in (POB ${ac.pob || 156}, tujuan ${ac.dest || 'Surabaya'}, via ${sidKey}). Siap push and start untuk Runway ${rwyKey}.`,
         speech: `${cs} push and start approved, facing west`,
-        actionDesc: "Pushback & Start Approved"
+        actionDesc: "Push & Start Approved"
       };
     case "PUSHBACK":
       return {
         context: `Pesawat sedang pushback mandiri menuju taxiway...`,
-        speech: `Standby for taxi request, ${cs}`,
+        speech: `Standby for taxi, ${cs}`,
         actionDesc: "Pushback in progress"
       };
     case "READY_TAXI":
       return {
         context: `Pesawat selesai pushback, pilot check-in meminta clearance taxi menuju Runway ${rwyKey}.`,
-        speech: `${cs} taxi to holding point runway ${rwyKey} via ${hpName}`,
+        speech: `${cs} taxi holding point runway ${rwyKey} via ${hpName}`,
         actionDesc: `Taxi to Holding Point ${rwyKey}`
       };
     case "HOLD_SHORT_CROSS":
@@ -591,14 +596,14 @@ function getDynamicEasyModePrompt(ac) {
     case "HOLDING":
       return {
         context: `Pesawat berhenti di Holding Point ${hpName} Runway ${rwyKey}, runway siap digunakan.`,
-        speech: `${cs} line up and wait runway ${rwyKey}`,
+        speech: `${cs} runway ${rwyKey} line up and wait`,
         actionDesc: `Line up and wait Runway ${rwyKey}`
       };
     case "LINE_UP":
     case "LINING_UP":
       return {
         context: `Pesawat di posisi Runway ${rwyKey} via ${sidKey} siap lepas landas. Angin 250 derajat 8 knot.`,
-        speech: `${cs} wind 250 at 8 knots, runway ${rwyKey} cleared for takeoff`,
+        speech: `${cs} wind 250 degrees 8 knots, runway ${rwyKey} cleared for takeoff`,
         actionDesc: `Cleared Takeoff RWY ${rwyKey}`
       };
     case "TAKEOFF":
@@ -610,13 +615,13 @@ function getDynamicEasyModePrompt(ac) {
     case "APPROACH":
       return {
         context: `Pesawat inbound pada rute kedatangan ${starKey} menuju ILS Runway ${rwyKey}.`,
-        speech: `${cs} descend and maintain 3000 feet, cleared ILS approach runway ${rwyKey}`,
+        speech: `${cs} descend 3000 feet, cleared ILS runway ${rwyKey}`,
         actionDesc: `Cleared ILS RWY ${rwyKey} (${starKey})`
       };
     case "FINAL":
       return {
         context: `Pesawat established di final approach 5 NM siap mendarat di Runway ${rwyKey}.`,
-        speech: `${cs} wind 250 at 8 knots, runway ${rwyKey} cleared to land`,
+        speech: `${cs} wind 250 degrees 8 knots, runway ${rwyKey} cleared to land`,
         actionDesc: `Cleared to Land RWY ${rwyKey}`
       };
     case "LANDED":
@@ -2107,6 +2112,8 @@ function renderFlightStrips() {
             </span>
             <span class="text-sm tracking-wide font-mono">${ac.id}</span>
             <span class="text-[10px] text-slate-400 font-normal">(${ac.type})</span>
+            ${ac.pob ? `<span class="text-[9px] px-1 bg-slate-800 text-teal-300 font-mono rounded" title="Persons On Board">POB ${ac.pob}</span>` : ''}
+            ${ac.dest ? `<span class="text-[9px] px-1 bg-slate-800 text-sky-300 font-mono rounded" title="Destination Airport">${ac.dest.split(' ')[0]}</span>` : ''}
             ${isSel ? '<span class="text-[9px] px-1 bg-amber-500 text-slate-950 font-bold rounded">ACTIVE</span>' : ''}
           </div>
           <div class="flex items-center gap-1">
@@ -2580,7 +2587,7 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = false;
-      readback = `Taxi to holding point runway ${rwySpoken} via ${hpName}, ${matchedAc.callsign}`;
+      readback = `Taxi holding point runway ${rwySpoken} via ${hpName}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) | State -> TAXI`);
       }
@@ -2588,20 +2595,20 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = true;
-      readback = `Cross runway two five right at November cross, report vacated, ${matchedAc.callsign}`;
+      readback = `Cross runway two five right, November cross, wilco, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Runway Crossing Approved`, 'Cross RWY 25R at November Cross');
       }
       executeTaxiMovement(matchedAc);
     } else if ((matchedAc.state === "HOLDING" || matchedAc.state === "TAXI") && (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait"))) {
       matchedAc.state = "LINE_UP";
-      readback = `Line up and wait runway ${rwySpoken}, ${matchedAc.callsign}`;
+      readback = `Line up and wait, runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Line Up and Wait`, `Runway: ${rwySpoken} | State -> LINE_UP`);
       }
       executeLineUpMovement(matchedAc);
     } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "LINING_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
-      readback = `Runway ${rwySpoken} cleared for takeoff, ${matchedAc.callsign}`;
+      readback = `Cleared for takeoff runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared for Takeoff`, `Runway: ${rwySpoken} | State -> TAKEOFF (Rolling)`);
       }
@@ -2615,14 +2622,14 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "APPROACH" && (norm.includes("ils") || norm.includes("descend") || norm.includes("approach") || norm.includes("cleared"))) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "A030";
-      readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwySpoken}, ${matchedAc.callsign}`;
+      readback = `Descend 3000 feet, cleared ILS runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared ILS Approach`, `Runway: ${rwySpoken} | Assigned Alt: A030 (3000ft)`);
       }
     } else if ((matchedAc.state === "FINAL" || matchedAc.state === "APPROACH") && (norm.includes("land") || norm.includes("cleared"))) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "GND";
-      readback = `Runway ${rwySpoken} cleared to land, ${matchedAc.callsign}`;
+      readback = `Cleared to land runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared to Land`, `Runway: ${rwySpoken} | Landing Rollout Authorized`);
       }
@@ -2675,7 +2682,7 @@ function handleRadarVoiceCommand(text, parsedData) {
       }
     } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121") || norm.includes("taxi"))) {
       matchedAc.state = "TAXI_IN";
-      readback = `Vacating runway via November 4, contacting Ground 121 decimal 6, ${matchedAc.callsign}`;
+      readback = `Vacating runway via November 4, Ground on 121 decimal 6, ${matchedAc.callsign}`;
       executeTaxiInMovement(matchedAc);
     } else if (matchedAc.state === "TAXI_IN" && (norm.includes("gate") || norm.includes("stand") || norm.includes("taxi") || norm.includes("continue"))) {
       readback = `Taxi to Gate Echo 1 via November Charlie, ${matchedAc.callsign}`;
@@ -2684,16 +2691,16 @@ function handleRadarVoiceCommand(text, parsedData) {
       matchedAc.state = "CLIMBING";
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "FL140";
-      readback = "Contact Jakarta Approach 119 decimal 75, good day, " + matchedAc.callsign;
+      readback = "119 decimal 75, " + matchedAc.callsign;
       executeClimbEnroute(matchedAc);
     } else if ((matchedAc.state === "CLIMBING" || matchedAc.state === "HANDOFF") && (norm.includes("center") || norm.includes("128") || norm.includes("handoff") || norm.includes("good day"))) {
       matchedAc.state = "HANDED_OFF";
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "FL240";
-      readback = "Contact Jakarta Center 128 decimal 5, thank you for service, " + matchedAc.callsign;
+      readback = "128 decimal 5, good day, " + matchedAc.callsign;
       executeHandoffComplete(matchedAc);
     } else {
-      readback = "Roger instructions, " + matchedAc.callsign;
+      readback = "Roger, " + matchedAc.callsign;
     }
 
     renderFlightStrips();
@@ -2894,7 +2901,7 @@ function executePushbackMovement(ac) {
       ac.heading = 355; // Aligned along Taxiway NC6 facing north
       ac.state = "READY_TAXI";
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = "Ground, INDONESIA 502, ready to taxi, request clearance.";
+      ac.checkInPhrase = "Jakarta Ground, INDONESIA 502, ready to taxi, runway 25R.";
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
@@ -3527,7 +3534,7 @@ function issueAltitudeStep(idx, targetAltStr) {
   ac.fde.assignedAlt = targetAltStr;
 
   const isClimb = targetFeet > ac.altitude;
-  const verb = isClimb ? "Climb and maintain" : "Descend and maintain";
+  const verb = isClimb ? "Climb" : "Descend";
   const readback = `${verb} ${targetAltStr}, ${ac.callsign}`;
 
   console.log(`[TACTICAL ALT] ${ac.id} assigned altitude ${targetAltStr} (${targetFeet} ft)`);
@@ -3560,7 +3567,7 @@ function issueGoAround(idx) {
   const rwyHdg = mech ? mech.heading : 250;
   ac.heading = rwyHdg;
 
-  const readback = `Going around, climb to three thousand feet on runway heading, ${ac.callsign}`;
+  const readback = `Going around, climb to three thousand feet, ${ac.callsign}`;
   console.log(`[GO-AROUND] ${ac.id} initiated missed approach procedure on runway ${rwyKey}!`);
 
   const pttStatus = document.getElementById('ptt-status');
@@ -3953,7 +3960,7 @@ function leaveHoldingPattern(acIdx) {
     executeApproachMovement(ac);
   }
 
-  const readback = `Leave holding, resume approach runway ${ac.clearedRwy}, descend and maintain 3000 feet, ${ac.callsign}`;
+  const readback = `Leave holding, resume approach runway ${ac.clearedRwy}, descend 3000 feet, ${ac.callsign}`;
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();

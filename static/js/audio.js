@@ -192,20 +192,20 @@ function getDynamicEasyModePrompt(ac) {
   switch (ac.state) {
     case "GATE":
       return {
-        context: `Pesawat parkir di Gate, siap pushback dan engine start untuk Runway ${rwyKey} via ${sidKey}.`,
+        context: `Pesawat di Gate E1 telah melaporkan initial check-in (POB ${ac.pob || 156}, tujuan ${ac.dest || 'Surabaya'}, via ${sidKey}). Siap push and start untuk Runway ${rwyKey}.`,
         speech: `${cs} push and start approved, facing west`,
-        actionDesc: "Pushback & Start Approved"
+        actionDesc: "Push & Start Approved"
       };
     case "PUSHBACK":
       return {
         context: `Pesawat sedang pushback mandiri menuju taxiway...`,
-        speech: `Standby for taxi request, ${cs}`,
+        speech: `Standby for taxi, ${cs}`,
         actionDesc: "Pushback in progress"
       };
     case "READY_TAXI":
       return {
         context: `Pesawat selesai pushback, pilot check-in meminta clearance taxi menuju Runway ${rwyKey}.`,
-        speech: `${cs} taxi to holding point runway ${rwyKey} via ${hpName}`,
+        speech: `${cs} taxi holding point runway ${rwyKey} via ${hpName}`,
         actionDesc: `Taxi to Holding Point ${rwyKey}`
       };
     case "HOLD_SHORT_CROSS":
@@ -223,14 +223,14 @@ function getDynamicEasyModePrompt(ac) {
     case "HOLDING":
       return {
         context: `Pesawat berhenti di Holding Point ${hpName} Runway ${rwyKey}, runway siap digunakan.`,
-        speech: `${cs} line up and wait runway ${rwyKey}`,
+        speech: `${cs} runway ${rwyKey} line up and wait`,
         actionDesc: `Line up and wait Runway ${rwyKey}`
       };
     case "LINE_UP":
     case "LINING_UP":
       return {
         context: `Pesawat di posisi Runway ${rwyKey} via ${sidKey} siap lepas landas. Angin 250 derajat 8 knot.`,
-        speech: `${cs} wind 250 at 8 knots, runway ${rwyKey} cleared for takeoff`,
+        speech: `${cs} wind 250 degrees 8 knots, runway ${rwyKey} cleared for takeoff`,
         actionDesc: `Cleared Takeoff RWY ${rwyKey}`
       };
     case "TAKEOFF":
@@ -242,13 +242,13 @@ function getDynamicEasyModePrompt(ac) {
     case "APPROACH":
       return {
         context: `Pesawat inbound pada rute kedatangan ${starKey} menuju ILS Runway ${rwyKey}.`,
-        speech: `${cs} descend and maintain 3000 feet, cleared ILS approach runway ${rwyKey}`,
+        speech: `${cs} descend 3000 feet, cleared ILS runway ${rwyKey}`,
         actionDesc: `Cleared ILS RWY ${rwyKey} (${starKey})`
       };
     case "FINAL":
       return {
         context: `Pesawat established di final approach 5 NM siap mendarat di Runway ${rwyKey}.`,
-        speech: `${cs} wind 250 at 8 knots, runway ${rwyKey} cleared to land`,
+        speech: `${cs} wind 250 degrees 8 knots, runway ${rwyKey} cleared to land`,
         actionDesc: `Cleared to Land RWY ${rwyKey}`
       };
     case "LANDED":

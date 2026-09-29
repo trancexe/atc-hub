@@ -116,7 +116,7 @@ function issueAltitudeStep(idx, targetAltStr) {
   ac.fde.assignedAlt = targetAltStr;
 
   const isClimb = targetFeet > ac.altitude;
-  const verb = isClimb ? "Climb and maintain" : "Descend and maintain";
+  const verb = isClimb ? "Climb" : "Descend";
   const readback = `${verb} ${targetAltStr}, ${ac.callsign}`;
 
   console.log(`[TACTICAL ALT] ${ac.id} assigned altitude ${targetAltStr} (${targetFeet} ft)`);
@@ -149,7 +149,7 @@ function issueGoAround(idx) {
   const rwyHdg = mech ? mech.heading : 250;
   ac.heading = rwyHdg;
 
-  const readback = `Going around, climb to three thousand feet on runway heading, ${ac.callsign}`;
+  const readback = `Going around, climb to three thousand feet, ${ac.callsign}`;
   console.log(`[GO-AROUND] ${ac.id} initiated missed approach procedure on runway ${rwyKey}!`);
 
   const pttStatus = document.getElementById('ptt-status');

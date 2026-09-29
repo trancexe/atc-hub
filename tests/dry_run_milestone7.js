@@ -14,6 +14,8 @@ assert.ok(appPy.includes('"id": "twr-2"'), "Contains Takeoff Clearance Lesson (t
 assert.ok(appPy.includes('"id": "app-1"'), "Contains ILS Approach Clearance Lesson (app-1)");
 assert.ok(appPy.includes('"id": "app-2"'), "Contains Holding Pattern Lesson (app-2)");
 assert.ok(appPy.includes('"id": "emg-1"'), "Contains Go-Around Missed Approach Lesson (emg-1)");
+assert.ok(appPy.includes('Cleared Surabaya, DOLTA 1C'), "Validates concise ICAO departure readback");
+assert.ok(appPy.includes('Taxi holding point runway 25R'), "Validates concise ICAO taxi readback");
 console.log("✓ PASS: Backend Academy Syllabus contains full progression (IFR, Pushback, Taxi, Lineup, Takeoff, ILS, Holding, Go-Around)");
 
 // 2. Validate Interactive Hands-on Scenario Engine in academy.js

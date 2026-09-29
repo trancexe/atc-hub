@@ -96,6 +96,8 @@ function renderFlightStrips() {
             </span>
             <span class="text-sm tracking-wide font-mono">${ac.id}</span>
             <span class="text-[10px] text-slate-400 font-normal">(${ac.type})</span>
+            ${ac.pob ? `<span class="text-[9px] px-1 bg-slate-800 text-teal-300 font-mono rounded" title="Persons On Board">POB ${ac.pob}</span>` : ''}
+            ${ac.dest ? `<span class="text-[9px] px-1 bg-slate-800 text-sky-300 font-mono rounded" title="Destination Airport">${ac.dest.split(' ')[0]}</span>` : ''}
             ${isSel ? '<span class="text-[9px] px-1 bg-amber-500 text-slate-950 font-bold rounded">ACTIVE</span>' : ''}
           </div>
           <div class="flex items-center gap-1">
@@ -569,7 +571,7 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = false;
-      readback = `Taxi to holding point runway ${rwySpoken} via ${hpName}, ${matchedAc.callsign}`;
+      readback = `Taxi holding point runway ${rwySpoken} via ${hpName}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) | State -> TAXI`);
       }
@@ -577,20 +579,20 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = true;
-      readback = `Cross runway two five right at November cross, report vacated, ${matchedAc.callsign}`;
+      readback = `Cross runway two five right, November cross, wilco, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Runway Crossing Approved`, 'Cross RWY 25R at November Cross');
       }
       executeTaxiMovement(matchedAc);
     } else if ((matchedAc.state === "HOLDING" || matchedAc.state === "TAXI") && (intent === "LINE_UP" || norm.includes("line up") || norm.includes("wait"))) {
       matchedAc.state = "LINE_UP";
-      readback = `Line up and wait runway ${rwySpoken}, ${matchedAc.callsign}`;
+      readback = `Line up and wait, runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Line Up and Wait`, `Runway: ${rwySpoken} | State -> LINE_UP`);
       }
       executeLineUpMovement(matchedAc);
     } else if ((matchedAc.state === "LINE_UP" || matchedAc.state === "LINING_UP" || matchedAc.state === "HOLDING") && (intent === "TAKEOFF" || norm.includes("takeoff") || norm.includes("take off") || norm.includes("cleared"))) {
-      readback = `Runway ${rwySpoken} cleared for takeoff, ${matchedAc.callsign}`;
+      readback = `Cleared for takeoff runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared for Takeoff`, `Runway: ${rwySpoken} | State -> TAKEOFF (Rolling)`);
       }
@@ -604,14 +606,14 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "APPROACH" && (norm.includes("ils") || norm.includes("descend") || norm.includes("approach") || norm.includes("cleared"))) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "A030";
-      readback = `Descend and maintain 3000 feet, cleared ILS runway ${rwySpoken}, ${matchedAc.callsign}`;
+      readback = `Descend 3000 feet, cleared ILS runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared ILS Approach`, `Runway: ${rwySpoken} | Assigned Alt: A030 (3000ft)`);
       }
     } else if ((matchedAc.state === "FINAL" || matchedAc.state === "APPROACH") && (norm.includes("land") || norm.includes("cleared"))) {
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "GND";
-      readback = `Runway ${rwySpoken} cleared to land, ${matchedAc.callsign}`;
+      readback = `Cleared to land runway ${rwySpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared to Land`, `Runway: ${rwySpoken} | Landing Rollout Authorized`);
       }
@@ -664,7 +666,7 @@ function handleRadarVoiceCommand(text, parsedData) {
       }
     } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121") || norm.includes("taxi"))) {
       matchedAc.state = "TAXI_IN";
-      readback = `Vacating runway via November 4, contacting Ground 121 decimal 6, ${matchedAc.callsign}`;
+      readback = `Vacating runway via November 4, Ground on 121 decimal 6, ${matchedAc.callsign}`;
       executeTaxiInMovement(matchedAc);
     } else if (matchedAc.state === "TAXI_IN" && (norm.includes("gate") || norm.includes("stand") || norm.includes("taxi") || norm.includes("continue"))) {
       readback = `Taxi to Gate Echo 1 via November Charlie, ${matchedAc.callsign}`;
@@ -673,16 +675,16 @@ function handleRadarVoiceCommand(text, parsedData) {
       matchedAc.state = "CLIMBING";
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "FL140";
-      readback = "Contact Jakarta Approach 119 decimal 75, good day, " + matchedAc.callsign;
+      readback = "119 decimal 75, " + matchedAc.callsign;
       executeClimbEnroute(matchedAc);
     } else if ((matchedAc.state === "CLIMBING" || matchedAc.state === "HANDOFF") && (norm.includes("center") || norm.includes("128") || norm.includes("handoff") || norm.includes("good day"))) {
       matchedAc.state = "HANDED_OFF";
       if (!matchedAc.fde) matchedAc.fde = {};
       matchedAc.fde.assignedAlt = "FL240";
-      readback = "Contact Jakarta Center 128 decimal 5, thank you for service, " + matchedAc.callsign;
+      readback = "128 decimal 5, good day, " + matchedAc.callsign;
       executeHandoffComplete(matchedAc);
     } else {
-      readback = "Roger instructions, " + matchedAc.callsign;
+      readback = "Roger, " + matchedAc.callsign;
     }
 
     renderFlightStrips();

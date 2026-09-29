@@ -48,6 +48,10 @@ let aircraft = [
     callsign: "INDONESIA 502",
     airline: "Garuda Indonesia",
     type: "B738",
+    dest: "WARR (Surabaya)",
+    pob: 156,
+    sid: "DOLTA 1C",
+    initialAlt: "FL140",
     lat: -6.121757,
     lon: 106.651077,
     heading: 70, // Parked facing concourse Gate E1 (east-northeast)
@@ -56,10 +60,11 @@ let aircraft = [
     targetHeading: 70,
     state: "GATE",
     clearedRwy: "25R",
-    squawk: "4215",
+    clearedSid: "DOLTA 1C",
+    squawk: "4521",
     hasCheckedIn: false,
-    checkInPhrase: "Jakarta Ground, INDONESIA 502, Gate Echo 1, information Bravo, request push and start.",
-    responsePrompt: "Indonesia 502 push and start approved, facing west"
+    checkInPhrase: "Jakarta Delivery, INDONESIA 502, Gate Echo 1, information Bravo, Boeing 737-800, destination Surabaya via DOLTA 1C departure, POB 156, request ATC clearance.",
+    responsePrompt: "Indonesia 502 cleared to Surabaya, DOLTA 1C departure, runway 25R, climb FL140, squawk 4521"
   }
 ];
 
