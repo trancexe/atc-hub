@@ -115,10 +115,10 @@ systemctl --user restart atc-hub-ssl
 systemctl --user status atc-hub
 ```
 
-### Akses Web Browser:
-* **HTTP:** `http://<server-ip>:8010`
-* **HTTPS:** `https://<server-ip>:8011`
-*(Gunakan shortcut `Ctrl + Shift + R` untuk memastikan aset JavaScript terbaru termuat).*
+### Akses Web Browser & Live Deployment:
+* **Live Web (Public Domain):** [https://clearedtoland.my.id](https://clearedtoland.my.id)
+* **Local Run:** `http://localhost:8010` (HTTP) / `https://localhost:8011` (HTTPS)
+*(Gunakan shortcut `Ctrl + Shift + R` / `Ctrl + F5` untuk memastikan aset JavaScript terbaru termuat).*
 
 ---
 
