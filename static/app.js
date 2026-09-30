@@ -2231,8 +2231,8 @@ function renderFlightStrips() {
     return `
       <div onclick="selectAircraft(${idx})" class="p-2.5 rounded text-xs border transition cursor-pointer select-none ${isSel ? 'bg-amber-950/50 border-amber-500 shadow-lg ring-1 ring-amber-500/80' : 'bg-slate-950 border-emerald-950/80 hover:bg-slate-900/90 hover:border-emerald-800'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
         <!-- Strip Header: Callsign, Type, Bay Badge, Fuel, & Ident Button -->
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-1.5 ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
+        <div class="flex flex-wrap justify-between items-center gap-1">
+          <div class="flex items-center gap-1.5 flex-wrap ${isSel ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">
             <span class="text-[9px] px-1 py-0.2 rounded ${bayCat === 'DEP' ? 'bg-blue-900/80 text-blue-200' : (bayCat === 'TWR' ? 'bg-emerald-900/80 text-emerald-200' : 'bg-purple-900/80 text-purple-200')} font-mono">
               ${bayCat}
             </span>
@@ -2242,7 +2242,7 @@ function renderFlightStrips() {
             ${ac.dest ? `<span class="text-[9px] px-1 bg-slate-800 text-sky-300 font-mono rounded" title="Destination Airport">${ac.dest.split(' ')[0]}</span>` : ''}
             ${isSel ? '<span class="text-[9px] px-1 bg-amber-500 text-slate-950 font-bold rounded">ACTIVE</span>' : ''}
           </div>
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1 ml-auto">
             <!-- Fuel / Endurance Indicator -->
             <span class="text-[9px] px-1 py-0.2 rounded border font-mono ${ac.fuelMinutes < 15 ? 'bg-red-950 text-red-300 border-red-700 animate-pulse font-bold' : 'bg-slate-950 text-emerald-400 border-slate-800'}" title="Fuel Remaining / Endurance">
               <i class="fa-solid fa-gas-pump text-[8px] mr-0.5"></i>${(ac.fuelMinutes !== undefined ? ac.fuelMinutes : 45).toFixed(0)}m
@@ -2250,7 +2250,7 @@ function renderFlightStrips() {
             <button onclick="event.stopPropagation(); triggerSquawkIdent(${idx})" class="text-[9px] px-1.5 py-0.5 rounded border transition font-bold font-mono ${isIdent ? 'bg-amber-500 text-slate-950 border-amber-300 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" title="Squawk IDENT Flash">
               ${isIdent ? '★ IDENT' : 'IDENT'}
             </button>
-            <span class="text-[10px] ${isPending ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-400'}">
+            <span class="text-[10px] truncate max-w-[90px] ${isPending ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-400'}" title="${ac.airline}">
               ${isPending ? 'CALLING...' : ac.airline}
             </span>
           </div>
@@ -2294,11 +2294,11 @@ function renderFlightStrips() {
 
         <!-- TACTICAL RESOLUTION CONTROLS (Milestone 5: Vector, Altitude Step, Speed, Go-Around) -->
         ${(ac.altitude > 100 && !["PARKED", "GATE", "PUSHBACK", "TAXI", "READY_TAXI"].includes(ac.state)) ? `
-          <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
+          <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-1 text-[9px]">
             <!-- Tactical Vector Heading -->
             <div class="flex items-center gap-0.5">
               <span class="text-amber-400 font-mono font-bold">HDG:</span>
-              <select onchange="issueRadarVector(${idx}, this.value)" class="bg-slate-950 border border-slate-800 text-amber-300 font-mono text-[9px] rounded px-0.5 py-0 focus:outline-none focus:border-amber-500">
+              <select onchange="issueRadarVector(${idx}, this.value)" class="bg-slate-950 border border-slate-800 text-amber-300 font-mono text-[9px] rounded px-1 py-0.5 focus:outline-none focus:border-amber-500 max-w-[85px]">
                 <option value="" disabled selected>Turn...</option>
                 <option value="090">090° (E)</option>
                 <option value="180">180° (S)</option>
@@ -2311,7 +2311,7 @@ function renderFlightStrips() {
             <!-- Tactical Speed Control -->
             <div class="flex items-center gap-0.5">
               <span class="text-sky-400 font-mono font-bold">SPD:</span>
-              <select onchange="issueSpeedControl(${idx}, this.value)" class="bg-slate-950 border border-slate-800 text-sky-300 font-mono text-[9px] rounded px-0.5 py-0 focus:outline-none focus:border-sky-500">
+              <select onchange="issueSpeedControl(${idx}, this.value)" class="bg-slate-950 border border-slate-800 text-sky-300 font-mono text-[9px] rounded px-1 py-0.5 focus:outline-none focus:border-sky-500 max-w-[85px]">
                 <option value="" disabled selected>Speed...</option>
                 <option value="160">160K</option>
                 <option value="180">180K</option>
@@ -2324,11 +2324,11 @@ function renderFlightStrips() {
             <div class="flex items-center gap-0.5">
               <span class="text-purple-400 font-mono font-bold">HOLD:</span>
               ${ac.isHolding ? `
-                <button onclick="leaveHoldingPattern(${idx})" class="px-1.5 py-0 rounded bg-emerald-950 border border-emerald-600 text-emerald-300 font-bold hover:bg-emerald-900 text-[9px]" title="Leave Holding & Resume Approach">
+                <button onclick="leaveHoldingPattern(${idx})" class="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-600 text-emerald-300 font-bold hover:bg-emerald-900 text-[9px]" title="Leave Holding & Resume Approach">
                   LEAVE
                 </button>
               ` : `
-                <select onchange="if(this.value){ issueHoldingPattern(${idx}, this.value, 'FL100'); this.value=''; }" class="bg-slate-950 border border-slate-800 text-purple-300 font-mono text-[9px] rounded px-0.5 py-0 focus:outline-none focus:border-purple-500">
+                <select onchange="if(this.value){ issueHoldingPattern(${idx}, this.value, 'FL100'); this.value=''; }" class="bg-slate-950 border border-slate-800 text-purple-300 font-mono text-[9px] rounded px-1 py-0.5 focus:outline-none focus:border-purple-500 max-w-[100px]">
                   <option value="" disabled selected>Hold At...</option>
                   <option value="TEGID">TEGID (FL100)</option>
                   <option value="BUNTO">BUNTO (FL100)</option>
@@ -2339,7 +2339,7 @@ function renderFlightStrips() {
             </div>
             <!-- Go-Around (Missed Approach Button) -->
             ${ac.state === "FINAL" ? `
-              <button onclick="issueGoAround(${idx})" class="px-1.5 py-0 rounded bg-red-950/80 border border-red-600/80 text-red-300 font-bold hover:bg-red-900 text-[9px]" title="Initiate Missed Approach & Go-Around">
+              <button onclick="issueGoAround(${idx})" class="px-2 py-0.5 rounded bg-red-950/80 border border-red-600/80 text-red-300 font-bold hover:bg-red-900 text-[9px]" title="Initiate Missed Approach & Go-Around">
                 GO-AROUND
               </button>
             ` : ''}
@@ -2347,18 +2347,18 @@ function renderFlightStrips() {
         ` : ''}
 
         <!-- FDE SCRATCHPAD (Flight Data Entry: CFL Altitude, Speed, Direct Fix) -->
-        <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between gap-1 text-[9px]">
-          <div class="flex items-center gap-0.5">
-            <span class="text-slate-500 font-mono">CFL:</span>
-            <input type="text" placeholder="A040" value="${assignedAlt}" onchange="updateAircraftScratchpad(${idx}, 'assignedAlt', this.value)" class="w-11 bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-emerald-500" title="Cleared Flight Level / Altitude" />
+        <div onclick="event.stopPropagation()" class="mt-1 pt-1 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-1 text-[9px]">
+          <div class="flex items-center gap-1">
+            <span class="text-slate-500 font-mono font-bold">CFL:</span>
+            <input type="text" placeholder="A040" value="${assignedAlt}" onchange="updateAircraftScratchpad(${idx}, 'assignedAlt', this.value)" class="w-14 bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-[9px] rounded px-1 py-0.5 text-center focus:outline-none focus:border-emerald-500" title="Cleared Flight Level / Altitude" />
           </div>
-          <div class="flex items-center gap-0.5">
-            <span class="text-slate-500 font-mono">SPD:</span>
-            <input type="text" placeholder="210K" value="${assignedSpd}" onchange="updateAircraftScratchpad(${idx}, 'assignedSpd', this.value)" class="w-11 bg-slate-950 border border-slate-800 text-sky-300 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-sky-500" title="Assigned Airspeed" />
+          <div class="flex items-center gap-1">
+            <span class="text-slate-500 font-mono font-bold">SPD:</span>
+            <input type="text" placeholder="210K" value="${assignedSpd}" onchange="updateAircraftScratchpad(${idx}, 'assignedSpd', this.value)" class="w-14 bg-slate-950 border border-slate-800 text-sky-300 font-mono text-[9px] rounded px-1 py-0.5 text-center focus:outline-none focus:border-sky-500" title="Assigned Airspeed" />
           </div>
-          <div class="flex items-center gap-0.5">
-            <span class="text-slate-500 font-mono">DIR:</span>
-            <input type="text" placeholder="TOPIN" value="${directFix}" onchange="updateAircraftScratchpad(${idx}, 'directFix', this.value)" class="w-14 bg-slate-950 border border-slate-800 text-amber-200 font-mono text-[9px] rounded px-1 py-0 text-center focus:outline-none focus:border-amber-500" title="Direct-To Fix" />
+          <div class="flex items-center gap-1">
+            <span class="text-slate-500 font-mono font-bold">DIR:</span>
+            <input type="text" placeholder="TOPIN" value="${directFix}" onchange="updateAircraftScratchpad(${idx}, 'directFix', this.value)" class="w-16 bg-slate-950 border border-slate-800 text-amber-200 font-mono text-[9px] rounded px-1 py-0.5 text-center focus:outline-none focus:border-amber-500" title="Direct-To Fix" />
           </div>
         </div>
       </div>
