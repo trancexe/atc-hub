@@ -14,7 +14,8 @@ function makeElementDraggable(headerEl, windowEl) {
     initialLeft = rect.left;
     initialTop = rect.top;
 
-    // Switch to absolute positioning with explicit left/top coordinates
+    // Instantly disable CSS transitions during drag so movement is 1:1 instantaneous without rubber-banding
+    windowEl.style.transition = 'none';
     windowEl.style.right = 'auto';
     windowEl.style.bottom = 'auto';
     windowEl.style.left = `${initialLeft}px`;
@@ -33,6 +34,7 @@ function makeElementDraggable(headerEl, windowEl) {
 
     const onMouseUp = () => {
       isDragging = false;
+      windowEl.style.transition = '';
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
