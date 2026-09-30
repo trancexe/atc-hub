@@ -2265,13 +2265,17 @@ function renderFlightStrips() {
   if (!container) return;
 
   const filtered = aircraft.map((ac, idx) => ({ ac, idx })).filter(item => {
+    // Hide archived parked aircraft (turnaround phase) from cluttering the flight strips
+    if (item.ac.isArchivedParked) return false;
     if (activeStripBayFilter === "ALL") return true;
     return getAircraftBayCategory(item.ac) === activeStripBayFilter;
   });
 
+  const activeCount = aircraft.filter(a => !a.isArchivedParked).length;
+
   if (filtered.length === 0) {
     container.innerHTML = `<div class="p-3 text-center text-slate-500 text-xs italic">Tidak ada strip di Bay ${activeStripBayFilter}</div>`;
-    document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
+    document.getElementById('aircraft-count').textContent = `${activeCount} Active`;
     return;
   }
 
@@ -2465,7 +2469,7 @@ function renderFlightStrips() {
       </div>
     `;
   }).join('');
-  document.getElementById('aircraft-count').textContent = `${aircraft.length} In Flight`;
+  document.getElementById('aircraft-count').textContent = `${activeCount} Active`;
 }
 
 function changeAircraftRunway(idx, newRwy) {
@@ -3141,35 +3145,54 @@ function executePushbackMovement(ac) {
   // Clear any existing interval
   if (ac._pushInterval) clearInterval(ac._pushInterval);
 
-  // Discrete, verifiable pushback points:
-  // Waypoint 0: Gate E1 Stand (Parked, lat -6.121757, lon 106.651077)
-  // Waypoint 1: Apron Taxilane (Clear of concourse building, lat -6.121650, lon 106.650600)
-  // Waypoint 2: Apron Alley curve (lat -6.121480, lon 106.650280)
-  // Waypoint 3: Intersection into Taxiway NC6 (lat -6.121260, lon 106.650050)
-  // Waypoint 4: PUSH RELEASE POINT on Taxiway NC6 centerline (lat -6.121013, lon 106.650012)
-  const pushNodes = (airportData && airportData.routes && airportData.routes.pushback_gate_e1)
-    ? airportData.routes.pushback_gate_e1.map(p => ({ lat: p[0], lon: p[1] }))
-    : [
-        { lat: -6.121757, lon: 106.651077 },
-        { lat: -6.121650, lon: 106.650600 },
-        { lat: -6.121480, lon: 106.650280 },
-        { lat: -6.121260, lon: 106.650050 },
-        { lat: -6.121013, lon: 106.650012 }
-      ];
+  const gateRef = ac.assignedGate || "E1";
+  const relPoint = (airportData && airportData.pushback_release_points && airportData.pushback_release_points[gateRef])
+    ? airportData.pushback_release_points[gateRef]
+    : null;
+
+  let pushNodes = null;
+  let finalHdg = 355;
+
+  if (relPoint) {
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+    const endLat = relPoint.release_lat;
+    const endLon = relPoint.release_lon;
+    // Intermediate point along apron taxilane before turning out onto taxiway
+    const midLat = startLat + (endLat - startLat) * 0.45;
+    const midLon = startLon + (endLon - startLon) * 0.45;
+    pushNodes = [
+      { lat: startLat, lon: startLon },
+      { lat: midLat, lon: midLon },
+      { lat: endLat, lon: endLon }
+    ];
+    finalHdg = relPoint.heading_deg !== undefined ? relPoint.heading_deg : 355;
+  } else {
+    pushNodes = (airportData && airportData.routes && airportData.routes.pushback_gate_e1)
+      ? airportData.routes.pushback_gate_e1.map(p => ({ lat: p[0], lon: p[1] }))
+      : [
+          { lat: -6.121757, lon: 106.651077 },
+          { lat: -6.121650, lon: 106.650600 },
+          { lat: -6.121480, lon: 106.650280 },
+          { lat: -6.121260, lon: 106.650050 },
+          { lat: -6.121013, lon: 106.650012 }
+        ];
+  }
 
   let nodeIdx = 1; // start moving to P1
   ac.groundSpeed = 4;
 
   function moveNextPushNode() {
     if (nodeIdx >= pushNodes.length) {
-      // Reached centerline of Taxiway NC6!
+      // Reached centerline of Taxiway release point!
       ac.groundSpeed = 0;
       ac.lat = pushNodes[pushNodes.length - 1].lat;
       ac.lon = pushNodes[pushNodes.length - 1].lon;
-      ac.heading = 355; // Aligned along Taxiway NC6 facing north
+      ac.heading = finalHdg;
       ac.state = "READY_TAXI";
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = "Jakarta Ground, INDONESIA 502, ready to taxi, runway 25R.";
+      const rwySpoken = ac.clearedRwy || "25R";
+      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, ready to taxi, runway ${rwySpoken}.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
@@ -5573,6 +5596,69 @@ function calculateStarArrivalPath(starCoords, rwyKey) {
   return path;
 }
 
+// Schedule Turnaround for Parked Aircraft (Auto-reborn as Outbound after turnaround window)
+function scheduleTurnaroundOutbound(ac, delayMs = 25000) {
+  if (ac._turnaroundTimer) clearTimeout(ac._turnaroundTimer);
+
+  ac._turnaroundTimer = setTimeout(() => {
+    // Check if aircraft still exists in simulation
+    const idx = aircraft.findIndex(a => a.id === ac.id);
+    if (idx === -1) return;
+
+    // Convert arrival aircraft to fresh outbound departure!
+    console.log(`[TURNAROUND] Aircraft ${ac.id} turnaround completed at ${ac.assignedGate || 'Gate'}. Re-appearing on Flight Strips as Outbound.`);
+
+    const rwy = (ac.clearedRwy && ["25R", "25L", "07L", "07R"].includes(ac.clearedRwy)) ? ac.clearedRwy : "25R";
+    const allSids = (airportData && airportData.sids) ? airportData.sids : [];
+    const validSids = allSids.filter(s => !s.runways || s.runways.includes(rwy)).map(s => s.id);
+    const chosenSid = validSids.length ? validSids[0] : "DOLTA 2A";
+
+    const destPool = [
+      { code: "WARR (Surabaya)", sid: "DOLTA 2A" },
+      { code: "WADD (Bali)", sid: "DOLTA 2A" },
+      { code: "WAAA (Makassar)", sid: "DOLTA 2A" },
+      { code: "WIPT (Padang)", sid: "BUNIK 2H" },
+      { code: "WIMM (Medan)", sid: "BUNIK 2H" },
+      { code: "WIDD (Batam)", sid: "AKSOX 2A" },
+      { code: "WBSB (Brunei)", sid: "AKSOX 2A" }
+    ];
+    const destObj = destPool[Math.floor(Math.random() * destPool.length)];
+
+    // Reset outbound states
+    ac.state = "GATE";
+    ac.groundSpeed = 0;
+    ac.altitude = 0;
+    ac.dest = destObj.code;
+    ac.pob = Math.floor(120 + Math.random() * 80);
+    ac.clearedRwy = rwy;
+    ac.clearedSid = destObj.sid || chosenSid;
+    ac.squawk = String(Math.floor(1000 + Math.random() * 8000));
+    ac.isArchivedParked = false; // Un-hide from flight strips!
+    ac.hasCheckedIn = false;
+    ac._aiShutdownIssued = false;
+    ac._aiGateIssued = false;
+    ac._aiCenterHandoffIssued = false;
+    ac._aiIlsIssued = false;
+    ac._aiLandIssued = false;
+    ac._aiVacateIssued = false;
+    ac._aiTaxiInIssued = false;
+    ac._runwayCrossCleared = false;
+    ac.takeoffQueued = false;
+
+    const gateStr = ac.assignedGate ? `Gate ${ac.assignedGate}` : "Gate Echo 1";
+    ac.checkInPhrase = `Jakarta Delivery, ${ac.callsign}, ${gateStr}, information Charlie, destination ${destObj.code.split(' ')[0]} via ${ac.clearedSid} departure, POB ${ac.pob}, request ATC clearance.`;
+
+    renderFlightStrips();
+    updateEasyModePrompter();
+    renderAllScreens();
+
+    // Trigger departure clearance request
+    setTimeout(() => {
+      triggerPilotCheckIn(ac);
+    }, 1500);
+  }, delayMs);
+}
+
 function spawnInboundArrival() {
   const arrivalCallsigns = [
     { id: "CTV123", callsign: "SUPERGREEN 123", airline: "Citilink", type: "320" },
@@ -5646,6 +5732,58 @@ function spawnInboundArrival() {
   }, 1000);
 
   executeApproachMovement(newAc);
+}
+
+function spawnOutboundDeparture() {
+  const outboundCallsigns = [
+    { id: "BTK652", callsign: "BATIK 652", airline: "Batik Air", type: "320", dest: "WADD (Bali)" },
+    { id: "LNI530", callsign: "LION INTER 530", airline: "Lion Air", type: "738", dest: "WIMM (Medan)" },
+    { id: "SJV182", callsign: "SUPERJET 182", airline: "Super Air Jet", type: "320", dest: "WARR (Surabaya)" },
+    { id: "AWQ751", callsign: "WAGON AIR 751", airline: "Indonesia AirAsia", type: "320", dest: "WBSB (Brunei)" },
+    { id: "GIA888", callsign: "INDONESIA 888", airline: "Garuda Indonesia", type: "777", dest: "RJAA (Tokyo)" }
+  ];
+
+  const chosen = outboundCallsigns[aircraft.length % outboundCallsigns.length];
+  const assignedGate = (typeof assignRealisticGate === "function")
+    ? assignRealisticGate(chosen.airline, chosen.callsign)
+    : { ref: "E1", lat: -6.121757, lon: 106.651077, terminal: "T2" };
+
+  const rwyKey = (aircraft.length % 2 === 0) ? "25R" : "25L";
+  const allSids = (airportData && airportData.sids) ? airportData.sids : [];
+  const validSids = allSids.filter(s => !s.runways || s.runways.includes(rwyKey)).map(s => s.id);
+  const defaultSid = validSids.length ? validSids[0] : "DOLTA 2A";
+
+  const newAc = {
+    id: chosen.id,
+    callsign: chosen.callsign,
+    airline: chosen.airline,
+    type: chosen.type,
+    dest: chosen.dest,
+    pob: Math.floor(130 + Math.random() * 70),
+    lat: assignedGate.lat,
+    lon: assignedGate.lon,
+    heading: 70, // Parked at stand facing terminal/gate
+    altitude: 0,
+    groundSpeed: 0,
+    state: "GATE",
+    clearedRwy: rwyKey,
+    clearedSid: defaultSid,
+    assignedGate: assignedGate.ref,
+    assignedGateCoord: [assignedGate.lat, assignedGate.lon],
+    squawk: String(Math.floor(1000 + Math.random() * 8000)),
+    hasCheckedIn: false,
+    checkInPhrase: `Jakarta Delivery, ${chosen.callsign}, Gate ${assignedGate.ref}, information Delta, destination ${chosen.dest.split(' ')[0]} via ${defaultSid} departure, POB 150, request ATC clearance.`
+  };
+
+  aircraft.push(newAc);
+  selectedAircraftIndex = aircraft.length - 1;
+  renderFlightStrips();
+  updateEasyModePrompter();
+  renderAllScreens();
+
+  setTimeout(() => {
+    triggerPilotCheckIn(newAc);
+  }, 1000);
 }
 
 function executeApproachMovement(ac) {
@@ -5871,6 +6009,16 @@ function executeTaxiInMovement(ac) {
       setTimeout(() => {
         triggerPilotCheckIn(ac);
       }, 1000);
+
+      // After 5s, mark as parked-turnaround (hide from flight strips to avoid clutter)
+      // and schedule turnaround to reappear as outbound departure after turnaround duration!
+      setTimeout(() => {
+        if (ac.state === "PARKED") {
+          ac.isArchivedParked = true;
+          renderFlightStrips();
+          scheduleTurnaroundOutbound(ac, 30000); // 30s turnaround
+        }
+      }, 5000);
       return;
     }
 

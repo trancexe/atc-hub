@@ -175,35 +175,54 @@ function executePushbackMovement(ac) {
   // Clear any existing interval
   if (ac._pushInterval) clearInterval(ac._pushInterval);
 
-  // Discrete, verifiable pushback points:
-  // Waypoint 0: Gate E1 Stand (Parked, lat -6.121757, lon 106.651077)
-  // Waypoint 1: Apron Taxilane (Clear of concourse building, lat -6.121650, lon 106.650600)
-  // Waypoint 2: Apron Alley curve (lat -6.121480, lon 106.650280)
-  // Waypoint 3: Intersection into Taxiway NC6 (lat -6.121260, lon 106.650050)
-  // Waypoint 4: PUSH RELEASE POINT on Taxiway NC6 centerline (lat -6.121013, lon 106.650012)
-  const pushNodes = (airportData && airportData.routes && airportData.routes.pushback_gate_e1)
-    ? airportData.routes.pushback_gate_e1.map(p => ({ lat: p[0], lon: p[1] }))
-    : [
-        { lat: -6.121757, lon: 106.651077 },
-        { lat: -6.121650, lon: 106.650600 },
-        { lat: -6.121480, lon: 106.650280 },
-        { lat: -6.121260, lon: 106.650050 },
-        { lat: -6.121013, lon: 106.650012 }
-      ];
+  const gateRef = ac.assignedGate || "E1";
+  const relPoint = (airportData && airportData.pushback_release_points && airportData.pushback_release_points[gateRef])
+    ? airportData.pushback_release_points[gateRef]
+    : null;
+
+  let pushNodes = null;
+  let finalHdg = 355;
+
+  if (relPoint) {
+    const startLat = ac.lat;
+    const startLon = ac.lon;
+    const endLat = relPoint.release_lat;
+    const endLon = relPoint.release_lon;
+    // Intermediate point along apron taxilane before turning out onto taxiway
+    const midLat = startLat + (endLat - startLat) * 0.45;
+    const midLon = startLon + (endLon - startLon) * 0.45;
+    pushNodes = [
+      { lat: startLat, lon: startLon },
+      { lat: midLat, lon: midLon },
+      { lat: endLat, lon: endLon }
+    ];
+    finalHdg = relPoint.heading_deg !== undefined ? relPoint.heading_deg : 355;
+  } else {
+    pushNodes = (airportData && airportData.routes && airportData.routes.pushback_gate_e1)
+      ? airportData.routes.pushback_gate_e1.map(p => ({ lat: p[0], lon: p[1] }))
+      : [
+          { lat: -6.121757, lon: 106.651077 },
+          { lat: -6.121650, lon: 106.650600 },
+          { lat: -6.121480, lon: 106.650280 },
+          { lat: -6.121260, lon: 106.650050 },
+          { lat: -6.121013, lon: 106.650012 }
+        ];
+  }
 
   let nodeIdx = 1; // start moving to P1
   ac.groundSpeed = 4;
 
   function moveNextPushNode() {
     if (nodeIdx >= pushNodes.length) {
-      // Reached centerline of Taxiway NC6!
+      // Reached centerline of Taxiway release point!
       ac.groundSpeed = 0;
       ac.lat = pushNodes[pushNodes.length - 1].lat;
       ac.lon = pushNodes[pushNodes.length - 1].lon;
-      ac.heading = 355; // Aligned along Taxiway NC6 facing north
+      ac.heading = finalHdg;
       ac.state = "READY_TAXI";
       ac.hasCheckedIn = false;
-      ac.checkInPhrase = "Jakarta Ground, INDONESIA 502, ready to taxi, runway 25R.";
+      const rwySpoken = ac.clearedRwy || "25R";
+      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, ready to taxi, runway ${rwySpoken}.`;
       renderFlightStrips();
       updateEasyModePrompter();
       renderAllScreens();
