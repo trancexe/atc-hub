@@ -178,6 +178,23 @@ function renderFlightStrips() {
                 <option value="RESUME">Resume</option>
               </select>
             </div>
+            <!-- Tactical Holding Pattern Quick Control -->
+            <div class="flex items-center gap-0.5">
+              <span class="text-purple-400 font-mono font-bold">HOLD:</span>
+              ${ac.isHolding ? `
+                <button onclick="leaveHoldingPattern(${idx})" class="px-1.5 py-0 rounded bg-emerald-950 border border-emerald-600 text-emerald-300 font-bold hover:bg-emerald-900 text-[9px]" title="Leave Holding & Resume Approach">
+                  LEAVE
+                </button>
+              ` : `
+                <select onchange="if(this.value){ issueHoldingPattern(${idx}, this.value, 'FL100'); this.value=''; }" class="bg-slate-950 border border-slate-800 text-purple-300 font-mono text-[9px] rounded px-0.5 py-0 focus:outline-none focus:border-purple-500">
+                  <option value="" disabled selected>Hold At...</option>
+                  <option value="TEGID">TEGID (FL100)</option>
+                  <option value="BUNTO">BUNTO (FL100)</option>
+                  <option value="DOLTA">DOLTA (FL100)</option>
+                  <option value="TOPIN">TOPIN (FL100)</option>
+                </select>
+              `}
+            </div>
             <!-- Go-Around (Missed Approach Button) -->
             ${ac.state === "FINAL" ? `
               <button onclick="issueGoAround(${idx})" class="px-1.5 py-0 rounded bg-red-950/80 border border-red-600/80 text-red-300 font-bold hover:bg-red-900 text-[9px]" title="Initiate Missed Approach & Go-Around">

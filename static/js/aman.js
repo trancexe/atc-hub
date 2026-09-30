@@ -165,7 +165,7 @@ function issueHoldingPattern(acIdx, fixName, assignedFL) {
   ac.holdLevel = level;
   ac.holdInboundHdg = fix.inboundHdg;
   ac.holdTurnDir = fix.turnDir; // RIGHT standard
-  ac.holdPhase = "INBOUND"; // INBOUND -> TURN1 -> OUTBOUND -> TURN2
+  ac.holdPhase = "FLYING_TO_FIX"; // Smooth navigation towards fix, then enter racetrack!
   ac.holdPhaseTimer = 0;
   ac.holdRemainingMinutes = 10.0; // Default holding expectancy
   ac.targetHeading = fix.inboundHdg;
@@ -182,18 +182,17 @@ function issueHoldingPattern(acIdx, fixName, assignedFL) {
   ac.fde.assignedSpd = "210K";
   ac.groundSpeed = 210;
 
-  // Move aircraft towards holding fix if far
-  ac.lat = fix.lat;
-  ac.lon = fix.lon;
-
-  // Start Racetrack Holding Flight Loop (1-minute inbound, 1-minute outbound, standard rate turns)
+  // Start Racetrack Holding Flight Loop (Navigates smoothly to fix first, then flies 4-min racetrack)
   startHoldingFlightLoop(ac, fix);
 
   if (typeof logTelemetry === 'function') {
-    logTelemetry('BEHAVIOR', `${ac.id} Entered Holding Pattern`, `Fix: ${fix.name} | Level: ${level} | Racetrack Inbound ${fix.inboundHdg}° ${fix.turnDir}`);
+    logTelemetry('BEHAVIOR', `${ac.id} Holding Clearance Issued`, `Fix: ${fix.name} | Level: ${level} | Navigating to fix then Racetrack Inbound ${fix.inboundHdg}° ${fix.turnDir}`);
   }
 
   const readback = `Hold at ${fix.name}, inbound track ${fix.inboundHdg} degrees, ${fix.turnDir.toLowerCase()} hand pattern, maintain ${level}, ${ac.callsign}`;
+  if (typeof speakPilotReadback === 'function') {
+    speakPilotReadback(readback);
+  }
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
@@ -211,10 +210,13 @@ function startHoldingFlightLoop(ac, fix) {
   const outboundHdg = (fix.inboundHdg + 180) % 360;
   const stepIntervalMs = 50; // 20 FPS smooth real-time kinematics
   const dtSec = stepIntervalMs / 1000.0;
-  let elapsedSec = ac.holdPhaseTimer || 0;
+  let elapsedRacetrackSec = (ac.holdPhase !== "FLYING_TO_FIX") ? (ac.holdPhaseTimer || 0) : 0;
 
-  // Initialize heading towards fix inbound or start of racetrack
-  ac.heading = fix.inboundHdg;
+  // Determine target holding altitude in feet (e.g. FL100 -> 10,000 ft)
+  let targetHoldAltFt = ac.altitude;
+  if (ac.holdLevel && ac.holdLevel.startsWith("FL")) {
+    targetHoldAltFt = parseInt(ac.holdLevel.replace("FL", ""), 10) * 100;
+  }
 
   ac._holdInterval = setInterval(() => {
     if (!ac.isHolding || ac.state !== "HOLDING_AIR") {
@@ -223,15 +225,56 @@ function startHoldingFlightLoop(ac, fix) {
       return;
     }
 
-    elapsedSec += dtSec;
-    ac.holdPhaseTimer = elapsedSec;
+    // PHASE 1: FLYING_TO_FIX (Realistic navigational transit from current position to fix)
+    if (ac.holdPhase === "FLYING_TO_FIX") {
+      const dLat = (fix.lat - ac.lat) * 60.0;
+      const dLon = (fix.lon - ac.lon) * 60.0 * Math.cos(Math.radians ? Math.radians((ac.lat + fix.lat) / 2.0) : ((ac.lat + fix.lat) / 2.0) * Math.PI / 180.0);
+      const distNm = Math.hypot(dLat, dLon);
+
+      if (distNm <= 0.4) {
+        // Arrived at fix! Smoothly enter Racetrack Pattern Turn 1 at the fix
+        ac.holdPhase = "TURN TO OUTBOUND";
+        ac.holdPhaseTimer = 0;
+        elapsedRacetrackSec = 0;
+      } else {
+        // Steer heading towards the fix (standard rate turn 3°/sec)
+        const targetBearing = (Math.atan2(dLon, dLat) * 180.0 / Math.PI + 360.0) % 360.0;
+        const turnDiff = ((targetBearing - ac.heading + 540) % 360) - 180;
+        const maxTurnStep = 3.0 * dtSec;
+        const turnStep = Math.max(-maxTurnStep, Math.min(maxTurnStep, turnDiff));
+        ac.heading = Math.round((ac.heading + turnStep + 360.0) % 360.0);
+
+        // Climb or descend towards assigned holding level at 1500 ft/min
+        const altDiff = targetHoldAltFt - ac.altitude;
+        if (Math.abs(altDiff) > 5) {
+          const maxAltStep = (1500.0 / 60.0) * dtSec; // ~1.25 ft per 50ms
+          ac.altitude = Math.round(ac.altitude + Math.max(-maxAltStep, Math.min(maxAltStep, altDiff)));
+        } else {
+          ac.altitude = targetHoldAltFt;
+        }
+
+        // Kinematic step along bearing
+        const spd = ac.groundSpeed || 210;
+        const distNmStep = (spd / 3600.0) * dtSec;
+        const radHdg = (ac.heading * Math.PI) / 180.0;
+        ac.lat += (distNmStep * Math.cos(radHdg)) / 60.0;
+        ac.lon += (distNmStep * Math.sin(radHdg)) / (60.0 * Math.cos(ac.lat * Math.PI / 180.0));
+
+        if (typeof renderAllScreens === 'function') renderAllScreens();
+        return;
+      }
+    }
+
+    // PHASE 2: RACETRACK PATTERN (Flown at/around the fix)
+    elapsedRacetrackSec += dtSec;
+    ac.holdPhaseTimer = elapsedRacetrackSec;
 
     // Standard 4-minute (240s) ICAO holding pattern:
     // Phase 0 (0-60s): Turn 1 at fix to Outbound (180° turn at 3°/s standard rate)
     // Phase 1 (60-120s): Outbound Leg (straight leg at outbound heading)
     // Phase 2 (120-180s): Turn 2 back to Inbound (180° turn at 3°/s standard rate)
     // Phase 3 (180-240s): Inbound Leg back to fix (straight leg ending at fix)
-    const t = elapsedSec % 240.0;
+    const t = elapsedRacetrackSec % 240.0;
 
     if (t < 60.0) {
       ac.holdPhase = "TURN TO OUTBOUND";
@@ -259,6 +302,13 @@ function startHoldingFlightLoop(ac, fix) {
     // 1 deg longitude = 60 * cos(latitude) NM
     ac.lat += (distNmStep * Math.cos(radHdg)) / 60.0;
     ac.lon += (distNmStep * Math.sin(radHdg)) / (60.0 * Math.cos(ac.lat * Math.PI / 180.0));
+
+    // Maintain holding level
+    if (ac.altitude !== targetHoldAltFt) {
+      const altDiff = targetHoldAltFt - ac.altitude;
+      const maxAltStep = (1500.0 / 60.0) * dtSec;
+      ac.altitude = Math.round(ac.altitude + Math.max(-maxAltStep, Math.min(maxAltStep, altDiff)));
+    }
 
     // Decrement hold expectancy timer
     if (ac.holdRemainingMinutes > 0) {
@@ -303,6 +353,9 @@ function leaveHoldingPattern(acIdx) {
   }
 
   const readback = `Leave holding, resume approach runway ${ac.clearedRwy}, descend 3000 feet, ${ac.callsign}`;
+  if (typeof speakPilotReadback === 'function') {
+    speakPilotReadback(readback);
+  }
   renderFlightStrips();
   updateEasyModePrompter();
   renderAllScreens();
