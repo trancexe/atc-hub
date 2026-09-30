@@ -26,20 +26,26 @@ Menggantikan marker dot bulat konvensional dengan siluet pesawat aerodinamis ber
 * **B747 (Boeing 747-400 / 747-8):** $70.7 - 76.3\text{ m} \times 64.4 - 68.4\text{ m}$ (Heavy / Super Wake)
 * Dilengkapi cincin rotasi taktis saat terpilih (*selected*) dan vektor haluan kecepatan (*velocity leader line*).
 
-### 3. Ground Collision Avoidance System
-* **Safety Cushion Detection:** Setiap pesawat memindai lintasan di depannya dalam radius aman 70 meter (rentang bentang sayap) dan 50 meter terhadap target node.
-* **Forward Bearing Check:** Analisis vektor *dot product* arah haluan memastikan pesawat hanya mengerem bila terdapat rintangan di depan jalurnya (*traffic ahead*).
-* **Automatic Hold & Resume:** Pengereman darat otomatis (`groundSpeed = 0`) dengan indikator peringatan merah `HOLD (TRAFFIC AHEAD)` hingga jalur steril.
+### 3. Ground Collision Avoidance System & Junction Interlocking (ICAO Doc 9476)
+* **Dynamic Wingspan Envelope:** Ambang batas jarak aman berbasis bentang sayap fisik pesawat (Code E widebody: B777, A330, B747 bentang sayap ~65 m) dengan safety buffer minimal $\ge 120\text{ m}$.
+* **Junction Interlocking Buffer:** Pesawat yang mendekati perjumpaan taxiway wajib *Hold Short* $90\text{ m}$ sebelum simpul jika persimpangan sedang dilewati atau didekati pesawat lain.
+* **Deadlock Elimination & Right-of-Way:** Pesawat yang lebih dekat ke persimpangan atau sudah berada di dalam simpul mendapat hak jalan utama, mencegah situasi saling kunci di persimpangan kritis (seperti `NCY` / `NP1`).
+* **Automatic Hold & Resume:** Pengereman darat otomatis (`groundSpeed = 0`) dengan indikator status merah `HOLD (TRAFFIC AHEAD)` hingga jalur steril.
 
-### 4. Navigasi Darat Presisi OSM, Dynamic Multi-Terminal Routing & Runway Crossing
-* **Dijkstra Taxiway Routing (2.642 Nodes OSM):** Jalur taxiway dihitung secara real-time menggunakan graf OpenStreetMap presisi bandara Soekarno-Hatta (North/South Taxiway, cross corridors, apron taxilanes).
-* **Multi-Terminal & 66 Gate Network (T1, T2, T3):**
-  * **Terminal 1 (21 Stand):** Concourse A, B, C (alokasi maskapai Lion Air, Super Air Jet).
-  * **Terminal 2 (21 Stand):** Concourse D, E, F (alokasi maskapai Batik Air, AirAsia, Umrah/Regional).
-  * **Terminal 3 (24 Stand):** Pier 1 & 2 (alokasi Garuda Indonesia, SkyTeam, penerbangan internasional & kargo).
-  * Pemilihan stand otomatis berbasis maskapai riil dan dapat disesuaikan manual via Electronic Flight Strip.
-* **Mandatory Runway Crossing Protocol:** Rute taxi apron utara menuju Runway Selatan (25L/07R) secara otomatis berhenti di stop bar Taxiway NP1 (`HOLD_SHORT_CROSS`). Pilot melapor di stop bar dan membutuhkan instruksi resmi ATC (*"Cross runway [rwy] at [taxiway], report vacated"*) sebelum melintas.
-* **Full Taxi-In Cycle:** Pesawat mendarat meluncur menyusuri *rapid exit taxiway* (N4, S4, dsb.) dan taxi masuk ke stand gate tujuan yang ditugaskan hingga mesin dimatikan (`PARKED`).
+### 4. Navigasi Darat Presisi Jeppesen 10-6, One-Way Corridors & Penataan Gate Maskapai
+* **One-Way Corridors & Standard Taxi Routes:**
+  * **Koridor Luar (NP - North Parallel):** Alur taksi satu arah keberangkatan (*outbound*) menuju Runway.
+  * **Koridor Dalam (NC - North Central):** Alur taksi satu arah kedatangan (*inbound*) menuju Gate Terminal.
+  * **Crossover West (WC1 & WC2):** Menghubungkan Terminal 1 ke Terminal 2/3 (WC1: arah selatan-utara, WC2: arah utara-selatan).
+* **Auto-Suggest Taxiway Presisi & Easy Mode Prompter:**
+  * ATC dipandu prompter dengan rute taksi resmi dalam ejaan fonetik ICAO, misalnya: `GIA880 taxi holding point runway 25R via November Charlie three, November Papa two, November two`.
+  * Pesawat mendarat dipandu keluar melalui Rapid Exit resmi (**N4–N7** di 25R, **S4–S7** di 25L, **N2–N3** di 07L).
+* **Penugasan Gate Realistis Berdasarkan Maskapai (T1, T2, T3):**
+  * **Terminal 3 (Pier International 1–10):** Khusus widebody internasional (Garuda International `GIA880/888`, Singapore Airlines `SIA958`, Cargolux, dsb.).
+  * **Terminal 3 (Pier Domestic 11–28):** Garuda Indonesia rute domestik.
+  * **Terminal 2 (2D, 2E, 2F):** Batik Air (2D/2E), AirAsia & Scoot (2F LCC).
+  * **Terminal 1 (1A, 1B, 1C):** Lion Air & Super Air Jet (1A/1B), Citilink (1C).
+* **Mandatory Runway Crossing Protocol:** Rute taxi yang memotong landasan pacu aktif secara otomatis berhenti di stop bar Taxiway (`HOLD_SHORT_CROSS`). Pilot melapor di stop bar dan membutuhkan instruksi resmi ATC (*"Cross runway [rwy] at [taxiway], report vacated"*) sebelum melintas.
 
 ### 5. Aerodynamic SID & STAR Departure/Arrival Physics (Real-Time 1:1)
 * **Real-Time 1:1 Physics Engine:** Kecepatan navigasi dan separasi dihitung murni $1:1$ sesuai kondisi nyata di dunia penerbangan (waktu tempuh approach ~3.8 menit dari BUNTO ke ILS 25R pada 210–180 kts).
@@ -67,16 +73,19 @@ Menggantikan marker dot bulat konvensional dengan siluet pesawat aerodinamis ber
 5. **Runway 24:** Runway 3 Barat Daya (Heading 247°), Stop bar Perimeter Barat
 6. **Runway 06:** Runway 3 Timur Laut (Heading 067°), Stop bar `HOLD M7 (06)`
 
-### Prosedur Standard Instrument Departure (SID)
-* **Runway 25R & 25L:** `DOLTA 1C` (via IMUBA), `BUNTO 1C` (via CA), `KRAKE 1C` (via TOPIN)
-* **Runway 07L & 07R:** `DOLTA 1D` (via ESLAM), `BUNTO 1D` (via TEGID), `KRAKE 1D` (via CA ➔ TOPIN)
-* **Runway 24:** `KRAKE 2A` (via TOPIN), `DOLTA 2A` (via IMUBA)
-* **Runway 06:** `BUNTO 2A` (via CA), `DOLTA 2B` (via ESLAM)
+### Prosedur Standard Instrument Departure (SID) — Jeppesen 10-3 Series
+* **Runway 25R:** `DOLTA 2A` (via BIMUL ➔ NIPIP ➔ DOLTA climb FL140), `BUNIK 2H` (via BUNIK), `AKSOX 2A` (via CA ➔ AKSOX)
+* **Runway 25L:** `DOLTA 2B` (via BIMUL ➔ NIPIP ➔ DOLTA climb FL140), `BUNIK 2H`, `AKSOX 2A`
+* **Runway 07L:** `DOLTA 2C` (via DOLTA)
+* **Runway 07R:** `DOLTA 2D` (via DOLTA)
+* **Runway 24:** `BUNIK 2M` (via BUNIK)
+* **Runway 06:** `AKSOX 2L` (via AKSOX)
 
-### Prosedur Standard Terminal Arrival Route (STAR)
-* **Runway 25R & 25L:** `DOLTA 1A` (via BUNTO ➔ TEGID), `BUNTO 1A` (via TEGID), `KRAKE 1A` (via TOPIN ➔ CA)
-* **Runway 07L & 07R:** `DOLTA 1B` (via ESLAM ➔ IMUBA), `KRAKE 1B` (via TOPIN ➔ IMUBA), `BUNTO 1B` (via CA ➔ IMUBA)
-* **Runway 24 & 06:** `DOLTA 2C`, `KRAKE 2C`
+### Prosedur Standard Terminal Arrival Route (STAR) — Jeppesen 10-2 Series (RNAV 1)
+* **Runway 25L:** `LADIR 1C` (via LADIR ➔ IAF UBNUX ➔ IF OBGEG), `TOPAR 1C` (via TOPAR ➔ UBNUX ➔ OBGEG), `AKSOX 2G` (via AKSOX ➔ UBNUX ➔ OBGEG)
+* **Runway 25R:** `DOLTA 1A` (via DOLTA ➔ IAF TIKAM ➔ IF LUVAX), `BUNTO 1A` (via BUNTO ➔ TIKAM ➔ LUVAX)
+* **Runway 07L & 07R:** `LADIR 1B` (via LADIR ➔ RAKIT)
+* **Runway 24 & 06:** `LADIR 1A`, `AKSOX 2L`
 
 ---
 
