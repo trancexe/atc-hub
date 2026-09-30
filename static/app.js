@@ -1392,6 +1392,7 @@ function drawGroundScreen() {
   });
 
   // 4. Taxiways (Centerlines & High-Visibility Aviation Signboards)
+  const renderedMacroLabels = new Set((airportData.taxiway_labels || []).map(l => l.ref));
   (airportData.taxiways || []).forEach(tw => {
     if (!tw.coords || tw.coords.length < 2) return;
     
@@ -1422,7 +1423,8 @@ function drawGroundScreen() {
     ctx.stroke();
 
     // High-Visibility ICAO Yellow-on-Black Aviation Taxiway Signboards
-    if (tw.ref && tw.coords.length >= 2 && st.zoom > 0.85) {
+    // Skip if already rendered in macro labels to prevent overlapping double-badges
+    if (tw.ref && tw.coords.length >= 2 && st.zoom > 1.8 && !renderedMacroLabels.has(tw.ref)) {
       const mid = tw.coords[Math.floor(tw.coords.length / 2)];
       const mp = latLonToScreenCoord(mid[0], mid[1], st);
       const text = String(tw.ref).trim();
