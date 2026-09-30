@@ -67349,70 +67349,154 @@
       "id": "DOLTA",
       "lat": -6.345,
       "lon": 106.72,
-      "desc": "South-East Enroute/STAR/SID"
+      "desc": "SE Gateway (Surabaya/Bali corridor)"
+    },
+    {
+      "id": "LADIR",
+      "lat": -6.28,
+      "lon": 107.15,
+      "desc": "E/SE Primary Inbound Gateway (R-206)"
+    },
+    {
+      "id": "TOPAR",
+      "lat": -6.02,
+      "lon": 107.2,
+      "desc": "E/NE Inbound Gateway (B-469)"
+    },
+    {
+      "id": "BUNIK",
+      "lat": -6.05,
+      "lon": 106.12,
+      "desc": "W Gateway (Sumatera corridor)"
+    },
+    {
+      "id": "AKSOX",
+      "lat": -5.72,
+      "lon": 106.58,
+      "desc": "N Gateway (Pontianak/Singapore W-18)"
     },
     {
       "id": "BUNTO",
       "lat": -6.12,
       "lon": 106.95,
-      "desc": "East Enroute/STAR/SID"
+      "desc": "E Inbound Fix / Transition"
     },
     {
       "id": "KRAKE",
       "lat": -6.02,
       "lon": 106.28,
-      "desc": "West Enroute/STAR/SID"
+      "desc": "W Enroute Fix / Hold"
     },
     {
       "id": "RAKIT",
       "lat": -6.25,
       "lon": 106.4,
-      "desc": "South-West IAF"
+      "desc": "SW IAF / Transition"
     },
     {
       "id": "GOMBA",
       "lat": -5.92,
       "lon": 106.75,
-      "desc": "North Approach Entry"
+      "desc": "N Transition"
     },
     {
       "id": "CA",
       "lat": -6.05,
       "lon": 106.72,
-      "desc": "North IAF / Hold"
+      "desc": "CA NDB / IAF North"
     },
     {
-      "id": "TEGID",
-      "lat": -6.1,
-      "lon": 106.85,
-      "desc": "Intermediate Fix RWY 25"
+      "id": "UBNUX",
+      "lat": -6.185,
+      "lon": 106.98,
+      "desc": "IAF RWY 25L (RNAV 1)"
     },
     {
-      "id": "CLG",
-      "lat": -6.01,
-      "lon": 106.03,
-      "desc": "Cilegon Fix"
-    },
-    {
-      "id": "TOPIN",
-      "lat": -5.95,
-      "lon": 106.45,
-      "desc": "North-West Transition"
-    },
-    {
-      "id": "IMUBA",
-      "lat": -6.2,
-      "lon": 106.48,
-      "desc": "South Initial Fix"
-    },
-    {
-      "id": "ESLAM",
-      "lat": -6.18,
+      "id": "OBGEG",
+      "lat": -6.155,
       "lon": 106.88,
-      "desc": "South-East Downwind"
+      "desc": "IF RWY 25L (D9.3 ILS)"
+    },
+    {
+      "id": "TIKAM",
+      "lat": -6.035,
+      "lon": 106.98,
+      "desc": "IAF RWY 25R (RNAV 1)"
+    },
+    {
+      "id": "LUVAX",
+      "lat": -6.075,
+      "lon": 106.87,
+      "desc": "IF RWY 25R (ILS IF)"
+    },
+    {
+      "id": "BIMUL",
+      "lat": -6.22,
+      "lon": 106.55,
+      "desc": "Climb turn fix RWY 25"
+    },
+    {
+      "id": "NIPIP",
+      "lat": -6.28,
+      "lon": 106.65,
+      "desc": "Intermediate climb fix"
     }
   ],
   "sids": [
+    {
+      "id": "DOLTA 2A",
+      "runways": [
+        "25R"
+      ],
+      "color": "#f59e0b",
+      "waypoints": [
+        "BIMUL",
+        "NIPIP",
+        "DOLTA"
+      ],
+      "coords": [
+        [
+          -6.22,
+          106.55
+        ],
+        [
+          -6.28,
+          106.65
+        ],
+        [
+          -6.345,
+          106.72
+        ]
+      ],
+      "desc": "Dep 25R: Turn left direct BIMUL to NIPIP to DOLTA, climb FL140."
+    },
+    {
+      "id": "DOLTA 2B",
+      "runways": [
+        "25L"
+      ],
+      "color": "#f59e0b",
+      "waypoints": [
+        "BIMUL",
+        "NIPIP",
+        "DOLTA"
+      ],
+      "coords": [
+        [
+          -6.22,
+          106.55
+        ],
+        [
+          -6.28,
+          106.65
+        ],
+        [
+          -6.345,
+          106.72
+        ]
+      ],
+      "desc": "Dep 25L: Turn right direct BIMUL to NIPIP to DOLTA, climb FL140."
+    },
     {
       "id": "DOLTA 1C",
       "runways": [
@@ -67421,20 +67505,95 @@
       ],
       "color": "#f59e0b",
       "waypoints": [
-        "IMUBA",
+        "BIMUL",
         "DOLTA"
       ],
       "coords": [
         [
-          -6.2,
-          106.48
+          -6.22,
+          106.55
         ],
         [
           -6.345,
           106.72
         ]
       ],
-      "desc": "Dep 25R/L: Climb runway heading, turn left direct IMUBA, cross at/above 7000ft, proceed DOLTA FL140."
+      "desc": "Legacy/Standard Dep 25R/L: Direct DOLTA FL140."
+    },
+    {
+      "id": "BUNIK 2H",
+      "runways": [
+        "25R",
+        "25L"
+      ],
+      "color": "#38bdf8",
+      "waypoints": [
+        "BUNIK"
+      ],
+      "coords": [
+        [
+          -6.05,
+          106.12
+        ]
+      ],
+      "desc": "Dep 25R/L: Straight ahead climb to BUNIK (Sumatera corridor)."
+    },
+    {
+      "id": "AKSOX 2A",
+      "runways": [
+        "25R",
+        "25L"
+      ],
+      "color": "#10b981",
+      "waypoints": [
+        "CA",
+        "AKSOX"
+      ],
+      "coords": [
+        [
+          -6.05,
+          106.72
+        ],
+        [
+          -5.72,
+          106.58
+        ]
+      ],
+      "desc": "Dep 25R/L: Climb runway heading, turn north via CA to AKSOX."
+    },
+    {
+      "id": "DOLTA 2C",
+      "runways": [
+        "07L"
+      ],
+      "color": "#f59e0b",
+      "waypoints": [
+        "DOLTA"
+      ],
+      "coords": [
+        [
+          -6.345,
+          106.72
+        ]
+      ],
+      "desc": "Dep 07L: Climb, turn right direct DOLTA."
+    },
+    {
+      "id": "DOLTA 2D",
+      "runways": [
+        "07R"
+      ],
+      "color": "#f59e0b",
+      "waypoints": [
+        "DOLTA"
+      ],
+      "coords": [
+        [
+          -6.345,
+          106.72
+        ]
+      ],
+      "desc": "Dep 07R: Climb, turn right direct DOLTA."
     },
     {
       "id": "BUNTO 1C",
@@ -67442,7 +67601,7 @@
         "25R",
         "25L"
       ],
-      "color": "#f97316",
+      "color": "#a855f7",
       "waypoints": [
         "CA",
         "BUNTO"
@@ -67457,195 +67616,121 @@
           106.95
         ]
       ],
-      "desc": "Dep 25R/L: Climb runway heading, turn right crosswind to CA, proceed BUNTO."
+      "desc": "Dep 25R/L: Turn right via CA to BUNTO."
     },
     {
-      "id": "KRAKE 1C",
-      "runways": [
-        "25R",
-        "25L"
-      ],
-      "color": "#eab308",
-      "waypoints": [
-        "TOPIN",
-        "KRAKE"
-      ],
-      "coords": [
-        [
-          -5.95,
-          106.45
-        ],
-        [
-          -6.02,
-          106.28
-        ]
-      ],
-      "desc": "Dep 25R/L: Climb runway heading, right turn to TOPIN, proceed KRAKE."
-    },
-    {
-      "id": "DOLTA 1D",
-      "runways": [
-        "07L",
-        "07R"
-      ],
-      "color": "#d97706",
-      "waypoints": [
-        "ESLAM",
-        "DOLTA"
-      ],
-      "coords": [
-        [
-          -6.18,
-          106.88
-        ],
-        [
-          -6.345,
-          106.72
-        ]
-      ],
-      "desc": "Dep 07L/R: Climb runway heading, turn right direct ESLAM, proceed DOLTA."
-    },
-    {
-      "id": "BUNTO 1D",
-      "runways": [
-        "07L",
-        "07R"
-      ],
-      "color": "#fb923c",
-      "waypoints": [
-        "TEGID",
-        "BUNTO"
-      ],
-      "coords": [
-        [
-          -6.1,
-          106.85
-        ],
-        [
-          -6.12,
-          106.95
-        ]
-      ],
-      "desc": "Dep 07L/R: Climb straight on runway heading passing TEGID, proceed BUNTO."
-    },
-    {
-      "id": "KRAKE 1D",
-      "runways": [
-        "07L",
-        "07R"
-      ],
-      "color": "#ca8a04",
-      "waypoints": [
-        "CA",
-        "TOPIN",
-        "KRAKE"
-      ],
-      "coords": [
-        [
-          -6.05,
-          106.72
-        ],
-        [
-          -5.95,
-          106.45
-        ],
-        [
-          -6.02,
-          106.28
-        ]
-      ],
-      "desc": "Dep 07L/R: Climb runway heading, turn left crosswind via CA, TOPIN, proceed KRAKE."
-    },
-    {
-      "id": "KRAKE 2A",
+      "id": "BUNIK 2M",
       "runways": [
         "24"
       ],
-      "color": "#eab308",
+      "color": "#38bdf8",
       "waypoints": [
-        "TOPIN",
-        "KRAKE"
-      ],
-      "coords": [
-        [
-          -5.95,
-          106.45
-        ],
-        [
-          -6.02,
-          106.28
-        ]
-      ],
-      "desc": "Dep 24: Straight ahead climb, slight right to TOPIN, proceed KRAKE."
-    },
-    {
-      "id": "DOLTA 2A",
-      "runways": [
-        "24"
-      ],
-      "color": "#f59e0b",
-      "waypoints": [
-        "IMUBA",
-        "DOLTA"
-      ],
-      "coords": [
-        [
-          -6.2,
-          106.48
-        ],
-        [
-          -6.345,
-          106.72
-        ]
-      ],
-      "desc": "Dep 24: Climb runway heading, turn left to IMUBA, proceed DOLTA."
-    },
-    {
-      "id": "BUNTO 2A",
-      "runways": [
-        "06"
-      ],
-      "color": "#f97316",
-      "waypoints": [
-        "CA",
-        "BUNTO"
+        "BUNIK"
       ],
       "coords": [
         [
           -6.05,
-          106.72
-        ],
-        [
-          -6.12,
-          106.95
+          106.12
         ]
       ],
-      "desc": "Dep 06: Straight ahead climb heading 067, turn right via CA to BUNTO."
+      "desc": "Dep 24: Straight ahead to BUNIK."
     },
     {
-      "id": "DOLTA 2B",
+      "id": "AKSOX 2L",
       "runways": [
         "06"
       ],
-      "color": "#d97706",
+      "color": "#10b981",
       "waypoints": [
-        "ESLAM",
-        "DOLTA"
+        "AKSOX"
       ],
       "coords": [
         [
-          -6.18,
-          106.88
-        ],
-        [
-          -6.345,
-          106.72
+          -5.72,
+          106.58
         ]
       ],
-      "desc": "Dep 06: Climb runway heading, turn right crosswind to ESLAM, proceed DOLTA."
+      "desc": "Dep 06: Straight ahead climb to AKSOX."
     }
   ],
   "stars": [
+    {
+      "id": "LADIR 1C",
+      "runways": [
+        "25L"
+      ],
+      "color": "#06b6d4",
+      "waypoints": [
+        "LADIR",
+        "UBNUX",
+        "OBGEG"
+      ],
+      "coords": [
+        [
+          -6.28,
+          107.15
+        ],
+        [
+          -6.185,
+          106.98
+        ],
+        [
+          -6.155,
+          106.88
+        ]
+      ],
+      "desc": "RNAV 1 STAR 25L: From LADIR via UBNUX to OBGEG, descent 3000ft, intercept ILS 25L."
+    },
+    {
+      "id": "TOPAR 1C",
+      "runways": [
+        "25L"
+      ],
+      "color": "#38bdf8",
+      "waypoints": [
+        "TOPAR",
+        "UBNUX",
+        "OBGEG"
+      ],
+      "coords": [
+        [
+          -6.02,
+          107.2
+        ],
+        [
+          -6.185,
+          106.98
+        ],
+        [
+          -6.155,
+          106.88
+        ]
+      ],
+      "desc": "RNAV 1 STAR 25L: From TOPAR via UBNUX to OBGEG, descent 3000ft, intercept ILS 25L."
+    },
+    {
+      "id": "LADIR 1B",
+      "runways": [
+        "07L",
+        "07R"
+      ],
+      "color": "#06b6d4",
+      "waypoints": [
+        "LADIR",
+        "RAKIT"
+      ],
+      "coords": [
+        [
+          -6.28,
+          107.15
+        ],
+        [
+          -6.25,
+          106.4
+        ]
+      ],
+      "desc": "RNAV 1 STAR 07L/R: From LADIR via RAKIT, descent 3000ft, intercept ILS 07L/R."
+    },
     {
       "id": "DOLTA 1A",
       "runways": [
@@ -67655,8 +67740,8 @@
       "color": "#06b6d4",
       "waypoints": [
         "DOLTA",
-        "ESLAM",
-        "TEGID"
+        "TIKAM",
+        "LUVAX"
       ],
       "coords": [
         [
@@ -67664,15 +67749,15 @@
           106.72
         ],
         [
-          -6.18,
-          106.88
+          -6.035,
+          106.98
         ],
         [
-          -6.1,
-          106.85
+          -6.075,
+          106.87
         ]
       ],
-      "desc": "STAR 25R/L: From DOLTA via ESLAM to TEGID, descent to 3000ft, intercept ILS 25R/L."
+      "desc": "STAR 25R/L: From DOLTA via TIKAM to LUVAX, intercept ILS 25R."
     },
     {
       "id": "BUNTO 1A",
@@ -67680,128 +67765,11 @@
         "25R",
         "25L"
       ],
-      "color": "#3b82f6",
-      "waypoints": [
-        "BUNTO",
-        "TEGID"
-      ],
-      "coords": [
-        [
-          -6.12,
-          106.95
-        ],
-        [
-          -6.1,
-          106.85
-        ]
-      ],
-      "desc": "STAR 25R/L: From BUNTO direct TEGID, descent to 3000ft, intercept ILS 25R/L."
-    },
-    {
-      "id": "GOMBA 1A",
-      "runways": [
-        "25R",
-        "25L"
-      ],
-      "color": "#14b8a6",
-      "waypoints": [
-        "GOMBA",
-        "CA",
-        "TEGID"
-      ],
-      "coords": [
-        [
-          -5.92,
-          106.75
-        ],
-        [
-          -6.05,
-          106.72
-        ],
-        [
-          -6.1,
-          106.85
-        ]
-      ],
-      "desc": "STAR 25R/L: From GOMBA via CA to TEGID, intercept ILS 25R/L."
-    },
-    {
-      "id": "KRAKE 1A",
-      "runways": [
-        "07L",
-        "07R"
-      ],
-      "color": "#8b5cf6",
-      "waypoints": [
-        "KRAKE",
-        "RAKIT"
-      ],
-      "coords": [
-        [
-          -6.02,
-          106.28
-        ],
-        [
-          -6.25,
-          106.4
-        ]
-      ],
-      "desc": "STAR 07L/R: From KRAKE via RAKIT, descent to 3000ft, intercept ILS 07L/R."
-    },
-    {
-      "id": "DOLTA 1B",
-      "runways": [
-        "07L",
-        "07R"
-      ],
       "color": "#a855f7",
       "waypoints": [
-        "DOLTA",
-        "RAKIT"
-      ],
-      "coords": [
-        [
-          -6.345,
-          106.72
-        ],
-        [
-          -6.25,
-          106.4
-        ]
-      ],
-      "desc": "STAR 07L/R: From DOLTA via RAKIT, descent to 3000ft, intercept ILS 07L/R."
-    },
-    {
-      "id": "GOMBA 2M",
-      "runways": [
-        "24"
-      ],
-      "color": "#14b8a6",
-      "waypoints": [
-        "GOMBA",
-        "CA"
-      ],
-      "coords": [
-        [
-          -5.92,
-          106.75
-        ],
-        [
-          -6.05,
-          106.72
-        ]
-      ],
-      "desc": "STAR 24: From GOMBA via CA, intercept ILS 24."
-    },
-    {
-      "id": "BUNTO 2M",
-      "runways": [
-        "24"
-      ],
-      "color": "#3b82f6",
-      "waypoints": [
         "BUNTO",
-        "CA"
+        "TIKAM",
+        "LUVAX"
       ],
       "coords": [
         [
@@ -67809,33 +67777,86 @@
           106.95
         ],
         [
+          -6.035,
+          106.98
+        ],
+        [
+          -6.075,
+          106.87
+        ]
+      ],
+      "desc": "STAR 25R: From BUNTO via TIKAM to LUVAX, intercept ILS 25R."
+    },
+    {
+      "id": "AKSOX 2G",
+      "runways": [
+        "25L"
+      ],
+      "color": "#10b981",
+      "waypoints": [
+        "AKSOX",
+        "UBNUX",
+        "OBGEG"
+      ],
+      "coords": [
+        [
+          -5.72,
+          106.58
+        ],
+        [
+          -6.185,
+          106.98
+        ],
+        [
+          -6.155,
+          106.88
+        ]
+      ],
+      "desc": "RNAV 1 STAR 25L: From AKSOX via UBNUX to OBGEG, intercept ILS 25L."
+    },
+    {
+      "id": "LADIR 1A",
+      "runways": [
+        "24"
+      ],
+      "color": "#06b6d4",
+      "waypoints": [
+        "LADIR",
+        "CA"
+      ],
+      "coords": [
+        [
+          -6.28,
+          107.15
+        ],
+        [
           -6.05,
           106.72
         ]
       ],
-      "desc": "STAR 24: From BUNTO via CA, intercept ILS 24."
+      "desc": "STAR 24: From LADIR via CA, intercept ILS 24."
     },
     {
-      "id": "KRAKE 2M",
+      "id": "AKSOX 2L",
       "runways": [
         "06"
       ],
-      "color": "#8b5cf6",
+      "color": "#10b981",
       "waypoints": [
-        "KRAKE",
-        "TOPIN"
+        "AKSOX",
+        "CA"
       ],
       "coords": [
         [
-          -6.02,
-          106.28
+          -5.72,
+          106.58
         ],
         [
-          -5.95,
-          106.45
+          -6.05,
+          106.72
         ]
       ],
-      "desc": "STAR 06: From KRAKE via TOPIN, intercept ILS 06."
+      "desc": "STAR 06: From AKSOX via CA, intercept ILS 06."
     }
   ],
   "airways": [

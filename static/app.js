@@ -5572,10 +5572,11 @@ function spawnInboundArrival() {
     { id: "LNI712", callsign: "LION INTER 712", airline: "Lion Air", type: "738" }
   ];
   const arrivalEntryStars = [
-    { star: "DOLTA 1A", rwy: "25R", desc: "via DOLTA (South)" },
-    { star: "BUNTO 1A", rwy: "25R", desc: "via BUNTO (East)" },
-    { star: "GOMBA 1A", rwy: "25R", desc: "via GOMBA (North)" },
-    { star: "DOLTA 1A", rwy: "25L", desc: "via DOLTA (South)" }
+    { star: "LADIR 1C", rwy: "25L", desc: "via LADIR (East / Primary Inbound)" },
+    { star: "TOPAR 1C", rwy: "25L", desc: "via TOPAR (East / North-East)" },
+    { star: "DOLTA 1A", rwy: "25R", desc: "via DOLTA (South-East)" },
+    { star: "AKSOX 2G", rwy: "25L", desc: "via AKSOX (North)" },
+    { star: "BUNTO 1A", rwy: "25R", desc: "via BUNTO (East)" }
   ];
   const chosen = arrivalCallsigns[aircraft.length % arrivalCallsigns.length];
   const chosenEntry = arrivalEntryStars[aircraft.length % arrivalEntryStars.length];
