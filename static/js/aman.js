@@ -207,8 +207,14 @@ function startHoldingFlightLoop(ac, fix) {
     ac._holdInterval = null;
   }
 
-  const turnRateDegSec = 3.0; // Standard Rate Turn (3 deg/sec = 360 deg in 2 minutes)
+  const turnSign = fix.turnDir === "RIGHT" ? 1.0 : -1.0;
   const outboundHdg = (fix.inboundHdg + 180) % 360;
+  const stepIntervalMs = 50; // 20 FPS smooth real-time kinematics
+  const dtSec = stepIntervalMs / 1000.0;
+  let elapsedSec = ac.holdPhaseTimer || 0;
+
+  // Initialize heading towards fix inbound or start of racetrack
+  ac.heading = fix.inboundHdg;
 
   ac._holdInterval = setInterval(() => {
     if (!ac.isHolding || ac.state !== "HOLDING_AIR") {
@@ -217,46 +223,53 @@ function startHoldingFlightLoop(ac, fix) {
       return;
     }
 
-    ac.holdPhaseTimer += 1;
+    elapsedSec += dtSec;
+    ac.holdPhaseTimer = elapsedSec;
 
-    // 4 phases of standard 4-minute racetrack holding pattern:
-    // 0-60s: Inbound Leg (heading inbound to fix)
-    // 60-120s: Turn to Outbound (rate one turn 180°)
-    // 120-180s: Outbound Leg (heading outbound away from fix)
-    // 180-240s: Turn to Inbound (rate one turn 180° back to fix)
-    const t = ac.holdPhaseTimer % 240;
+    // Standard 4-minute (240s) ICAO holding pattern:
+    // Phase 0 (0-60s): Turn 1 at fix to Outbound (180° turn at 3°/s standard rate)
+    // Phase 1 (60-120s): Outbound Leg (straight leg at outbound heading)
+    // Phase 2 (120-180s): Turn 2 back to Inbound (180° turn at 3°/s standard rate)
+    // Phase 3 (180-240s): Inbound Leg back to fix (straight leg ending at fix)
+    const t = elapsedSec % 240.0;
 
-    if (t < 60) {
-      ac.holdPhase = "INBOUND LEG";
-      ac.heading = fix.inboundHdg;
-    } else if (t < 120) {
+    if (t < 60.0) {
       ac.holdPhase = "TURN TO OUTBOUND";
-      const turnProgress = (t - 60) / 60.0;
-      const turnDelta = turnProgress * 180.0;
-      ac.heading = Math.round((fix.inboundHdg + (fix.turnDir === "RIGHT" ? turnDelta : -turnDelta) + 360) % 360);
-    } else if (t < 180) {
+      const turnProgress = t / 60.0;
+      ac.heading = Math.round((fix.inboundHdg + turnSign * turnProgress * 180.0 + 360.0) % 360.0);
+    } else if (t < 120.0) {
       ac.holdPhase = "OUTBOUND LEG";
       ac.heading = outboundHdg;
-    } else {
+    } else if (t < 180.0) {
       ac.holdPhase = "TURN TO INBOUND";
-      const turnProgress = (t - 180) / 60.0;
-      const turnDelta = turnProgress * 180.0;
-      ac.heading = Math.round((outboundHdg + (fix.turnDir === "RIGHT" ? turnDelta : -turnDelta) + 360) % 360);
+      const turnProgress = (t - 120.0) / 60.0;
+      ac.heading = Math.round((outboundHdg + turnSign * turnProgress * 180.0 + 360.0) % 360.0);
+    } else {
+      ac.holdPhase = "INBOUND LEG";
+      ac.heading = fix.inboundHdg;
     }
 
-    // Kinematic motion during holding
-    const spdNmSec = (ac.groundSpeed || 210) / 3600.0;
-    const rad = (ac.heading - 90) * (Math.PI / 180);
-    const dLat = (Math.sin(rad) * spdNmSec) / 60.0;
-    const dLon = (Math.cos(rad) * spdNmSec) / (60.0 * Math.cos(ac.lat * Math.PI / 180));
-    ac.lat += dLat * 0.05;
-    ac.lon += dLon * 0.05;
+    // Kinematic motion: calculate true 1:1 displacement in NM & lat/lon
+    const spd = ac.groundSpeed || 210;
+    const distNmStep = (spd / 3600.0) * dtSec;
+    const radHdg = (ac.heading * Math.PI) / 180.0;
+
+    // Standard aviation spherical displacement:
+    // 1 deg latitude = 60 NM
+    // 1 deg longitude = 60 * cos(latitude) NM
+    ac.lat += (distNmStep * Math.cos(radHdg)) / 60.0;
+    ac.lon += (distNmStep * Math.sin(radHdg)) / (60.0 * Math.cos(ac.lat * Math.PI / 180.0));
 
     // Decrement hold expectancy timer
     if (ac.holdRemainingMinutes > 0) {
-      ac.holdRemainingMinutes = Math.max(0, ac.holdRemainingMinutes - 1 / 60.0);
+      ac.holdRemainingMinutes = Math.max(0, ac.holdRemainingMinutes - dtSec / 60.0);
     }
-  }, 1000);
+
+    // Trigger smooth radar canvas update
+    if (typeof renderAllScreens === 'function') {
+      renderAllScreens();
+    }
+  }, stepIntervalMs);
 }
 
 // Leave holding pattern and resume approach
@@ -443,44 +456,73 @@ function drawHoldingPatternOverlays(ctx, st) {
     ctx.fillText(`HOLD ${fix.name}`, pFix.x + 8, pFix.y + 3);
 
     // Draw Racetrack shape centered on fix
-    // Inbound leg length ~4 NM (~1 minute at 210 kts)
-    const legLenPx = (4.0 / 60) * BASE_SCALE * st.zoom;
+    // 1-minute leg at 210 kts = 3.5 NM; Rate 1 standard turn radius = 3.5 / PI = ~1.114 NM
+    const legLenPx = (3.5 / 60) * BASE_SCALE * st.zoom;
+    const turnRadiusPx = (1.114 / 60) * BASE_SCALE * st.zoom;
+    const turnSign = fix.turnDir === "RIGHT" ? 1.0 : -1.0;
+
+    // Angle of inbound heading in canvas coordinate system (0° heading points -Y/North)
     const radInbound = (fix.inboundHdg - 90) * (Math.PI / 180);
+    // Unit vector along inbound heading
+    const ux = Math.cos(radInbound);
+    const uy = Math.sin(radInbound);
+    // Normal vector pointing towards center of Turn 1
     const radTurn = radInbound + (fix.turnDir === "RIGHT" ? Math.PI / 2 : -Math.PI / 2);
-    const turnRadiusPx = (1.5 / 60) * BASE_SCALE * st.zoom; // ~1.5 NM standard turn radius
+    const nx = Math.cos(radTurn);
+    const ny = Math.sin(radTurn);
+
+    // Center of Turn 1 (at fix)
+    const c1 = {
+      x: pFix.x + nx * turnRadiusPx,
+      y: pFix.y + ny * turnRadiusPx
+    };
+
+    // Outbound leg start (exit of Turn 1)
+    const outStart = {
+      x: c1.x + nx * turnRadiusPx,
+      y: c1.y + ny * turnRadiusPx
+    };
+
+    // Outbound leg end (start of Turn 2)
+    const outEnd = {
+      x: outStart.x - ux * legLenPx,
+      y: outStart.y - uy * legLenPx
+    };
+
+    // Center of Turn 2
+    const c2 = {
+      x: outEnd.x - nx * turnRadiusPx,
+      y: outEnd.y - ny * turnRadiusPx
+    };
+
+    // Inbound leg start (exit of Turn 2)
+    const inStart = {
+      x: c2.x - nx * turnRadiusPx,
+      y: c2.y - ny * turnRadiusPx
+    };
 
     ctx.strokeStyle = hasHoldingAc ? "#c084fc" : "rgba(168, 85, 247, 0.25)";
     ctx.lineWidth = hasHoldingAc ? 2.0 : 1.0;
     if (!hasHoldingAc) ctx.setLineDash([4, 4]);
 
     ctx.beginPath();
-    // Inbound Leg: from outbound turn exit to fix
-    const inStart = {
-      x: pFix.x - Math.cos(radInbound) * legLenPx,
-      y: pFix.y - Math.sin(radInbound) * legLenPx
-    };
+    // 1. Inbound Leg: from inStart straight to fix
     ctx.moveTo(inStart.x, inStart.y);
     ctx.lineTo(pFix.x, pFix.y);
 
-    // Turn 1 at fix: turn 180 deg to outbound
-    const centerTurn1 = {
-      x: pFix.x + Math.cos(radTurn) * turnRadiusPx,
-      y: pFix.y + Math.sin(radTurn) * turnRadiusPx
-    };
-    const outStart = {
-      x: centerTurn1.x + Math.cos(radTurn) * turnRadiusPx,
-      y: centerTurn1.y + Math.sin(radTurn) * turnRadiusPx
-    };
-    ctx.lineTo(outStart.x, outStart.y);
+    // 2. Turn 1 (at fix): semicircular arc 180° to outStart
+    const angle1Start = Math.atan2(pFix.y - c1.y, pFix.x - c1.x);
+    const angle1End = Math.atan2(outStart.y - c1.y, outStart.x - c1.x);
+    ctx.arc(c1.x, c1.y, turnRadiusPx, angle1Start, angle1End, fix.turnDir !== "RIGHT");
 
-    // Outbound Leg: parallel back
-    const outEnd = {
-      x: outStart.x - Math.cos(radInbound) * legLenPx,
-      y: outStart.y - Math.sin(radInbound) * legLenPx
-    };
+    // 3. Outbound Leg: straight from outStart to outEnd
     ctx.lineTo(outEnd.x, outEnd.y);
-    // Turn 2 back to Inbound
-    ctx.lineTo(inStart.x, inStart.y);
+
+    // 4. Turn 2: semicircular arc 180° back to inStart
+    const angle2Start = Math.atan2(outEnd.y - c2.y, outEnd.x - c2.x);
+    const angle2End = Math.atan2(inStart.y - c2.y, inStart.x - c2.x);
+    ctx.arc(c2.x, c2.y, turnRadiusPx, angle2Start, angle2End, fix.turnDir !== "RIGHT");
+
     ctx.stroke();
 
     // If active holding, draw level stack count badge
