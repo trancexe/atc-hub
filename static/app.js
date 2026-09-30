@@ -1087,6 +1087,12 @@ async function sendAudioToWhisper(blob, ext) {
 
 // Multi-Screen Layout Switcher
 function setLayout(mode) {
+  // On mobile (<768px), fallback 'split' to single view ('ground' or last single view)
+  const isMobile = window.innerWidth < 768;
+  if (isMobile && mode === 'split') {
+    mode = currentLayout === 'tma' ? 'tma' : 'ground';
+  }
+
   currentLayout = mode;
   const container = document.getElementById('screens-container');
   const paneGround = document.getElementById('pane-ground');
@@ -1097,10 +1103,10 @@ function setLayout(mode) {
   const btnTma = document.getElementById('view-tma-btn');
 
   [btnSplit, btnGround, btnTma].forEach(b => {
-    b.className = "px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white";
+    if (b) b.className = (b === btnSplit ? "hidden md:flex " : "flex ") + "px-2 py-0.5 rounded text-[11px] font-semibold items-center gap-1 transition text-slate-400 hover:text-white";
   });
 
-  if (mode === 'split') {
+  if (mode === 'split' && !isMobile) {
     container.className = "flex-1 grid grid-cols-2 gap-1 bg-slate-900 p-1 h-full overflow-hidden";
     paneGround.style.display = "";
     paneTma.style.display = "";
@@ -1108,7 +1114,7 @@ function setLayout(mode) {
     paneTma.classList.remove('hidden');
     paneGround.classList.remove('col-span-2');
     paneTma.classList.remove('col-span-2');
-    btnSplit.className = "px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
+    btnSplit.className = "hidden md:flex px-2 py-0.5 rounded text-[11px] font-semibold items-center gap-1 transition bg-emerald-600 text-white";
   } else if (mode === 'ground') {
     container.className = "flex-1 flex bg-slate-900 p-1 h-full overflow-hidden";
     paneGround.style.display = "flex";
@@ -1116,7 +1122,7 @@ function setLayout(mode) {
     paneGround.classList.remove('hidden');
     paneTma.classList.add('hidden');
     paneGround.classList.add('w-full', 'h-full');
-    btnGround.className = "px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
+    btnGround.className = "flex px-2 py-0.5 rounded text-[11px] font-semibold items-center gap-1 transition bg-emerald-600 text-white";
   } else if (mode === 'tma') {
     container.className = "flex-1 flex bg-slate-900 p-1 h-full overflow-hidden";
     paneGround.style.display = "none";
@@ -1124,7 +1130,7 @@ function setLayout(mode) {
     paneGround.classList.add('hidden');
     paneTma.classList.remove('hidden');
     paneTma.classList.add('w-full', 'h-full');
-    btnTma.className = "px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition bg-emerald-600 text-white";
+    btnTma.className = "flex px-2 py-0.5 rounded text-[11px] font-semibold items-center gap-1 transition bg-emerald-600 text-white";
   }
 
   setTimeout(() => {
@@ -2169,7 +2175,7 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 
 // Strips Panel Visibility and Compact Mode State
-let isFlightStripsOpen = true;
+let isFlightStripsOpen = window.innerWidth >= 768;
 let isStripCompactMode = false;
 
 function toggleFlightStripsPanel() {
@@ -6569,7 +6575,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     console.error(e);
   }
 
-  setLayout('split');
+  const isMobile = window.innerWidth < 768;
+  const initialLayout = isMobile ? 'ground' : 'split';
+  setLayout(initialLayout);
   renderFlightStrips();
   updateEasyModePrompter();
   setupRecording();

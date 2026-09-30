@@ -129,14 +129,14 @@
 
       <!-- Layout Switcher -->
       <div class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-radar text-xs">
-        <button id="view-split-btn" onclick="setLayout('split')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition bg-emerald-600 text-white" title="Split Radar Screen">
-          <i class="fa-solid fa-columns text-[10px]"></i> <span class="hidden md:inline">Split</span>
+        <button id="view-split-btn" onclick="setLayout('split')" class="hidden md:flex px-2 py-0.5 rounded text-[11px] font-semibold items-center gap-1 transition bg-emerald-600 text-white" title="Split Radar Screen">
+          <i class="fa-solid fa-columns text-[10px]"></i> <span>Split</span>
         </button>
         <button id="view-ground-btn" onclick="setLayout('ground')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white" title="Ground Radar Only">
-          <i class="fa-solid fa-road text-[10px]"></i> <span class="hidden md:inline">GND</span>
+          <i class="fa-solid fa-road text-[10px]"></i> <span>GND</span>
         </button>
         <button id="view-tma-btn" onclick="setLayout('tma')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white" title="TMA Radar Only">
-          <i class="fa-solid fa-satellite-dish text-[10px]"></i> <span class="hidden md:inline">TMA</span>
+          <i class="fa-solid fa-satellite-dish text-[10px]"></i> <span>TMA</span>
         </button>
       </div>
 
@@ -234,7 +234,7 @@
       </div>
 
       <!-- Aircraft Strip Overlay (Right floating draggable & resizable panel) -->
-      <div id="flight-strips-window" class="resizable-panel absolute top-3 right-3 z-30 w-96 max-w-[95vw] bg-slate-900/95 backdrop-blur-md border border-emerald-900/80 rounded-xl p-2.5 font-radar shadow-2xl flex flex-col">
+      <div id="flight-strips-window" class="resizable-panel hidden md:flex absolute top-3 right-3 z-30 w-96 max-w-[95vw] bg-slate-900/95 backdrop-blur-md border border-emerald-900/80 rounded-xl p-2.5 font-radar shadow-2xl flex-col">
         <!-- Draggable Title Bar -->
         <div id="flight-strips-header" class="drag-handle text-xs font-bold text-emerald-400 border-b border-emerald-900/50 pb-1.5 mb-2 flex justify-between items-center cursor-grab active:cursor-grabbing bg-slate-950/60 -mx-2.5 -mt-2.5 px-2.5 py-1.5 rounded-t-xl">
           <div class="flex items-center gap-1.5">
@@ -605,18 +605,18 @@
   </div>
 
   <!-- Modular ATC Frontend Scripts -->
-  <script src="/js/state.js?v=20260930_v14"></script>
-  <script src="/js/logger.js?v=20260930_v14"></script>
-  <script src="/js/audio.js?v=20260930_v14"></script>
-  <script src="/js/radar.js?v=20260930_v14"></script>
-  <script src="/js/strips.js?v=20260930_v14"></script>
-  <script src="/js/physics_ground.js?v=20260930_v14"></script>
-  <script src="/js/safety.js?v=20260930_v14"></script>
-  <script src="/js/tactical.js?v=20260930_v14"></script>
-  <script src="/js/aman.js?v=20260930_v14"></script>
-  <script src="/js/academy.js?v=20260930_v14"></script>
-  <script src="/js/weather.js?v=20260930_v14"></script>
-  <script src="/js/physics_air.js?v=20260930_v14"></script>
-  <script src="/js/controller.js?v=20260930_v14"></script>
+  <script src="/js/state.js?v=20260930_v15"></script>
+  <script src="/js/logger.js?v=20260930_v15"></script>
+  <script src="/js/audio.js?v=20260930_v15"></script>
+  <script src="/js/radar.js?v=20260930_v15"></script>
+  <script src="/js/strips.js?v=20260930_v15"></script>
+  <script src="/js/physics_ground.js?v=20260930_v15"></script>
+  <script src="/js/safety.js?v=20260930_v15"></script>
+  <script src="/js/tactical.js?v=20260930_v15"></script>
+  <script src="/js/aman.js?v=20260930_v15"></script>
+  <script src="/js/academy.js?v=20260930_v15"></script>
+  <script src="/js/weather.js?v=20260930_v15"></script>
+  <script src="/js/physics_air.js?v=20260930_v15"></script>
+  <script src="/js/controller.js?v=20260930_v15"></script>
 </body>
 </html>

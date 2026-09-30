@@ -60,7 +60,7 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 
 // Strips Panel Visibility and Compact Mode State
-let isFlightStripsOpen = true;
+let isFlightStripsOpen = window.innerWidth >= 768;
 let isStripCompactMode = false;
 
 function toggleFlightStripsPanel() {

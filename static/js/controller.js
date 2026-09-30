@@ -501,7 +501,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     console.error(e);
   }
 
-  setLayout('split');
+  const isMobile = window.innerWidth < 768;
+  const initialLayout = isMobile ? 'ground' : 'split';
+  setLayout(initialLayout);
   renderFlightStrips();
   updateEasyModePrompter();
   setupRecording();
