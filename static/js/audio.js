@@ -385,6 +385,23 @@ function getDynamicEasyModePrompt(ac) {
   }
 }
 
+let isPrompterCollapsed = window.innerWidth < 768;
+
+function togglePrompterCollapse() {
+  isPrompterCollapsed = !isPrompterCollapsed;
+  const prompter = document.getElementById('easy-mode-prompter');
+  const chevron = document.getElementById('prompter-chevron');
+  if (!prompter) return;
+
+  if (isPrompterCollapsed) {
+    prompter.classList.add('collapsed');
+    if (chevron) chevron.className = "fa-solid fa-chevron-up";
+  } else {
+    prompter.classList.remove('collapsed');
+    if (chevron) chevron.className = "fa-solid fa-chevron-down";
+  }
+}
+
 function updateEasyModePrompter() {
   const prompter = document.getElementById('easy-mode-prompter');
   if (!prompter) return;
@@ -394,6 +411,13 @@ function updateEasyModePrompter() {
     return;
   }
   prompter.classList.remove('hidden');
+
+  // Apply initial collapsed state if not already set
+  if (isPrompterCollapsed && !prompter.classList.contains('collapsed')) {
+    prompter.classList.add('collapsed');
+    const chevron = document.getElementById('prompter-chevron');
+    if (chevron) chevron.className = "fa-solid fa-chevron-up";
+  }
 
   if (aircraft.length === 0) return;
   const ac = aircraft[selectedAircraftIndex % aircraft.length];

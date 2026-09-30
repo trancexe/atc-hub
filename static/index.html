@@ -7,6 +7,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    /* Mobile-first 100dvh root viewport lock */
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap');
     .font-radar { font-family: 'Share Tech Mono', monospace; }
     .radar-grid {
@@ -56,31 +63,48 @@
       min-height: 180px;
       max-height: 90vh;
     }
+
+    /* Mobile-first Prompter adjustments */
+    @media (max-width: 768px) {
+      #easy-mode-prompter {
+        width: calc(100vw - 16px) !important;
+        max-width: calc(100vw - 16px) !important;
+        bottom: 84px !important;
+        left: 8px !important;
+        transform: none !important;
+        padding: 8px 10px !important;
+      }
+      #easy-mode-prompter.collapsed #prompt-context,
+      #easy-mode-prompter.collapsed #prompt-tactical-chips,
+      #easy-mode-prompter.collapsed #prompt-instruction-label {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
 
   <!-- Top Navbar -->
-  <header class="bg-slate-900 border-b border-emerald-900/50 px-3 py-1.5 flex items-center justify-between shrink-0 shadow-lg z-20 gap-2">
+  <header class="bg-slate-900 border-b border-emerald-900/50 px-2 sm:px-3 py-1 sm:py-1.5 flex items-center justify-between shrink-0 shadow-lg z-20 gap-1.5 sm:gap-2">
     <!-- Brand Title -->
-    <div class="flex items-center space-x-2 shrink-0">
-      <div class="w-7 h-7 rounded bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-radar text-base font-bold">
+    <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+      <div class="w-6 h-6 sm:w-7 sm:h-7 rounded bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-radar text-sm sm:text-base font-bold">
         <i class="fa-solid fa-plane-arrival"></i>
       </div>
       <div>
-        <h1 class="font-radar text-base font-bold tracking-wider text-emerald-400 flex items-center gap-1.5 leading-none">
-          ATC HUB <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">WIII</span>
+        <h1 class="font-radar text-sm sm:text-base font-bold tracking-wider text-emerald-400 flex items-center gap-1 leading-none">
+          ATC HUB <span class="text-[9px] sm:text-[10px] px-1 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">WIII</span>
         </h1>
         <p class="text-[9px] text-slate-400 hidden xl:block leading-tight">Jakarta Control Airspace</p>
       </div>
     </div>
 
     <!-- Center Control Bar (Responsive Flex Wrap & Compact Gaps) -->
-    <div class="flex items-center flex-wrap gap-1.5 md:gap-2 justify-center flex-1 max-w-5xl">
+    <div class="flex items-center flex-wrap gap-1 sm:gap-1.5 md:gap-2 justify-center flex-1 max-w-5xl">
       
       <!-- CONTROLLER ROLE SELECTOR -->
       <div class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-radar text-xs">
-        <span class="text-[9px] text-slate-400 px-1 uppercase font-bold hidden sm:inline">Role:</span>
+        <span class="text-[9px] text-slate-400 px-1 uppercase font-bold hidden md:inline">Role:</span>
         <button id="role-all-btn" onclick="setControllerRole('ALL')" class="px-1.5 py-0.5 rounded text-[10px] font-semibold transition bg-emerald-700 text-white" title="Manual Control Semua Sektor">
           ALL
         </button>
@@ -105,9 +129,9 @@
         <span id="active-sector-tag" class="ml-1 text-[9px] px-1 py-0.2 rounded bg-blue-900/80 text-blue-200 font-mono">GND</span>
       </div>
 
-      <!-- WEATHER PRESET SELECTOR & ATIS -->
-      <div class="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-radar text-xs">
-        <span class="text-[9px] text-sky-400 px-1 uppercase font-bold hidden sm:inline">
+      <!-- WEATHER PRESET SELECTOR & ATIS (Desktop & Tablet only to save vertical room on mobile) -->
+      <div class="hidden sm:flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-radar text-xs">
+        <span class="text-[9px] text-sky-400 px-1 uppercase font-bold hidden md:inline">
           <i class="fa-solid fa-cloud-sun-rain"></i> WX:
         </span>
         <select id="weather-preset-select" onchange="setWeatherPreset(this.value)" class="bg-slate-900 border border-slate-700 text-sky-300 text-[10px] font-semibold rounded px-1 py-0.5 focus:outline-none focus:border-sky-500 max-w-[120px] sm:max-w-none">
@@ -122,8 +146,8 @@
       </div>
 
       <!-- EASY MODE TOGGLE -->
-      <button id="easy-mode-btn" onclick="toggleEasyMode()" class="px-2 py-1 rounded border font-radar text-[11px] font-bold flex items-center gap-1 transition bg-amber-500/20 text-amber-300 border-amber-500/60 shadow">
-        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-[10px]"></i>
+      <button id="easy-mode-btn" onclick="toggleEasyMode()" class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border font-radar text-[10px] sm:text-[11px] font-bold flex items-center gap-1 transition bg-amber-500/20 text-amber-300 border-amber-500/60 shadow">
+        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-[9px] sm:text-[10px]"></i>
         <span>EASY: <span id="easy-mode-label">ON</span></span>
       </button>
 
@@ -132,16 +156,16 @@
         <button id="view-split-btn" onclick="setLayout('split')" class="hidden md:flex px-2 py-0.5 rounded text-[11px] font-semibold items-center gap-1 transition bg-emerald-600 text-white" title="Split Radar Screen">
           <i class="fa-solid fa-columns text-[10px]"></i> <span>Split</span>
         </button>
-        <button id="view-ground-btn" onclick="setLayout('ground')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white" title="Ground Radar Only">
+        <button id="view-ground-btn" onclick="setLayout('ground')" class="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white" title="Ground Radar Only">
           <i class="fa-solid fa-road text-[10px]"></i> <span>GND</span>
         </button>
-        <button id="view-tma-btn" onclick="setLayout('tma')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white" title="TMA Radar Only">
+        <button id="view-tma-btn" onclick="setLayout('tma')" class="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold flex items-center gap-1 transition text-slate-400 hover:text-white" title="TMA Radar Only">
           <i class="fa-solid fa-satellite-dish text-[10px]"></i> <span>TMA</span>
         </button>
       </div>
 
       <!-- Tab Switcher (Radar vs Academy) -->
-      <div class="flex items-center space-x-0.5 bg-slate-950 p-0.5 rounded border border-slate-800">
+      <div class="hidden sm:flex items-center space-x-0.5 bg-slate-950 p-0.5 rounded border border-slate-800">
         <button id="tab-radar-btn" onclick="switchTab('radar')" class="px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition bg-emerald-600 text-white">
           <i class="fa-solid fa-crosshairs text-[10px]"></i> Radar
         </button>
@@ -151,33 +175,33 @@
       </div>
     </div>
 
-    <!-- Clock & Whisper Status (Compact Right Side) -->
-    <div class="flex items-center space-x-2 shrink-0 font-radar text-xs">
+    <!-- Clock & Action Buttons (Compact Right Side) -->
+    <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0 font-radar text-xs">
       <div class="text-right">
-        <div class="text-emerald-400 font-bold text-[11px] leading-tight" id="utc-clock">00:00:00 UTC</div>
-        <div class="text-[9px] text-slate-400 hidden sm:block leading-tight font-mono" id="metar-bar">QNH 1011 | 250/08KT</div>
+        <div class="text-emerald-400 font-bold text-[10px] sm:text-[11px] leading-tight" id="utc-clock">00:00:00 UTC</div>
+        <div class="text-[9px] text-slate-400 hidden lg:block leading-tight font-mono" id="metar-bar">QNH 1011 | 250/08KT</div>
       </div>
-      <div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950 border border-emerald-900/60 text-emerald-400" title="Whisper Speech Recognition Ready">
+      <div class="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950 border border-emerald-900/60 text-emerald-400" title="Whisper Speech Recognition Ready">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
         <span class="text-[10px] hidden md:inline" id="whisper-status">READY</span>
       </div>
 
       <!-- AMAN SEQUENCER TOGGLE BUTTON -->
-      <button id="toggle-aman-btn" onclick="toggleAmanPanel()" class="px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:text-white font-radar text-xs flex items-center gap-1.5 transition shadow" title="Arrival Manager (AMAN) & Holding Stack">
+      <button id="toggle-aman-btn" onclick="toggleAmanPanel()" class="px-1.5 sm:px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:text-white font-radar text-xs flex items-center gap-1 transition shadow" title="Arrival Manager (AMAN) & Holding Stack">
         <i class="fa-solid fa-list-ol text-sky-400 text-[10px]"></i>
-        <span class="font-bold">AMAN</span>
+        <span class="font-bold hidden sm:inline">AMAN</span>
         <span id="aman-count-badge" class="px-1 py-0.2 rounded-full bg-sky-900 text-sky-200 font-mono text-[9px] font-bold">0</span>
       </button>
 
       <!-- FLIGHT STRIPS TOGGLE BUTTON -->
-      <button id="toggle-strips-btn" onclick="toggleFlightStripsPanel()" class="px-2 py-1 rounded bg-slate-900 border border-emerald-800 text-emerald-300 hover:text-white font-radar text-xs flex items-center gap-1.5 transition shadow" title="Toggle Electronic Flight Strips Panel">
+      <button id="toggle-strips-btn" onclick="toggleFlightStripsPanel()" class="px-1.5 sm:px-2 py-1 rounded bg-slate-900 border border-emerald-800 text-emerald-300 hover:text-white font-radar text-xs flex items-center gap-1 transition shadow" title="Toggle Electronic Flight Strips Panel">
         <i class="fa-solid fa-bars-staggered text-emerald-400 text-[10px]"></i>
-        <span class="font-bold">STRIPS</span>
+        <span class="font-bold hidden sm:inline">STRIPS</span>
         <span id="strips-nav-count-badge" class="px-1 py-0.2 rounded-full bg-emerald-950 text-emerald-300 font-mono text-[9px] font-bold">1</span>
       </button>
 
       <!-- TELEMETRY / FLIGHT BLACKBOX LOGGER BUTTON -->
-      <button id="toggle-logger-btn" onclick="toggleTelemetryLogger()" class="px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:text-white font-radar text-xs flex items-center gap-1.5 transition shadow" title="Buka Live Logger / Telemetry Audit Trail">
+      <button id="toggle-logger-btn" onclick="toggleTelemetryLogger()" class="hidden sm:flex px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:text-white font-radar text-xs items-center gap-1.5 transition shadow" title="Buka Live Logger / Telemetry Audit Trail">
         <i class="fa-solid fa-satellite text-amber-400 text-[10px]"></i>
         <span class="font-bold">LOGS</span>
         <span id="logger-badge" class="px-1 py-0.2 rounded-full bg-emerald-900 text-emerald-300 font-mono text-[9px] font-bold">0</span>
@@ -274,81 +298,76 @@
       </div>
 
       <!-- EASY MODE ATC ASSISTANT PROMPTER (FLOATING CARD) -->
-      <div id="easy-mode-prompter" class="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 w-[540px] max-w-[90vw] bg-slate-900/95 backdrop-blur-md border border-amber-500/60 rounded-xl p-3.5 shadow-2xl transition-all font-radar">
-        <div class="flex items-center justify-between border-b border-amber-500/30 pb-2 mb-2">
-          <div class="flex items-center space-x-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+      <div id="easy-mode-prompter" class="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 w-[540px] max-w-[90vw] bg-slate-900/95 backdrop-blur-md border border-amber-500/60 rounded-xl p-3 shadow-2xl transition-all font-radar">
+        <div class="flex items-center justify-between border-b border-amber-500/30 pb-1.5 mb-1.5">
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
             <span class="text-xs font-bold text-amber-400 tracking-wider flex items-center gap-1">
-              <i class="fa-solid fa-headset"></i> ATC COPILOT SUGGESTION
+              <i class="fa-solid fa-headset"></i> COPILOT
             </span>
-            <span id="prompt-ac-badge" class="px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-600/50 text-[10px] text-amber-200">
+            <span id="prompt-ac-badge" class="px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-600/50 text-[10px] text-amber-200">
               GIA502 (GATE)
             </span>
           </div>
-          <div class="flex items-center space-x-2">
-            <button onclick="cyclePrompterAircraft()" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
-              Ganti Pesawat (Tab)
+          <div class="flex items-center space-x-1.5">
+            <button onclick="cyclePrompterAircraft()" class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+              Ganti (Tab)
             </button>
-            <button onclick="playCurrentPromptAudio()" class="text-xs text-amber-400 hover:text-amber-200" title="Dengarkan contoh suara">
+            <button onclick="playCurrentPromptAudio()" class="text-xs text-amber-400 hover:text-amber-200 px-1" title="Dengarkan contoh suara">
               <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <button onclick="togglePrompterCollapse()" id="btn-prompter-toggle" class="text-xs text-slate-400 hover:text-white px-1" title="Minimize / Expand Prompter">
+              <i class="fa-solid fa-chevron-down" id="prompter-chevron"></i>
             </button>
           </div>
         </div>
 
-        <div class="text-[11px] text-slate-300 mb-1" id="prompt-context">
+        <div class="text-[10px] text-slate-300 mb-1" id="prompt-context">
           Skenario: Garuda 123 siap di Gate meminta izin pushback dan start engine.
         </div>
 
-        <div class="bg-slate-950 border border-amber-500/40 p-2.5 rounded-lg flex items-center justify-between gap-3">
-          <div class="flex-1">
-            <div class="text-[10px] uppercase text-amber-500 font-bold mb-0.5">Ucapkan ke Mic atau Tekan Tombol Kirim:</div>
-            <div id="prompt-speech-text" class="text-sm font-bold text-amber-300 leading-snug select-text">
+        <div class="bg-slate-950 border border-amber-500/40 p-2 rounded-lg flex items-center justify-between gap-2">
+          <div class="flex-1 min-w-0">
+            <div id="prompt-instruction-label" class="text-[9px] uppercase text-amber-500 font-bold mb-0.5">Ucapkan / Tekan Kirim:</div>
+            <div id="prompt-speech-text" class="text-xs sm:text-sm font-bold text-amber-300 leading-snug select-text truncate sm:whitespace-normal">
               "Garuda one two three, push and start approved, facing west"
             </div>
           </div>
-          <button id="debug-send-btn" onclick="executeDebugCommand()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg border border-emerald-400 shadow-md flex items-center gap-1.5 transition active:scale-95 whitespace-nowrap">
-            <i class="fa-solid fa-paper-plane"></i> KIRIM ATC
+          <button id="debug-send-btn" onclick="executeDebugCommand()" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg border border-emerald-400 shadow-md flex items-center gap-1 transition active:scale-95 whitespace-nowrap shrink-0">
+            <i class="fa-solid fa-paper-plane"></i> KIRIM
           </button>
         </div>
 
         <!-- QUICK TACTICAL ACTION CHIPS (Milestone 5 Easy Mode Shortcuts) -->
-        <div id="prompt-tactical-chips" class="mt-2 pt-1.5 border-t border-slate-800/80 flex items-center gap-1.5 flex-wrap text-[10px]">
-          <span class="text-slate-500 uppercase font-bold text-[9px] mr-0.5">Taktis:</span>
-          <button onclick="quickTacticalVector(250)" class="px-2 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
+        <div id="prompt-tactical-chips" class="mt-1.5 pt-1 border-t border-slate-800/80 flex items-center gap-1 flex-wrap text-[9px]">
+          <span class="text-slate-500 uppercase font-bold mr-0.5">Taktis:</span>
+          <button onclick="quickTacticalVector(250)" class="px-1.5 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
             <i class="fa-solid fa-compass"></i> HDG 250°
           </button>
-          <button onclick="quickTacticalVector(180)" class="px-2 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
+          <button onclick="quickTacticalVector(180)" class="px-1.5 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
             <i class="fa-solid fa-compass"></i> HDG 180°
           </button>
-          <button onclick="quickTacticalSpeed(180)" class="px-2 py-0.5 rounded bg-sky-950/70 hover:bg-sky-900 border border-sky-600/60 text-sky-300 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-gauge"></i> SPD 180K
+          <button onclick="quickTacticalSpeed(180)" class="px-1.5 py-0.5 rounded bg-sky-950/70 hover:bg-sky-900 border border-sky-600/60 text-sky-300 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-gauge"></i> 180K
           </button>
-          <button onclick="quickTacticalSpeed(210)" class="px-2 py-0.5 rounded bg-sky-950/70 hover:bg-sky-900 border border-sky-600/60 text-sky-300 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-gauge"></i> SPD 210K
-          </button>
-          <button onclick="quickTacticalGoAround()" class="px-2 py-0.5 rounded bg-red-950/80 hover:bg-red-900 border border-red-600/70 text-red-300 font-bold flex items-center gap-1">
+          <button onclick="quickTacticalGoAround()" class="px-1.5 py-0.5 rounded bg-red-950/80 hover:bg-red-900 border border-red-600/70 text-red-300 font-bold flex items-center gap-1">
             <i class="fa-solid fa-plane-circle-exclamation"></i> GO-AROUND
-          </button>
-          <button onclick="quickTacticalResume()" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[9px]">
-            Resume Own Nav
           </button>
         </div>
       </div>
 
       <!-- Bottom Push-to-Talk Bar -->
-      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
-        <div id="ptt-status" class="text-xs font-radar text-slate-400 mb-1.5 px-3 py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow">
+      <div class="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
+        <div id="ptt-status" class="text-[10px] sm:text-xs font-radar text-slate-400 mb-1 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow">
           Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Mic to Transmit
         </div>
-        <div class="flex items-center space-x-3 bg-slate-900/95 backdrop-blur border border-emerald-900/80 p-2.5 rounded-2xl shadow-2xl">
-          <button id="ptt-btn" class="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-lg shadow-lg transition transform active:scale-95 border-2 border-emerald-400">
+        <div class="flex items-center space-x-2 sm:space-x-3 bg-slate-900/95 backdrop-blur border border-emerald-900/80 p-1.5 sm:p-2.5 rounded-2xl shadow-2xl">
+          <button id="ptt-btn" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-base sm:text-lg shadow-lg transition transform active:scale-95 border-2 border-emerald-400">
             <i class="fa-solid fa-microphone"></i>
           </button>
-          <div class="w-72">
-            <div class="text-[10px] text-slate-400 font-radar uppercase tracking-wider">Controller Voice Input</div>
-            <div id="recognized-text" class="text-xs font-radar text-emerald-300 font-medium truncate italic py-0.5">
-              "Standby for voice transmission..."
-            </div>
+          <div class="font-radar text-left pr-1 sm:pr-2">
+            <div class="text-[10px] sm:text-xs text-slate-400 leading-tight">CONTROLLER VOICE INPUT</div>
+            <div id="voice-indicator" class="text-[9px] sm:text-[10px] text-emerald-400 font-mono font-bold leading-tight">WHISPER VAD: READY</div>
           </div>
         </div>
       </div>
@@ -605,18 +624,18 @@
   </div>
 
   <!-- Modular ATC Frontend Scripts -->
-  <script src="/js/state.js?v=20260930_v15"></script>
-  <script src="/js/logger.js?v=20260930_v15"></script>
-  <script src="/js/audio.js?v=20260930_v15"></script>
-  <script src="/js/radar.js?v=20260930_v15"></script>
-  <script src="/js/strips.js?v=20260930_v15"></script>
-  <script src="/js/physics_ground.js?v=20260930_v15"></script>
-  <script src="/js/safety.js?v=20260930_v15"></script>
-  <script src="/js/tactical.js?v=20260930_v15"></script>
-  <script src="/js/aman.js?v=20260930_v15"></script>
-  <script src="/js/academy.js?v=20260930_v15"></script>
-  <script src="/js/weather.js?v=20260930_v15"></script>
-  <script src="/js/physics_air.js?v=20260930_v15"></script>
-  <script src="/js/controller.js?v=20260930_v15"></script>
+  <script src="/js/state.js?v=20260930_v16"></script>
+  <script src="/js/logger.js?v=20260930_v16"></script>
+  <script src="/js/audio.js?v=20260930_v16"></script>
+  <script src="/js/radar.js?v=20260930_v16"></script>
+  <script src="/js/strips.js?v=20260930_v16"></script>
+  <script src="/js/physics_ground.js?v=20260930_v16"></script>
+  <script src="/js/safety.js?v=20260930_v16"></script>
+  <script src="/js/tactical.js?v=20260930_v16"></script>
+  <script src="/js/aman.js?v=20260930_v16"></script>
+  <script src="/js/academy.js?v=20260930_v16"></script>
+  <script src="/js/weather.js?v=20260930_v16"></script>
+  <script src="/js/physics_air.js?v=20260930_v16"></script>
+  <script src="/js/controller.js?v=20260930_v16"></script>
 </body>
 </html>
