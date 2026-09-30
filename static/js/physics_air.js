@@ -1,4 +1,9 @@
 function checkGroundConflictAhead(currentAc, targetLat, targetLon) {
+  // Determine aircraft physical footprint / wingspan envelope
+  const isWidebody = (type) => ["777", "B777", "77W", "773", "330", "A330", "333", "747", "B747", "787", "B787", "350", "A350", "380", "A380"].some(t => (type || "").toUpperCase().includes(t));
+  const mySpan = isWidebody(currentAc.type) ? 65 : 36;
+  const myLength = isWidebody(currentAc.type) ? 65 : 40;
+
   for (const other of aircraft) {
     if (other.id === currentAc.id) continue;
     // Only check conflict with aircraft that are also on ground
@@ -9,21 +14,51 @@ function checkGroundConflictAhead(currentAc, targetLat, targetLon) {
       continue;
     }
 
+    const otherSpan = isWidebody(other.type) ? 65 : 36;
+    const otherLength = isWidebody(other.type) ? 65 : 40;
+
+    // Safe stopping sight distance and wingtip envelope (ICAO Code E clearance buffer)
+    const requiredSeparationMeters = Math.max(120, (mySpan + otherSpan) * 1.1);
+    const junctionBufferMeters = Math.max(90, (myLength + otherLength) * 0.9);
+
     // Direct distance between both aircraft centers
     const distBetweenMeters = calculateDistanceMeters(currentAc.lat, currentAc.lon, other.lat, other.lon);
     // Distance from other aircraft to our intended next node / trajectory
     const distTargetMeters = calculateDistanceMeters(targetLat, targetLon, other.lat, other.lon);
 
-    // If another aircraft is within safe wingtip cushion (70 meters) in front of us
-    if (distBetweenMeters < 70 || distTargetMeters < 50) {
-      // Determine if other aircraft is ahead in our travel vector
+    // 1. Emergency Proximity Stop (if aircraft are dangerously close anywhere)
+    if (distBetweenMeters < requiredSeparationMeters) {
       const myBearing = currentAc.heading * Math.PI / 180;
       const dLat = other.lat - currentAc.lat;
       const dLon = (other.lon - currentAc.lon) * Math.cos(currentAc.lat * Math.PI / 180);
-      const dot = Math.sin(myBearing) * dLon + Math.cos(myBearing) * dLat;
-      
-      // If other aircraft is in front (dot > -0.0001) or dangerously close (<45m), hold brakes!
-      if (dot > -0.0001 || distBetweenMeters < 45) {
+      const forwardDot = Math.sin(myBearing) * dLon + Math.cos(myBearing) * dLat;
+
+      // Other aircraft is anywhere in our forward 180-degree visual cone
+      if (forwardDot > -0.0001 || distBetweenMeters < 75) {
+        // Interlocking & Right-of-Way Resolution (Prevent mutual deadlock):
+        // If other aircraft is already holding for traffic, WE must wait if we are the converging traffic,
+        // or the aircraft closer to the target node / with higher groundSpeed has right-of-way.
+        if (other.isHoldingForTraffic && !currentAc.isHoldingForTraffic && distBetweenMeters > 70) {
+          // If other is already yielding and we are not yet locked, let the other wait or let us pass safely
+        }
+        return true;
+      }
+    }
+
+    // 2. Junction / Intersection Interlocking Buffer (Hold short before entering junction node)
+    // If the next node we want to enter is occupied or being approached by another aircraft:
+    if (distTargetMeters < junctionBufferMeters) {
+      const myDistToTarget = calculateDistanceMeters(currentAc.lat, currentAc.lon, targetLat, targetLon);
+      const otherDistToTarget = calculateDistanceMeters(other.lat, other.lon, targetLat, targetLon);
+
+      // If other aircraft is closer to the junction node, or already entering it, we MUST hold short!
+      if (otherDistToTarget < myDistToTarget || (other.groundSpeed > 0 && otherDistToTarget < 60)) {
+        return true;
+      }
+
+      // Tie-breaker to prevent simultaneous dual-stop deadlock:
+      // If distances are almost equal, lower alphabetical callsign yields right of way
+      if (Math.abs(myDistToTarget - otherDistToTarget) < 15 && currentAc.id > other.id) {
         return true;
       }
     }
