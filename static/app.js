@@ -1700,12 +1700,14 @@ function drawTmaScreen() {
     ctx.fillText(`${aw.id}`, pm.x - 8, pm.y + 14);
   });
 
-  // Get selected aircraft cleared SID and STAR to highlight active tactical route
+  // Get selected aircraft cleared SID or STAR to highlight ONLY relevant active tactical route
   const selAc = (selectedAircraftIndex >= 0 && selectedAircraftIndex < aircraft.length)
     ? aircraft[selectedAircraftIndex]
     : null;
-  const activeSidId = selAc ? selAc.clearedSid : null;
-  const activeStarId = selAc ? selAc.clearedStar : null;
+  const isSelectedArrival = selAc ? ["APPROACH", "FINAL", "LANDED", "TAXI_IN", "PARKED"].includes(selAc.state) : false;
+  // If selected is departure: highlight clearedSid; if arrival: highlight clearedStar
+  const activeSidId = (selAc && !isSelectedArrival) ? selAc.clearedSid : null;
+  const activeStarId = (selAc && isSelectedArrival) ? selAc.clearedStar : null;
 
   // 2. SIDs (Standard Instrument Departures) - Orange/Amber dashed routes
   (airportData.sids || []).forEach(sid => {
@@ -2038,6 +2040,14 @@ function setupCanvasInteraction(cElem, screenKey) {
         return;
       }
       selectAircraft(closestAcIdx);
+    } else {
+      // Clicked on empty space: deselect aircraft
+      if (!rulerToolActive) {
+        selectedAircraftIndex = -1;
+        renderFlightStrips();
+        updateEasyModePrompter();
+        renderAllScreens();
+      }
     }
   });
 
