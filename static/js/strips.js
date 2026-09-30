@@ -1,3 +1,105 @@
+function makeElementDraggable(headerEl, windowEl) {
+  if (!headerEl || !windowEl) return;
+  let isDragging = false;
+  let startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
+
+  headerEl.addEventListener('mousedown', (e) => {
+    // Only drag with left mouse button and not on interactive buttons
+    if (e.button !== 0 || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    const rect = windowEl.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    // Switch to absolute positioning with explicit left/top coordinates
+    windowEl.style.right = 'auto';
+    windowEl.style.bottom = 'auto';
+    windowEl.style.left = `${initialLeft}px`;
+    windowEl.style.top = `${initialTop}px`;
+    windowEl.style.zIndex = '60';
+
+    const onMouseMove = (ev) => {
+      if (!isDragging) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      const newLeft = Math.max(0, Math.min(window.innerWidth - windowEl.offsetWidth, initialLeft + dx));
+      const newTop = Math.max(0, Math.min(window.innerHeight - windowEl.offsetHeight, initialTop + dy));
+      windowEl.style.left = `${newLeft}px`;
+      windowEl.style.top = `${newTop}px`;
+    };
+
+    const onMouseUp = () => {
+      isDragging = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+function initDraggablePanels() {
+  makeElementDraggable(document.getElementById('flight-strips-header'), document.getElementById('flight-strips-window'));
+  makeElementDraggable(document.getElementById('aman-sequencer-header'), document.getElementById('aman-sequencer-panel'));
+  makeElementDraggable(document.getElementById('logger-header'), document.getElementById('telemetry-logger-panel'));
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initDraggablePanels();
+});
+
+// Also call immediately in case DOM is already parsed
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  initDraggablePanels();
+}
+
+// Strips Panel Visibility and Compact Mode State
+let isFlightStripsOpen = true;
+let isStripCompactMode = false;
+
+function toggleFlightStripsPanel() {
+  const panel = document.getElementById('flight-strips-window');
+  const btn = document.getElementById('toggle-strips-btn');
+  if (!panel) return;
+
+  isFlightStripsOpen = !isFlightStripsOpen;
+  if (isFlightStripsOpen) {
+    panel.classList.remove('hidden');
+    if (btn) {
+      btn.classList.add('bg-emerald-950', 'border-emerald-500', 'text-emerald-300');
+      btn.classList.remove('bg-slate-900', 'border-emerald-800');
+    }
+    renderFlightStrips();
+  } else {
+    panel.classList.add('hidden');
+    if (btn) {
+      btn.classList.remove('bg-emerald-950', 'border-emerald-500');
+      btn.classList.add('bg-slate-900', 'border-emerald-800');
+    }
+  }
+}
+
+function toggleStripCompactMode() {
+  isStripCompactMode = !isStripCompactMode;
+  const label = document.getElementById('strip-compact-label');
+  const win = document.getElementById('flight-strips-window');
+  if (label) label.textContent = isStripCompactMode ? "FULL" : "MINI";
+  if (win) {
+    if (isStripCompactMode) {
+      win.classList.remove('w-80');
+      win.classList.add('w-64');
+    } else {
+      win.classList.remove('w-64');
+      win.classList.add('w-80');
+    }
+  }
+  renderFlightStrips();
+}
+
 function setStripBayFilter(bay) {
   activeStripBayFilter = bay;
   ["all", "dep", "twr", "app"].forEach(b => {
@@ -85,6 +187,26 @@ function renderFlightStrips() {
     const assignedAlt = (ac.fde && ac.fde.assignedAlt) ? ac.fde.assignedAlt : "";
     const assignedSpd = (ac.fde && ac.fde.assignedSpd) ? ac.fde.assignedSpd : "";
     const directFix = (ac.fde && ac.fde.directFix) ? ac.fde.directFix : "";
+
+    if (isStripCompactMode) {
+      // MINIMALIST COMPACT STRIP (Clean, sleek, non-intrusive)
+      return `
+        <div onclick="selectAircraft(${idx})" class="p-1.5 rounded text-xs border transition cursor-pointer select-none ${isSel ? 'bg-amber-950/70 border-amber-500 ring-1 ring-amber-500' : 'bg-slate-950 border-emerald-950/80 hover:bg-slate-900/90'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
+          <div class="flex justify-between items-center text-[11px] font-mono">
+            <div class="flex items-center gap-1 font-bold ${isSel ? 'text-amber-400' : 'text-emerald-400'}">
+              <span class="text-[8px] px-1 py-0.1 rounded ${bayCat === 'DEP' ? 'bg-blue-950 text-blue-300' : (bayCat === 'TWR' ? 'bg-emerald-950 text-emerald-300' : 'bg-purple-950 text-purple-300')}">${bayCat}</span>
+              <span>${ac.id}</span>
+              <span class="text-[9px] text-slate-400">RWY${ac.clearedRwy || '25R'}</span>
+            </div>
+            <div class="flex items-center gap-1 text-[10px]">
+              <span class="text-sky-300 font-bold">${ac.altitude}FT</span>
+              <span class="text-slate-400">${ac.groundSpeed || 210}K</span>
+              <span class="${ac.isHolding ? 'text-purple-400 font-bold' : 'text-slate-500'}">${ac.isHolding ? 'HOLD' : ac.state}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     return `
       <div onclick="selectAircraft(${idx})" class="p-2.5 rounded text-xs border transition cursor-pointer select-none ${isSel ? 'bg-amber-950/50 border-amber-500 shadow-lg ring-1 ring-amber-500/80' : 'bg-slate-950 border-emerald-950/80 hover:bg-slate-900/90 hover:border-emerald-800'} ${isPending ? 'ring-1 ring-amber-400' : ''}">

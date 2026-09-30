@@ -467,22 +467,23 @@ function renderAmanSequencerPanel() {
     `;
   }).join('');
 
-  // Render Holding Stack Visualizer
+  // Render Holding Stack Visualizer (Sleek Eurocat/TopSky Flight Level Ladder)
   if (stackEl) {
     const holdingAc = sequence.filter(s => s.isHolding);
     if (holdingAc.length === 0) {
-      stackEl.innerHTML = '<div class="text-slate-500 text-[10px] italic p-1 text-center">Tidak ada pesawat yang sedang holding.</div>';
+      stackEl.innerHTML = '<div class="text-slate-600 text-[10px] italic py-1 text-center font-mono">No traffic in holding stack.</div>';
     } else {
       const levels = ["FL140", "FL130", "FL120", "FL110", "FL100"];
       stackEl.innerHTML = levels.map(fl => {
         const atFl = holdingAc.filter(h => h.holdLevel === fl);
+        const isOccupied = atFl.length > 0;
         return `
-          <div class="flex items-center text-[10px] border-b border-slate-800/60 py-0.5">
-            <span class="w-12 font-mono font-bold text-slate-400">${fl}</span>
-            <div class="flex-1 flex gap-1 items-center">
-              ${atFl.length > 0
-                ? atFl.map(h => `<span class="px-1.5 py-0.2 rounded bg-purple-950 border border-purple-700 text-purple-300 font-mono font-bold">${h.id} (${h.holdFix || 'TEGID'})</span>`).join('')
-                : '<span class="text-slate-600 text-[9px]">— empty slot —</span>'
+          <div class="flex items-center text-[10px] py-0.5 border-b border-slate-800/40 font-mono">
+            <span class="w-12 font-bold ${isOccupied ? 'text-purple-300' : 'text-slate-500'}">${fl}</span>
+            <div class="flex-1 flex gap-1.5 items-center">
+              ${isOccupied
+                ? atFl.map(h => `<span class="px-1.5 py-0.2 rounded bg-purple-950/80 border border-purple-500/70 text-purple-200 font-bold shadow-sm flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>${h.id} <span class="text-[9px] text-purple-300/80">(${h.holdFix || 'TEGID'})</span></span>`).join('')
+                : '<span class="text-slate-700/60 font-mono tracking-widest text-[9px]">— · —</span>'
               }
             </div>
           </div>
@@ -506,7 +507,7 @@ function drawHoldingPatternOverlays(ctx, st) {
     ctx.save();
     ctx.font = "bold 9px 'Share Tech Mono'";
     ctx.fillStyle = hasHoldingAc ? "#c084fc" : "rgba(168, 85, 247, 0.4)";
-    ctx.fillText(`HOLD ${fix.name}`, pFix.x + 8, pFix.y + 3);
+    ctx.fillText(`HOLD ${fix.name}`, pFix.x + 8, pFix.y - 4);
 
     // Draw Racetrack shape centered on fix
     // 1-minute leg at 210 kts = 3.5 NM; Rate 1 standard turn radius = 3.5 / PI = ~1.114 NM
@@ -554,9 +555,10 @@ function drawHoldingPatternOverlays(ctx, st) {
       y: c2.y - ny * turnRadiusPx
     };
 
-    ctx.strokeStyle = hasHoldingAc ? "#c084fc" : "rgba(168, 85, 247, 0.25)";
-    ctx.lineWidth = hasHoldingAc ? 2.0 : 1.0;
-    if (!hasHoldingAc) ctx.setLineDash([4, 4]);
+    // Professional Aviation Racetrack Styling: Crisp, thin tactical dashed line
+    ctx.strokeStyle = hasHoldingAc ? "rgba(192, 132, 252, 0.85)" : "rgba(168, 85, 247, 0.35)";
+    ctx.lineWidth = hasHoldingAc ? 1.4 : 1.0;
+    ctx.setLineDash(hasHoldingAc ? [6, 3] : [4, 4]);
 
     ctx.beginPath();
     // 1. Inbound Leg: from inStart straight to fix
@@ -577,12 +579,30 @@ function drawHoldingPatternOverlays(ctx, st) {
     ctx.arc(c2.x, c2.y, turnRadiusPx, angle2Start, angle2End, fix.turnDir !== "RIGHT");
 
     ctx.stroke();
+    ctx.setLineDash([]); // Reset dash
+
+    // Outbound leg tactical direction arrow
+    const midOutX = (outStart.x + outEnd.x) / 2;
+    const midOutY = (outStart.y + outEnd.y) / 2;
+    const arrowRad = Math.atan2(outEnd.y - outStart.y, outEnd.x - outStart.x);
+    ctx.save();
+    ctx.translate(midOutX, midOutY);
+    ctx.rotate(arrowRad);
+    ctx.fillStyle = hasHoldingAc ? "#c084fc" : "rgba(168, 85, 247, 0.4)";
+    ctx.beginPath();
+    ctx.moveTo(4, 0);
+    ctx.lineTo(-4, -3);
+    ctx.lineTo(-2, 0);
+    ctx.lineTo(-4, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 
     // If active holding, draw level stack count badge
     if (hasHoldingAc) {
       ctx.fillStyle = "#9333ea";
       ctx.beginPath();
-      ctx.arc(pFix.x, pFix.y, 6, 0, Math.PI * 2);
+      ctx.arc(pFix.x, pFix.y, 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 8px 'Share Tech Mono'";

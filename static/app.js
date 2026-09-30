@@ -1641,15 +1641,16 @@ function drawTmaScreen() {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // SID Label
-    const midIdx = Math.floor(sid.coords.length / 2);
-    const pm = latLonToScreenCoord(sid.coords[midIdx][0], sid.coords[midIdx][1], st);
-    ctx.font = isActive ? "bold 11px 'Share Tech Mono'" : "9px 'Share Tech Mono'";
+    // SID Route Label (rendered at midpoint of first leg to avoid waypoint clutter)
+    const pA = latLonToScreenCoord(sid.coords[0][0], sid.coords[0][1], st);
+    const pB = latLonToScreenCoord(sid.coords[1][0], sid.coords[1][1], st);
+    const pm = { x: (pA.x + pB.x) / 2, y: (pA.y + pB.y) / 2 };
+    ctx.font = isActive ? "bold 10px 'Share Tech Mono'" : "8px 'Share Tech Mono'";
     ctx.fillStyle = isActive ? "#fbbf24" : "rgba(245, 158, 11, 0.4)";
-    ctx.fillText(`${isActive ? '★ [ACTIVE SID] ' : '[SID] '}${sid.id}`, pm.x - 15, pm.y - 8);
+    ctx.fillText(`${isActive ? '★ ' : ''}${sid.id}`, pm.x - 12, pm.y - 6);
   });
 
-  // STARs (Standard Terminal Arrival Routes) - Cyan/Blue dashed routes
+  // 3. STARs (Standard Terminal Arrival Routes) - Cyan dashed routes
   (airportData.stars || []).forEach(star => {
     if (!star.coords || star.coords.length < 2) return;
     const isActive = activeStarId === star.id;
@@ -1666,12 +1667,13 @@ function drawTmaScreen() {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // STAR Label
-    const midIdx = Math.floor(star.coords.length / 2);
-    const pm = latLonToScreenCoord(star.coords[midIdx][0], star.coords[midIdx][1], st);
-    ctx.font = isActive ? "bold 11px 'Share Tech Mono'" : "9px 'Share Tech Mono'";
+    // STAR Route Label (rendered at midpoint of first leg to avoid waypoint clutter)
+    const pA = latLonToScreenCoord(star.coords[0][0], star.coords[0][1], st);
+    const pB = latLonToScreenCoord(star.coords[1][0], star.coords[1][1], st);
+    const pm = { x: (pA.x + pB.x) / 2, y: (pA.y + pB.y) / 2 };
+    ctx.font = isActive ? "bold 10px 'Share Tech Mono'" : "8px 'Share Tech Mono'";
     ctx.fillStyle = isActive ? "#67e8f9" : "rgba(6, 182, 212, 0.4)";
-    ctx.fillText(`${isActive ? '★ [ACTIVE STAR] ' : '[STAR] '}${star.id}`, pm.x + 8, pm.y + 12);
+    ctx.fillText(`${isActive ? '★ ' : ''}${star.id}`, pm.x + 6, pm.y - 6);
   });
 
   // 4. Center Coordination & Handoff Gateways (Entry / Exit fixes)
@@ -2014,6 +2016,108 @@ function resetScreen(screenKey) {
 
 let activeStripBayFilter = "ALL"; // 'ALL', 'DEP', 'TWR', 'APP'
 
+function makeElementDraggable(headerEl, windowEl) {
+  if (!headerEl || !windowEl) return;
+  let isDragging = false;
+  let startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
+
+  headerEl.addEventListener('mousedown', (e) => {
+    // Only drag with left mouse button and not on interactive buttons
+    if (e.button !== 0 || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    const rect = windowEl.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    // Switch to absolute positioning with explicit left/top coordinates
+    windowEl.style.right = 'auto';
+    windowEl.style.bottom = 'auto';
+    windowEl.style.left = `${initialLeft}px`;
+    windowEl.style.top = `${initialTop}px`;
+    windowEl.style.zIndex = '60';
+
+    const onMouseMove = (ev) => {
+      if (!isDragging) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      const newLeft = Math.max(0, Math.min(window.innerWidth - windowEl.offsetWidth, initialLeft + dx));
+      const newTop = Math.max(0, Math.min(window.innerHeight - windowEl.offsetHeight, initialTop + dy));
+      windowEl.style.left = `${newLeft}px`;
+      windowEl.style.top = `${newTop}px`;
+    };
+
+    const onMouseUp = () => {
+      isDragging = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+function initDraggablePanels() {
+  makeElementDraggable(document.getElementById('flight-strips-header'), document.getElementById('flight-strips-window'));
+  makeElementDraggable(document.getElementById('aman-sequencer-header'), document.getElementById('aman-sequencer-panel'));
+  makeElementDraggable(document.getElementById('logger-header'), document.getElementById('telemetry-logger-panel'));
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initDraggablePanels();
+});
+
+// Also call immediately in case DOM is already parsed
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  initDraggablePanels();
+}
+
+// Strips Panel Visibility and Compact Mode State
+let isFlightStripsOpen = true;
+let isStripCompactMode = false;
+
+function toggleFlightStripsPanel() {
+  const panel = document.getElementById('flight-strips-window');
+  const btn = document.getElementById('toggle-strips-btn');
+  if (!panel) return;
+
+  isFlightStripsOpen = !isFlightStripsOpen;
+  if (isFlightStripsOpen) {
+    panel.classList.remove('hidden');
+    if (btn) {
+      btn.classList.add('bg-emerald-950', 'border-emerald-500', 'text-emerald-300');
+      btn.classList.remove('bg-slate-900', 'border-emerald-800');
+    }
+    renderFlightStrips();
+  } else {
+    panel.classList.add('hidden');
+    if (btn) {
+      btn.classList.remove('bg-emerald-950', 'border-emerald-500');
+      btn.classList.add('bg-slate-900', 'border-emerald-800');
+    }
+  }
+}
+
+function toggleStripCompactMode() {
+  isStripCompactMode = !isStripCompactMode;
+  const label = document.getElementById('strip-compact-label');
+  const win = document.getElementById('flight-strips-window');
+  if (label) label.textContent = isStripCompactMode ? "FULL" : "MINI";
+  if (win) {
+    if (isStripCompactMode) {
+      win.classList.remove('w-80');
+      win.classList.add('w-64');
+    } else {
+      win.classList.remove('w-64');
+      win.classList.add('w-80');
+    }
+  }
+  renderFlightStrips();
+}
+
 function setStripBayFilter(bay) {
   activeStripBayFilter = bay;
   ["all", "dep", "twr", "app"].forEach(b => {
@@ -2101,6 +2205,26 @@ function renderFlightStrips() {
     const assignedAlt = (ac.fde && ac.fde.assignedAlt) ? ac.fde.assignedAlt : "";
     const assignedSpd = (ac.fde && ac.fde.assignedSpd) ? ac.fde.assignedSpd : "";
     const directFix = (ac.fde && ac.fde.directFix) ? ac.fde.directFix : "";
+
+    if (isStripCompactMode) {
+      // MINIMALIST COMPACT STRIP (Clean, sleek, non-intrusive)
+      return `
+        <div onclick="selectAircraft(${idx})" class="p-1.5 rounded text-xs border transition cursor-pointer select-none ${isSel ? 'bg-amber-950/70 border-amber-500 ring-1 ring-amber-500' : 'bg-slate-950 border-emerald-950/80 hover:bg-slate-900/90'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
+          <div class="flex justify-between items-center text-[11px] font-mono">
+            <div class="flex items-center gap-1 font-bold ${isSel ? 'text-amber-400' : 'text-emerald-400'}">
+              <span class="text-[8px] px-1 py-0.1 rounded ${bayCat === 'DEP' ? 'bg-blue-950 text-blue-300' : (bayCat === 'TWR' ? 'bg-emerald-950 text-emerald-300' : 'bg-purple-950 text-purple-300')}">${bayCat}</span>
+              <span>${ac.id}</span>
+              <span class="text-[9px] text-slate-400">RWY${ac.clearedRwy || '25R'}</span>
+            </div>
+            <div class="flex items-center gap-1 text-[10px]">
+              <span class="text-sky-300 font-bold">${ac.altitude}FT</span>
+              <span class="text-slate-400">${ac.groundSpeed || 210}K</span>
+              <span class="${ac.isHolding ? 'text-purple-400 font-bold' : 'text-slate-500'}">${ac.isHolding ? 'HOLD' : ac.state}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     return `
       <div onclick="selectAircraft(${idx})" class="p-2.5 rounded text-xs border transition cursor-pointer select-none ${isSel ? 'bg-amber-950/50 border-amber-500 shadow-lg ring-1 ring-amber-500/80' : 'bg-slate-950 border-emerald-950/80 hover:bg-slate-900/90 hover:border-emerald-800'} ${isPending ? 'ring-1 ring-amber-400' : ''}">
@@ -4155,22 +4279,23 @@ function renderAmanSequencerPanel() {
     `;
   }).join('');
 
-  // Render Holding Stack Visualizer
+  // Render Holding Stack Visualizer (Sleek Eurocat/TopSky Flight Level Ladder)
   if (stackEl) {
     const holdingAc = sequence.filter(s => s.isHolding);
     if (holdingAc.length === 0) {
-      stackEl.innerHTML = '<div class="text-slate-500 text-[10px] italic p-1 text-center">Tidak ada pesawat yang sedang holding.</div>';
+      stackEl.innerHTML = '<div class="text-slate-600 text-[10px] italic py-1 text-center font-mono">No traffic in holding stack.</div>';
     } else {
       const levels = ["FL140", "FL130", "FL120", "FL110", "FL100"];
       stackEl.innerHTML = levels.map(fl => {
         const atFl = holdingAc.filter(h => h.holdLevel === fl);
+        const isOccupied = atFl.length > 0;
         return `
-          <div class="flex items-center text-[10px] border-b border-slate-800/60 py-0.5">
-            <span class="w-12 font-mono font-bold text-slate-400">${fl}</span>
-            <div class="flex-1 flex gap-1 items-center">
-              ${atFl.length > 0
-                ? atFl.map(h => `<span class="px-1.5 py-0.2 rounded bg-purple-950 border border-purple-700 text-purple-300 font-mono font-bold">${h.id} (${h.holdFix || 'TEGID'})</span>`).join('')
-                : '<span class="text-slate-600 text-[9px]">— empty slot —</span>'
+          <div class="flex items-center text-[10px] py-0.5 border-b border-slate-800/40 font-mono">
+            <span class="w-12 font-bold ${isOccupied ? 'text-purple-300' : 'text-slate-500'}">${fl}</span>
+            <div class="flex-1 flex gap-1.5 items-center">
+              ${isOccupied
+                ? atFl.map(h => `<span class="px-1.5 py-0.2 rounded bg-purple-950/80 border border-purple-500/70 text-purple-200 font-bold shadow-sm flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>${h.id} <span class="text-[9px] text-purple-300/80">(${h.holdFix || 'TEGID'})</span></span>`).join('')
+                : '<span class="text-slate-700/60 font-mono tracking-widest text-[9px]">— · —</span>'
               }
             </div>
           </div>
@@ -4194,7 +4319,7 @@ function drawHoldingPatternOverlays(ctx, st) {
     ctx.save();
     ctx.font = "bold 9px 'Share Tech Mono'";
     ctx.fillStyle = hasHoldingAc ? "#c084fc" : "rgba(168, 85, 247, 0.4)";
-    ctx.fillText(`HOLD ${fix.name}`, pFix.x + 8, pFix.y + 3);
+    ctx.fillText(`HOLD ${fix.name}`, pFix.x + 8, pFix.y - 4);
 
     // Draw Racetrack shape centered on fix
     // 1-minute leg at 210 kts = 3.5 NM; Rate 1 standard turn radius = 3.5 / PI = ~1.114 NM
@@ -4242,9 +4367,10 @@ function drawHoldingPatternOverlays(ctx, st) {
       y: c2.y - ny * turnRadiusPx
     };
 
-    ctx.strokeStyle = hasHoldingAc ? "#c084fc" : "rgba(168, 85, 247, 0.25)";
-    ctx.lineWidth = hasHoldingAc ? 2.0 : 1.0;
-    if (!hasHoldingAc) ctx.setLineDash([4, 4]);
+    // Professional Aviation Racetrack Styling: Crisp, thin tactical dashed line
+    ctx.strokeStyle = hasHoldingAc ? "rgba(192, 132, 252, 0.85)" : "rgba(168, 85, 247, 0.35)";
+    ctx.lineWidth = hasHoldingAc ? 1.4 : 1.0;
+    ctx.setLineDash(hasHoldingAc ? [6, 3] : [4, 4]);
 
     ctx.beginPath();
     // 1. Inbound Leg: from inStart straight to fix
@@ -4265,12 +4391,30 @@ function drawHoldingPatternOverlays(ctx, st) {
     ctx.arc(c2.x, c2.y, turnRadiusPx, angle2Start, angle2End, fix.turnDir !== "RIGHT");
 
     ctx.stroke();
+    ctx.setLineDash([]); // Reset dash
+
+    // Outbound leg tactical direction arrow
+    const midOutX = (outStart.x + outEnd.x) / 2;
+    const midOutY = (outStart.y + outEnd.y) / 2;
+    const arrowRad = Math.atan2(outEnd.y - outStart.y, outEnd.x - outStart.x);
+    ctx.save();
+    ctx.translate(midOutX, midOutY);
+    ctx.rotate(arrowRad);
+    ctx.fillStyle = hasHoldingAc ? "#c084fc" : "rgba(168, 85, 247, 0.4)";
+    ctx.beginPath();
+    ctx.moveTo(4, 0);
+    ctx.lineTo(-4, -3);
+    ctx.lineTo(-2, 0);
+    ctx.lineTo(-4, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 
     // If active holding, draw level stack count badge
     if (hasHoldingAc) {
       ctx.fillStyle = "#9333ea";
       ctx.beginPath();
-      ctx.arc(pFix.x, pFix.y, 6, 0, Math.PI * 2);
+      ctx.arc(pFix.x, pFix.y, 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 8px 'Share Tech Mono'";

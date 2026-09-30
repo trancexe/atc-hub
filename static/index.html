@@ -16,6 +16,36 @@
         linear-gradient(to bottom, rgba(16, 185, 129, 0.05) 1px, transparent 1px);
       background-size: 40px 40px, 40px 40px, 40px 40px;
     }
+
+    /* Professional Sleek Tactical Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(2, 6, 23, 0.8);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.25);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.5);
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(56, 189, 248, 0.25) rgba(2, 6, 23, 0.8);
+    }
+
+    /* Draggable Window Cursor */
+    .drag-handle {
+      cursor: grab;
+      user-select: none;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
@@ -129,6 +159,13 @@
         <span id="aman-count-badge" class="px-1 py-0.2 rounded-full bg-sky-900 text-sky-200 font-mono text-[9px] font-bold">0</span>
       </button>
 
+      <!-- FLIGHT STRIPS TOGGLE BUTTON -->
+      <button id="toggle-strips-btn" onclick="toggleFlightStripsPanel()" class="px-2 py-1 rounded bg-slate-900 border border-emerald-800 text-emerald-300 hover:text-white font-radar text-xs flex items-center gap-1.5 transition shadow" title="Toggle Electronic Flight Strips Panel">
+        <i class="fa-solid fa-bars-staggered text-emerald-400 text-[10px]"></i>
+        <span class="font-bold">STRIPS</span>
+        <span id="strips-nav-count-badge" class="px-1 py-0.2 rounded-full bg-emerald-950 text-emerald-300 font-mono text-[9px] font-bold">1</span>
+      </button>
+
       <!-- TELEMETRY / FLIGHT BLACKBOX LOGGER BUTTON -->
       <button id="toggle-logger-btn" onclick="toggleTelemetryLogger()" class="px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:text-white font-radar text-xs flex items-center gap-1.5 transition shadow" title="Buka Live Logger / Telemetry Audit Trail">
         <i class="fa-solid fa-satellite text-amber-400 text-[10px]"></i>
@@ -186,27 +223,39 @@
 
       </div>
 
-      <!-- Aircraft Strip Overlay (Right floating drawer) -->
-      <div class="absolute top-3 right-3 z-10 w-72 bg-slate-900/95 backdrop-blur border border-emerald-900/80 rounded-lg p-3 font-radar shadow-xl">
-        <div class="text-xs font-bold text-emerald-400 border-b border-emerald-900/40 pb-1.5 mb-2 flex justify-between items-center">
-          <span>ELECTRONIC FLIGHT STRIPS</span>
+      <!-- Aircraft Strip Overlay (Right floating draggable panel) -->
+      <div id="flight-strips-window" class="absolute top-3 right-3 z-30 w-80 max-w-[95vw] bg-slate-900/95 backdrop-blur-md border border-emerald-900/80 rounded-xl p-2.5 font-radar shadow-2xl flex flex-col transition-all">
+        <!-- Draggable Title Bar -->
+        <div id="flight-strips-header" class="drag-handle text-xs font-bold text-emerald-400 border-b border-emerald-900/50 pb-1.5 mb-2 flex justify-between items-center cursor-grab active:cursor-grabbing bg-slate-950/60 -mx-2.5 -mt-2.5 px-2.5 py-1.5 rounded-t-xl">
           <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-grip-vertical text-emerald-600/70 text-[10px]"></i>
+            <span class="tracking-wide">ELECTRONIC FLIGHT STRIPS</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="toggleStripCompactMode()" id="btn-strip-compact" class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Toggle Minimalist / Compact Mode">
+              <i class="fa-solid fa-compress mr-0.5"></i> <span id="strip-compact-label">MINI</span>
+            </button>
             <button onclick="spawnInboundArrival()" class="text-[9px] px-1.5 py-0.5 rounded bg-sky-900 hover:bg-sky-800 text-sky-200 border border-sky-600 transition" title="Spawn Pesawat Masuk Inbound STAR / ILS">
               + Inbound
             </button>
-            <span id="aircraft-count" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">1 In Flight</span>
+            <button onclick="toggleFlightStripsPanel()" class="text-slate-400 hover:text-white px-1 py-0.5 text-xs transition" title="Hide Flight Strips">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
         </div>
 
-        <!-- STRIP BAYS FILTER TAB -->
-        <div class="flex gap-1 mb-2 bg-slate-950 p-1 rounded border border-emerald-950 text-[10px]">
-          <button id="bay-tab-all" onclick="setStripBayFilter('ALL')" class="flex-1 py-0.5 rounded font-bold transition bg-emerald-700 text-white">ALL</button>
-          <button id="bay-tab-dep" onclick="setStripBayFilter('DEP')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">DEP</button>
-          <button id="bay-tab-twr" onclick="setStripBayFilter('TWR')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">TWR</button>
-          <button id="bay-tab-app" onclick="setStripBayFilter('APP')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">APP</button>
+        <!-- STRIP BAYS FILTER TAB & COUNT -->
+        <div id="strip-controls-row" class="flex items-center justify-between gap-1 mb-1.5 text-[10px]">
+          <div class="flex flex-1 gap-1 bg-slate-950 p-0.5 rounded border border-emerald-950">
+            <button id="bay-tab-all" onclick="setStripBayFilter('ALL')" class="flex-1 py-0.5 rounded font-bold transition bg-emerald-700 text-white">ALL</button>
+            <button id="bay-tab-dep" onclick="setStripBayFilter('DEP')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">DEP</button>
+            <button id="bay-tab-twr" onclick="setStripBayFilter('TWR')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">TWR</button>
+            <button id="bay-tab-app" onclick="setStripBayFilter('APP')" class="flex-1 py-0.5 rounded transition text-slate-400 hover:text-white">APP</button>
+          </div>
+          <span id="aircraft-count" class="shrink-0 text-[9px] px-1.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-300 font-mono">1 Active</span>
         </div>
 
-        <div id="flight-strips" class="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+        <div id="flight-strips" class="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
           <!-- Strips rendered here -->
         </div>
       </div>
@@ -427,23 +476,24 @@
   </main>
 
   <!-- AMAN (ARRIVAL MANAGER) & HOLDING STACK DRAWER PANEL -->
-  <div id="aman-sequencer-panel" class="hidden absolute top-14 right-16 z-50 w-96 max-w-[95vw] bg-slate-950/95 backdrop-blur-md border border-sky-800/80 rounded-xl shadow-2xl flex flex-col max-h-[82vh] font-radar">
-    <!-- Panel Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-sky-900/60 bg-sky-950/40 rounded-t-xl">
+  <div id="aman-sequencer-panel" class="hidden absolute top-14 left-14 z-40 w-80 max-w-[95vw] bg-slate-950/95 backdrop-blur-md border border-sky-800/80 rounded-xl shadow-2xl flex flex-col max-h-[82vh] font-radar transition-all">
+    <!-- Panel Header (Draggable) -->
+    <div id="aman-sequencer-header" class="drag-handle flex items-center justify-between px-3 py-2 border-b border-sky-900/60 bg-sky-950/60 rounded-t-xl cursor-grab active:cursor-grabbing">
       <div class="flex items-center gap-1.5">
+        <i class="fa-solid fa-grip-vertical text-sky-600/70 text-[10px]"></i>
         <i class="fa-solid fa-list-ol text-sky-400 text-xs"></i>
-        <span class="text-xs font-bold text-sky-200 tracking-wide">ARRIVAL MANAGER (AMAN) & HOLDING STACK</span>
+        <span class="text-xs font-bold text-sky-200 tracking-wide">ARRIVAL MANAGER (AMAN)</span>
       </div>
       <button onclick="toggleAmanPanel()" class="px-1.5 py-0.5 rounded text-[10px] text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Close AMAN">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
 
-    <!-- Holding Stack Visualizer Section -->
+    <!-- Holding Stack Visualizer Section (Aviation Ladder Style) -->
     <div class="p-2 border-b border-slate-800/80 bg-slate-950">
       <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
         <span><i class="fa-solid fa-layer-group text-purple-400 mr-1"></i>Holding Altitude Stack</span>
-        <span class="text-[9px] text-slate-500">1000ft Vertical Step</span>
+        <span class="text-[9px] text-slate-500">1000ft Step</span>
       </div>
       <div id="holding-stack-visualizer" class="space-y-0.5 bg-slate-900/80 p-1.5 rounded border border-slate-800">
         <div class="text-slate-500 text-[10px] italic p-1 text-center">Holding stack kosong.</div>
@@ -542,18 +592,18 @@
   </div>
 
   <!-- Modular ATC Frontend Scripts -->
-  <script src="/js/state.js?v=20260930_v2"></script>
-  <script src="/js/logger.js?v=20260930_v2"></script>
-  <script src="/js/audio.js?v=20260930_v2"></script>
-  <script src="/js/radar.js?v=20260930_v2"></script>
-  <script src="/js/strips.js?v=20260930_v2"></script>
-  <script src="/js/physics_ground.js?v=20260930_v2"></script>
-  <script src="/js/safety.js?v=20260930_v2"></script>
-  <script src="/js/tactical.js?v=20260930_v2"></script>
-  <script src="/js/aman.js?v=20260930_v2"></script>
-  <script src="/js/academy.js?v=20260930_v2"></script>
-  <script src="/js/weather.js?v=20260930_v2"></script>
-  <script src="/js/physics_air.js?v=20260930_v2"></script>
-  <script src="/js/controller.js?v=20260930_v2"></script>
+  <script src="/js/state.js?v=20260930_v3"></script>
+  <script src="/js/logger.js?v=20260930_v3"></script>
+  <script src="/js/audio.js?v=20260930_v3"></script>
+  <script src="/js/radar.js?v=20260930_v3"></script>
+  <script src="/js/strips.js?v=20260930_v3"></script>
+  <script src="/js/physics_ground.js?v=20260930_v3"></script>
+  <script src="/js/safety.js?v=20260930_v3"></script>
+  <script src="/js/tactical.js?v=20260930_v3"></script>
+  <script src="/js/aman.js?v=20260930_v3"></script>
+  <script src="/js/academy.js?v=20260930_v3"></script>
+  <script src="/js/weather.js?v=20260930_v3"></script>
+  <script src="/js/physics_air.js?v=20260930_v3"></script>
+  <script src="/js/controller.js?v=20260930_v3"></script>
 </body>
 </html>

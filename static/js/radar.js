@@ -636,15 +636,16 @@ function drawTmaScreen() {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // SID Label
-    const midIdx = Math.floor(sid.coords.length / 2);
-    const pm = latLonToScreenCoord(sid.coords[midIdx][0], sid.coords[midIdx][1], st);
-    ctx.font = isActive ? "bold 11px 'Share Tech Mono'" : "9px 'Share Tech Mono'";
+    // SID Route Label (rendered at midpoint of first leg to avoid waypoint clutter)
+    const pA = latLonToScreenCoord(sid.coords[0][0], sid.coords[0][1], st);
+    const pB = latLonToScreenCoord(sid.coords[1][0], sid.coords[1][1], st);
+    const pm = { x: (pA.x + pB.x) / 2, y: (pA.y + pB.y) / 2 };
+    ctx.font = isActive ? "bold 10px 'Share Tech Mono'" : "8px 'Share Tech Mono'";
     ctx.fillStyle = isActive ? "#fbbf24" : "rgba(245, 158, 11, 0.4)";
-    ctx.fillText(`${isActive ? '★ [ACTIVE SID] ' : '[SID] '}${sid.id}`, pm.x - 15, pm.y - 8);
+    ctx.fillText(`${isActive ? '★ ' : ''}${sid.id}`, pm.x - 12, pm.y - 6);
   });
 
-  // STARs (Standard Terminal Arrival Routes) - Cyan/Blue dashed routes
+  // 3. STARs (Standard Terminal Arrival Routes) - Cyan dashed routes
   (airportData.stars || []).forEach(star => {
     if (!star.coords || star.coords.length < 2) return;
     const isActive = activeStarId === star.id;
@@ -661,12 +662,13 @@ function drawTmaScreen() {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // STAR Label
-    const midIdx = Math.floor(star.coords.length / 2);
-    const pm = latLonToScreenCoord(star.coords[midIdx][0], star.coords[midIdx][1], st);
-    ctx.font = isActive ? "bold 11px 'Share Tech Mono'" : "9px 'Share Tech Mono'";
+    // STAR Route Label (rendered at midpoint of first leg to avoid waypoint clutter)
+    const pA = latLonToScreenCoord(star.coords[0][0], star.coords[0][1], st);
+    const pB = latLonToScreenCoord(star.coords[1][0], star.coords[1][1], st);
+    const pm = { x: (pA.x + pB.x) / 2, y: (pA.y + pB.y) / 2 };
+    ctx.font = isActive ? "bold 10px 'Share Tech Mono'" : "8px 'Share Tech Mono'";
     ctx.fillStyle = isActive ? "#67e8f9" : "rgba(6, 182, 212, 0.4)";
-    ctx.fillText(`${isActive ? '★ [ACTIVE STAR] ' : '[STAR] '}${star.id}`, pm.x + 8, pm.y + 12);
+    ctx.fillText(`${isActive ? '★ ' : ''}${star.id}`, pm.x + 6, pm.y - 6);
   });
 
   // 4. Center Coordination & Handoff Gateways (Entry / Exit fixes)
