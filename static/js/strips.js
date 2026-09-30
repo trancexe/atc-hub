@@ -272,6 +272,14 @@ function renderFlightStrips() {
               ${(airportData.gates || []).map(g => `<option value="${g.ref}" ${(ac.assignedGate || 'E1') === g.ref ? 'selected' : ''}>${g.terminal ? g.terminal + ' · ' : ''}Gate ${g.ref}</option>`).join('')}
             </select>
           </div>
+          ${["GATE", "PUSHBACK", "READY_TAXI", "TAXI", "LANDED", "TAXI_IN"].includes(ac.state) ? `
+            <div class="col-span-2 flex items-center justify-between gap-1 bg-amber-950/30 px-1.5 py-0.5 rounded border border-amber-900/40">
+              <span class="text-[8px] text-amber-400 font-mono font-bold uppercase">Taxi Suggest</span>
+              <span class="text-[9px] text-amber-300 font-mono truncate" title="${(typeof getAutoSuggestTaxiRoute === 'function' && getAutoSuggestTaxiRoute(ac).via) ? getAutoSuggestTaxiRoute(ac).via.join(' - ') : 'AUTO'}">
+                ${(typeof getAutoSuggestTaxiRoute === 'function' && getAutoSuggestTaxiRoute(ac).via) ? getAutoSuggestTaxiRoute(ac).via.join(' ➔ ') : 'NC / NP'}
+              </span>
+            </div>
+          ` : ''}
         </div>
 
         <!-- TACTICAL RESOLUTION CONTROLS (Milestone 5: Vector, Altitude Step, Speed, Go-Around) -->
@@ -712,9 +720,11 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = false;
-      readback = `Taxi holding point runway ${rwySpoken} via ${hpName}, ${matchedAc.callsign}`;
+      const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(matchedAc) : null;
+      const taxiRouteSpoken = (autoTaxi && autoTaxi.text) ? autoTaxi.text : hpName;
+      readback = `Taxi holding point runway ${rwySpoken} via ${taxiRouteSpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
-        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) | State -> TAXI`);
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) via ${autoTaxi && autoTaxi.via ? autoTaxi.via.join(' - ') : hpName} | State -> TAXI`);
       }
       executeTaxiMovement(matchedAc);
     } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
@@ -807,7 +817,14 @@ function handleRadarVoiceCommand(text, parsedData) {
       }
     } else if (matchedAc.state === "LANDED" && (norm.includes("ground") || norm.includes("vacate") || norm.includes("121") || norm.includes("taxi"))) {
       matchedAc.state = "TAXI_IN";
-      readback = `Vacating runway via November 4, Ground on 121 decimal 6, ${matchedAc.callsign}`;
+      const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(matchedAc) : null;
+      const exitSpoken = (autoTaxi && autoTaxi.exitSpoken) ? autoTaxi.exitSpoken : "November five";
+      const gateSpoken = (typeof formatTaxiwayPhonetic === "function") ? formatTaxiwayPhonetic(matchedAc.assignedGate || "E1") : (matchedAc.assignedGate || "Echo one");
+      const routeSpoken = (autoTaxi && autoTaxi.text) ? autoTaxi.text : "November Charlie";
+      readback = `Vacating via ${exitSpoken}, taxi to Gate ${gateSpoken} via ${routeSpoken}, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Runway Vacated & Taxi In`, `Exit: ${exitSpoken} | Gate: ${matchedAc.assignedGate || 'E1'} via ${autoTaxi && autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}`);
+      }
       executeTaxiInMovement(matchedAc);
     } else if (matchedAc.state === "TAXI_IN" && (norm.includes("gate") || norm.includes("stand") || norm.includes("taxi") || norm.includes("continue"))) {
       readback = `Taxi to Gate Echo 1 via November Charlie, ${matchedAc.callsign}`;

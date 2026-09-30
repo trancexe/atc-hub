@@ -178,6 +178,88 @@ function executeDebugCommand() {
   handleRadarVoiceCommand(instructionText, {});
 }
 
+// Helper to convert taxiway designator (e.g. NC6, NP2, N2, S4) into authentic spoken NATO phonetic
+function formatTaxiwayPhonetic(twyCode) {
+  if (!twyCode) return "";
+  const nato = {
+    A: "Alpha", B: "Bravo", C: "Charlie", D: "Delta", E: "Echo",
+    F: "Foxtrot", G: "Golf", H: "Hotel", I: "India", J: "Juliett",
+    K: "Kilo", L: "Lima", M: "Mike", N: "November", O: "Oscar",
+    P: "Papa", Q: "Quebec", R: "Romeo", S: "Sierra", T: "Tango",
+    U: "Uniform", V: "Victor", W: "Whiskey", X: "X-ray", Y: "Yankee", Z: "Zulu"
+  };
+  const nums = {
+    "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four",
+    "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine"
+  };
+  const parts = [];
+  for (const ch of String(twyCode)) {
+    const up = ch.toUpperCase();
+    if (nato[up]) parts.push(nato[up]);
+    else if (nums[up]) parts.push(nums[up]);
+    else parts.push(ch);
+  }
+  return parts.join(" ");
+}
+
+// Build precise auto-suggested taxi route according to official Jeppesen 10-6 chart
+function getAutoSuggestTaxiRoute(ac) {
+  const rwy = ac.clearedRwy || "25R";
+  const gateRef = ac.assignedGate || "E1";
+  
+  // Departure taxiway route auto-suggest (Chart 10-6S / 10-6S1)
+  if (["GATE", "PUSHBACK", "READY_TAXI", "TAXI"].includes(ac.state)) {
+    if (rwy === "25R") {
+      if (gateRef.startsWith("A") || gateRef.startsWith("B") || gateRef.startsWith("C")) {
+        return { via: ["SP1", "WC2", "NP2", "N2"], text: "Sierra Papa one, Whiskey Charlie two, November Papa two, November two", hp: "N2" };
+      } else if (gateRef.startsWith("D")) {
+        return { via: ["NC7", "NP2", "N2"], text: "November Charlie seven, November Papa two, November two", hp: "N2" };
+      } else if (gateRef.startsWith("E")) {
+        return { via: ["NC6", "NP2", "N2"], text: "November Charlie six, November Papa two, November two", hp: "N2" };
+      } else if (gateRef.startsWith("F")) {
+        return { via: ["NCY", "NP2", "N2"], text: "November Charlie Yankee, November Papa two, November two", hp: "N2" };
+      } else {
+        // Terminal 3
+        return { via: ["NC3", "NP2", "N2"], text: "November Charlie three, November Papa two, November two", hp: "N2" };
+      }
+    } else if (rwy === "07L") {
+      return { via: ["NP2", "N8"], text: "November Papa two, November eight", hp: "N8" };
+    } else if (rwy === "25L") {
+      if (gateRef.startsWith("E") || gateRef.startsWith("F") || !isNaN(parseInt(gateRef[0]))) {
+        return { via: ["NP1", "WC1", "SP1", "S2"], text: "November Papa one, Whiskey Charlie one, Sierra Papa one, Sierra two", hp: "S2" };
+      } else {
+        return { via: ["SC4", "SP1", "S2"], text: "Sierra Charlie four, Sierra Papa one, Sierra two", hp: "S2" };
+      }
+    } else if (rwy === "07R") {
+      return { via: ["SP1", "S8"], text: "Sierra Papa one, Sierra eight", hp: "S8" };
+    } else if (rwy === "24") {
+      return { via: ["NP3", "M1"], text: "November Papa three, Mike one", hp: "M1" };
+    } else {
+      return { via: ["NP3", "M8"], text: "November Papa three, Mike eight", hp: "M8" };
+    }
+  }
+
+  // Arrival taxi-in route auto-suggest (Chart 10-6 / 10-6B / 10-6C / 10-6H)
+  if (rwy === "25R") {
+    if (gateRef.startsWith("E") || gateRef.startsWith("F")) {
+      return { exit: "N5", exitSpoken: "November five", via: ["N5", "NC5", "NCY"], text: "November five, November Charlie five, November Charlie Yankee", gate: gateRef };
+    } else if (gateRef.startsWith("D")) {
+      return { exit: "N5", exitSpoken: "November five", via: ["N5", "NC6", "NPW"], text: "November five, November Charlie six, November Papa Whiskey", gate: gateRef };
+    } else if (gateRef.startsWith("A") || gateRef.startsWith("B") || gateRef.startsWith("C")) {
+      return { exit: "N5", exitSpoken: "November five", via: ["N5", "NC5", "NP1", "WC1"], text: "November five, November Charlie five, November Papa one, Whiskey Charlie one", gate: gateRef };
+    } else {
+      // Terminal 3
+      return { exit: "N5", exitSpoken: "November five", via: ["N5", "NP2", "NC3"], text: "November five, November Papa two, November Charlie three", gate: gateRef };
+    }
+  } else if (rwy === "07L") {
+    return { exit: "N3", exitSpoken: "November three", via: ["N3", "NP2", "NCY"], text: "November three, November Papa two, November Charlie Yankee", gate: gateRef };
+  } else if (rwy === "25L") {
+    return { exit: "S5", exitSpoken: "Sierra five", via: ["S5", "SC5", "SP1"], text: "Sierra five, Sierra Charlie five, Sierra Papa one", gate: gateRef };
+  } else {
+    return { exit: "S3", exitSpoken: "Sierra three", via: ["S3", "SP2", "SCX"], text: "Sierra three, Sierra Papa two, Sierra Charlie X-ray", gate: gateRef };
+  }
+}
+
 function getDynamicEasyModePrompt(ac) {
   if (!ac) return { context: "Tidak ada pesawat.", speech: "Standby", actionDesc: "Standby" };
 
@@ -187,12 +269,13 @@ function getDynamicEasyModePrompt(ac) {
   const starKey = ac.clearedStar || "DOLTA 1A";
   const mech = (airportData && airportData.runway_mechanisms) ? airportData.runway_mechanisms[rwyKey] : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
-  const exitTwy = mech && mech.exit_taxiways && mech.exit_taxiways.length > 0 ? mech.exit_taxiways[0].name : "November 4";
+  const autoTaxi = getAutoSuggestTaxiRoute(ac);
+  const exitTwy = autoTaxi && autoTaxi.exitSpoken ? autoTaxi.exitSpoken : (mech && mech.exit_taxiways && mech.exit_taxiways.length > 0 ? mech.exit_taxiways[0].name : "November 5");
 
   switch (ac.state) {
     case "GATE":
       return {
-        context: `Pesawat di Gate E1 telah melaporkan initial check-in (POB ${ac.pob || 156}, tujuan ${ac.dest || 'Surabaya'}, via ${sidKey}). Siap push and start untuk Runway ${rwyKey}.`,
+        context: `Pesawat di Gate ${ac.assignedGate || 'E1'} telah melaporkan initial check-in (POB ${ac.pob || 156}, tujuan ${ac.dest || 'Surabaya'}, via ${sidKey}). Siap push and start untuk Runway ${rwyKey}.`,
         speech: `${cs} push and start approved, facing west`,
         actionDesc: "Push & Start Approved"
       };
@@ -204,9 +287,9 @@ function getDynamicEasyModePrompt(ac) {
       };
     case "READY_TAXI":
       return {
-        context: `Pesawat selesai pushback, pilot check-in meminta clearance taxi menuju Runway ${rwyKey}.`,
-        speech: `${cs} taxi holding point runway ${rwyKey} via ${hpName}`,
-        actionDesc: `Taxi to Holding Point ${rwyKey}`
+        context: `Pesawat selesai pushback di ${ac.assignedGate ? 'Gate ' + ac.assignedGate : 'Gate E1'}. Berikan clearance taxi presisi via rute resmi Jeppesen 10-6.`,
+        speech: `${cs} taxi holding point runway ${rwyKey} via ${autoTaxi.text || hpName}`,
+        actionDesc: `Taxi via ${autoTaxi.via ? autoTaxi.via.join(' - ') : hpName}`
       };
     case "HOLD_SHORT_CROSS":
       return {
@@ -216,7 +299,7 @@ function getDynamicEasyModePrompt(ac) {
       };
     case "TAXI":
       return {
-        context: `Pesawat sedang taxi menyusuri taxiway menuju holding point Runway ${rwyKey} (${hpName})...`,
+        context: `Pesawat sedang taxi menyusuri ${autoTaxi.via ? autoTaxi.via.join(' - ') : hpName} menuju holding point Runway ${rwyKey}...`,
         speech: `Standby at holding point, ${cs}`,
         actionDesc: "Taxiing"
       };
@@ -253,15 +336,15 @@ function getDynamicEasyModePrompt(ac) {
       };
     case "LANDED":
       return {
-        context: `Pesawat telah mendarat di Runway ${rwyKey}. Berikan izin keluar runway via ${exitTwy} ke Ground.`,
+        context: `Pesawat telah mendarat di Runway ${rwyKey}. Instruksikan keluar runway via rapid exit resmi ${exitTwy} ke Ground.`,
         speech: `${cs} vacate runway via ${exitTwy}, contact Ground 121 decimal 6`,
         actionDesc: `Vacate RWY via ${exitTwy}`
       };
     case "TAXI_IN":
       return {
-        context: `Pesawat sedang taxi masuk (taxi in) dari Runway ${rwyKey} menuju gate stand.`,
-        speech: `${cs} taxi to Gate Echo 1 via November Charlie`,
-        actionDesc: "Taxi to Gate"
+        context: `Pesawat mendarat sedang taxi masuk menuju Gate ${ac.assignedGate || 'E1'}. Rute auto-suggest via ${autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}.`,
+        speech: `${cs} taxi to Gate ${formatTaxiwayPhonetic(ac.assignedGate || 'E1')} via ${autoTaxi.text || 'November Charlie'}`,
+        actionDesc: `Taxi via ${autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}`
       };
     case "PARKED":
       return {

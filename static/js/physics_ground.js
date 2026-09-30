@@ -131,18 +131,33 @@ function assignRealisticGate(airline, callsign) {
   const csUpper = (callsign || "").toUpperCase();
 
   let pool = [];
-  if (airUpper.includes("GARUDA") || csUpper.includes("GIA")) {
-    pool = t3;
+  // Terminal 3 (Pier Gates 1-16 / 1A-2D):
+  // Gates 1 - 10: International Pier (Garuda International widebodies, Singapore Airlines, foreign carriers)
+  // Gates 11 - 16 / 1A - 2D: Domestic Pier (Garuda Indonesia domestic, Citilink)
+  const t3Intl = t3.filter(g => ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].includes(g.ref));
+  const t3Dom = t3.filter(g => !["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].includes(g.ref));
+
+  if (airUpper.includes("SINGAPORE") || csUpper.includes("SIA") || airUpper.includes("CARGOLUX") || csUpper.includes("CLX") || airUpper.includes("QATAR") || airUpper.includes("EMIRATES") || airUpper.includes("CATHAY") || airUpper.includes("ANA") || airUpper.includes("JAL")) {
+    pool = t3Intl.length ? t3Intl : t3;
+  } else if (airUpper.includes("GARUDA") || csUpper.includes("GIA")) {
+    // If widebody / international callsign (e.g. 800-series), assign T3 International; otherwise T3 Domestic
+    if (csUpper.includes("880") || csUpper.includes("888") || csUpper.includes("8") || airUpper.includes("330") || airUpper.includes("777")) {
+      pool = t3Intl.length ? t3Intl : t3;
+    } else {
+      pool = t3Dom.length ? t3Dom : t3;
+    }
   } else if (airUpper.includes("CITILINK") || csUpper.includes("CTV") || csUpper.includes("SUPERGREEN")) {
-    pool = t1C.length ? t1C : t3;
-  } else if (airUpper.includes("LION") || csUpper.includes("LNI") || airUpper.includes("SUPER AIR") || csUpper.includes("SJV")) {
-    pool = t1A.length ? t1A : t1B;
-  } else if (airUpper.includes("BATIK") || csUpper.includes("BTK")) {
-    pool = t2D.length ? t2D : t2E;
-  } else if (airUpper.includes("AIRASIA") || csUpper.includes("AWQ") || csUpper.includes("AXM")) {
+    // Citilink uses Terminal 1C and Terminal 3 Domestic
+    pool = t1C.length ? t1C : t3Dom;
+  } else if (airUpper.includes("LION") || csUpper.includes("LNI") || airUpper.includes("SUPER AIR") || csUpper.includes("SJV") || airUpper.includes("BATIK") || csUpper.includes("BTK")) {
+    if (airUpper.includes("BATIK") || csUpper.includes("BTK")) {
+      pool = t2D.length ? t2D : t2E;
+    } else {
+      pool = t1A.length ? t1A : t1B;
+    }
+  } else if (airUpper.includes("AIRASIA") || csUpper.includes("AWQ") || csUpper.includes("AXM") || airUpper.includes("SCOOT")) {
+    // Low-Cost International / Domestic at Terminal 2F
     pool = t2F.length ? t2F : t2E;
-  } else if (airUpper.includes("SINGAPORE") || csUpper.includes("SIA") || airUpper.includes("CARGOLUX") || csUpper.includes("CLX")) {
-    pool = t3;
   } else {
     pool = gates;
   }

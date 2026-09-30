@@ -271,10 +271,12 @@ function handleAiAutonomousDispatch(ac, idx) {
   // AI READY_TAXI: Issue taxi clearance to holding point immediately
   if (ac.state === "READY_TAXI" && !ac._aiTaxiIssued) {
     ac._aiTaxiIssued = true;
+    const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(ac) : null;
+    const taxiRouteSpoken = (autoTaxi && autoTaxi.text) ? autoTaxi.text : hpName;
     transmitAiClearance(
       ac,
-      `${ac.callsign}, taxi to holding point runway ${rwyKey} via ${hpName}.`,
-      `Taxi to holding point runway ${rwyKey} via ${hpName}, ${ac.callsign}.`,
+      `${ac.callsign}, taxi to holding point runway ${rwyKey} via ${taxiRouteSpoken}.`,
+      `Taxi to holding point runway ${rwyKey} via ${taxiRouteSpoken}, ${ac.callsign}.`,
       () => {
         ac.state = "TAXI";
         ac._runwayCrossCleared = false;
@@ -415,15 +417,19 @@ function handleAiAutonomousDispatch(ac, idx) {
     }
   }
 
-  // AI LANDED (Vacating): Handover to Ground Control
+  // AI LANDED (Vacating): Handover to Ground Control with auto-suggested rapid exit & route
   if (ac.state === "LANDED" && !ac._aiVacateIssued) {
     ac._aiVacateIssued = true;
     setTimeout(() => {
       if (ac.state !== "LANDED") return;
+      const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(ac) : null;
+      const exitSpoken = (autoTaxi && autoTaxi.exitSpoken) ? autoTaxi.exitSpoken : "November five";
+      const gateSpoken = (typeof formatTaxiwayPhonetic === "function") ? formatTaxiwayPhonetic(ac.assignedGate || "E1") : (ac.assignedGate || "Echo one");
+      const routeSpoken = (autoTaxi && autoTaxi.text) ? autoTaxi.text : "November Charlie";
       transmitAiClearance(
         ac,
-        `${ac.callsign}, vacate runway via November 4, contact Ground 121 decimal 6.`,
-        `Vacating runway via November 4, contacting Ground 121 decimal 6, ${ac.callsign}.`,
+        `${ac.callsign}, vacate via ${exitSpoken}, taxi to Gate ${gateSpoken} via ${routeSpoken}.`,
+        `Vacating via ${exitSpoken}, taxi to Gate ${gateSpoken} via ${routeSpoken}, ${ac.callsign}.`,
         () => {
           ac.state = "TAXI_IN";
           executeTaxiInMovement(ac);
@@ -437,10 +443,13 @@ function handleAiAutonomousDispatch(ac, idx) {
     ac._aiTaxiInStandIssued = true;
     setTimeout(() => {
       if (ac.state !== "TAXI_IN") return;
+      const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(ac) : null;
+      const gateSpoken = (typeof formatTaxiwayPhonetic === "function") ? formatTaxiwayPhonetic(ac.assignedGate || "E1") : (ac.assignedGate || "Echo one");
+      const routeSpoken = (autoTaxi && autoTaxi.text) ? autoTaxi.text : "November Charlie";
       transmitAiClearance(
         ac,
-        `${ac.callsign}, taxi to Gate Echo 1 via November Charlie.`,
-        `Taxi to Gate Echo 1 via November Charlie, ${ac.callsign}.`,
+        `${ac.callsign}, taxi to Gate ${gateSpoken} via ${routeSpoken}.`,
+        `Taxi to Gate ${gateSpoken} via ${routeSpoken}, ${ac.callsign}.`,
         () => {
           executeTaxiInMovement(ac);
         }
