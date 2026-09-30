@@ -125,7 +125,7 @@ function executeDebugCommand() {
 
   const rwyKey = ac.clearedRwy || "25R";
   const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
-  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
 
   // Determine clearance action directly by current state machine
   let instructionText = "";
@@ -211,27 +211,27 @@ function getAutoSuggestTaxiRoute(ac) {
   if (["GATE", "PUSHBACK", "READY_TAXI", "TAXI"].includes(ac.state)) {
     if (rwy === "25R") {
       if (gateRef.startsWith("A") || gateRef.startsWith("B") || gateRef.startsWith("C")) {
-        return { via: ["SP1", "WC2", "NP2", "N2"], text: "Sierra Papa one, Whiskey Charlie two, November Papa two, November two", hp: "N2" };
+        return { via: ["SP1", "WC2", "NP2", "N1"], text: "Sierra Papa one, Whiskey Charlie two, November Papa two, November one", hp: "N1" };
       } else if (gateRef.startsWith("D")) {
-        return { via: ["NC7", "NP2", "N2"], text: "November Charlie seven, November Papa two, November two", hp: "N2" };
+        return { via: ["NC7", "NP2", "N1"], text: "November Charlie seven, November Papa two, November one", hp: "N1" };
       } else if (gateRef.startsWith("E")) {
-        return { via: ["NC6", "NP2", "N2"], text: "November Charlie six, November Papa two, November two", hp: "N2" };
+        return { via: ["NC6", "NP2", "N1"], text: "November Charlie six, November Papa two, November one", hp: "N1" };
       } else if (gateRef.startsWith("F")) {
-        return { via: ["NCY", "NP2", "N2"], text: "November Charlie Yankee, November Papa two, November two", hp: "N2" };
+        return { via: ["NCY", "NP2", "N1"], text: "November Charlie Yankee, November Papa two, November one", hp: "N1" };
       } else {
         // Terminal 3
-        return { via: ["NC3", "NP2", "N2"], text: "November Charlie three, November Papa two, November two", hp: "N2" };
+        return { via: ["NC3", "NP2", "N1"], text: "November Charlie three, November Papa two, November one", hp: "N1" };
       }
     } else if (rwy === "07L") {
-      return { via: ["NP2", "N8"], text: "November Papa two, November eight", hp: "N8" };
+      return { via: ["NP2", "N9"], text: "November Papa two, November nine", hp: "N9" };
     } else if (rwy === "25L") {
       if (gateRef.startsWith("E") || gateRef.startsWith("F") || !isNaN(parseInt(gateRef[0]))) {
-        return { via: ["NP1", "WC1", "SP1", "S2"], text: "November Papa one, Whiskey Charlie one, Sierra Papa one, Sierra two", hp: "S2" };
+        return { via: ["NP1", "WC1", "SP2", "S1"], text: "November Papa one, Whiskey Charlie one, Sierra Papa two, Sierra one", hp: "S1" };
       } else {
-        return { via: ["SC4", "SP1", "S2"], text: "Sierra Charlie four, Sierra Papa one, Sierra two", hp: "S2" };
+        return { via: ["SC4", "SP2", "S1"], text: "Sierra Charlie four, Sierra Papa two, Sierra one", hp: "S1" };
       }
     } else if (rwy === "07R") {
-      return { via: ["SP1", "S8"], text: "Sierra Papa one, Sierra eight", hp: "S8" };
+      return { via: ["SP1", "S9"], text: "Sierra Papa one, Sierra nine", hp: "S9" };
     } else if (rwy === "24") {
       return { via: ["NP3", "M1"], text: "November Papa three, Mike one", hp: "M1" };
     } else {
@@ -268,7 +268,7 @@ function getDynamicEasyModePrompt(ac) {
   const sidKey = ac.clearedSid || "DOLTA 1C";
   const starKey = ac.clearedStar || "DOLTA 1A";
   const mech = (airportData && airportData.runway_mechanisms) ? airportData.runway_mechanisms[rwyKey] : null;
-  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
   const autoTaxi = getAutoSuggestTaxiRoute(ac);
   const exitTwy = autoTaxi && autoTaxi.exitSpoken ? autoTaxi.exitSpoken : (mech && mech.exit_taxiways && mech.exit_taxiways.length > 0 ? mech.exit_taxiways[0].name : "November 5");
 

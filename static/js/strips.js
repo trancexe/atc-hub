@@ -712,7 +712,7 @@ function handleRadarVoiceCommand(text, parsedData) {
     };
     const rwySpoken = rwyPhoneticMap[rwyKey] || rwyKey;
     const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
-    const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+    const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
 
     if (matchedAc.state === "GATE" && (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start"))) {
       matchedAc.state = "PUSHBACK";

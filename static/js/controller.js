@@ -251,7 +251,7 @@ function handleAiAutonomousDispatch(ac, idx) {
   const rwyKey = ac.clearedRwy || "25R";
   const sidKey = ac.clearedSid || "DOLTA 1C";
   const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
-  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
 
   // AI GATE: Execute pushback immediately without timer lag
   if (ac.state === "GATE" && !ac._aiPushIssued) {

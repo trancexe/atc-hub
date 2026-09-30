@@ -285,7 +285,7 @@ function executeTaxiMovement(ac) {
   const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
     ? airportData.runway_mechanisms[rwyKey]
     : null;
-  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N2";
+  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
   const hpCoord = mech && mech.holding_point ? [mech.holding_point.lat, mech.holding_point.lon] : [-6.1104895, 106.6679684];
 
   // Dynamically compute authentic taxiway path via Dijkstra if departed from any gate
