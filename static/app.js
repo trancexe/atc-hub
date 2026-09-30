@@ -1517,21 +1517,7 @@ function drawGroundScreen() {
     }
   }
 
-  // 4d. Runway Crossing Stop Bar Indicator (Visible if route crosses North Runway)
-  if (selAc && (selAc.clearedRwy === "25L" || selAc.clearedRwy === "07R")) {
-    const crossPt = latLonToScreenCoord(-6.1220515, 106.6481632, st);
-    ctx.beginPath();
-    ctx.arc(crossPt.x, crossPt.y, 8, 0, Math.PI * 2);
-    ctx.fillStyle = selAc.state === "HOLD_SHORT_CROSS" ? "rgba(239, 68, 68, 0.85)" : "rgba(245, 158, 11, 0.75)";
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.font = "bold 10px 'Share Tech Mono', monospace";
-    ctx.fillStyle = "#fef08a";
-    ctx.fillText("STOP BAR: CROSS 25R/07L", crossPt.x + 12, crossPt.y + 3);
-  }
+  // 4d. Runway Crossing Stop Bar Indicator (Only if explicitly required by actual runway intersection)
 
   // 5. Holding Positions (Stop Bars)
   (airportData.holding_positions || []).forEach(hp => {
@@ -1592,18 +1578,28 @@ function drawGroundScreen() {
 
   // Highlight tactical taxi path to cleared runway for selected aircraft on Ground
   if (selAc && ["GATE", "PUSHBACK", "READY_TAXI", "TAXI", "HOLDING"].includes(selAc.state)) {
-    const dynRoute = (airportData && airportData.taxi_routes_by_runway && airportData.taxi_routes_by_runway[activeRwyKey])
-      ? airportData.taxi_routes_by_runway[activeRwyKey]
-      : null;
-    if (dynRoute && dynRoute.coords && dynRoute.coords.length > 1) {
+    // If aircraft has its own calculated taxiway route (from Dijkstra or clearance), prioritize it
+    let taxiCoords = null;
+    if (selAc.route && selAc.route.length > 1) {
+      taxiCoords = selAc.route.map(p => Array.isArray(p) ? p : [p.lat, p.lon]);
+    } else {
+      const dynRoute = (airportData && airportData.taxi_routes_by_runway && airportData.taxi_routes_by_runway[activeRwyKey])
+        ? airportData.taxi_routes_by_runway[activeRwyKey]
+        : null;
+      if (dynRoute && dynRoute.coords && dynRoute.coords.length > 1) {
+        taxiCoords = dynRoute.coords;
+      }
+    }
+
+    if (taxiCoords && taxiCoords.length > 1) {
       ctx.beginPath();
       ctx.strokeStyle = "rgba(245, 158, 11, 0.75)";
       ctx.lineWidth = Math.max(2.5, 1.8 * st.zoom);
       ctx.setLineDash([6, 6]);
-      const r0 = latLonToScreenCoord(dynRoute.coords[0][0], dynRoute.coords[0][1], st);
+      const r0 = latLonToScreenCoord(taxiCoords[0][0], taxiCoords[0][1], st);
       ctx.moveTo(r0.x, r0.y);
-      for (let i = 1; i < dynRoute.coords.length; i++) {
-        const rp = latLonToScreenCoord(dynRoute.coords[i][0], dynRoute.coords[i][1], st);
+      for (let i = 1; i < taxiCoords.length; i++) {
+        const rp = latLonToScreenCoord(taxiCoords[i][0], taxiCoords[i][1], st);
         ctx.lineTo(rp.x, rp.y);
       }
       ctx.stroke();
@@ -3264,6 +3260,7 @@ function executeTaxiMovement(ac) {
     const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1]);
     if (calculated && calculated.length > 3) {
       points = calculated.map(p => ({ lat: p[0], lon: p[1] }));
+      ac.route = calculated;
     }
   }
 
@@ -3274,31 +3271,13 @@ function executeTaxiMovement(ac) {
       : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2)
           ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
           : flightRouteMission.taxiwayPoints);
+    ac.route = points.map(p => [p.lat, p.lon]);
   }
 
   let ptIdx = (ac._crossSavedIndex !== undefined && ac._crossSavedIndex !== null) ? ac._crossSavedIndex : 0;
   ac._crossSavedIndex = null;
 
   function moveNextTaxiNode() {
-    // Check if crossing runway stop bar (e.g. going south towards 25L or 07R)
-    if ((rwyKey === "25L" || rwyKey === "07R") && !ac._runwayCrossCleared && ptIdx === 22) {
-      // Reached holding stop bar before crossing North Runway 25R/07L!
-      ac.groundSpeed = 0;
-      ac.lat = points[ptIdx].lat;
-      ac.lon = points[ptIdx].lon;
-      ac.state = "HOLD_SHORT_CROSS";
-      ac._crossSavedIndex = ptIdx;
-      ac.hasCheckedIn = false;
-      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, holding short runway two five right at November cross.`;
-      renderFlightStrips();
-      updateEasyModePrompter();
-      renderAllScreens();
-
-      setTimeout(() => {
-        triggerPilotCheckIn(ac);
-      }, 800);
-      return;
-    }
 
     if (ptIdx >= points.length) {
       // Arrived precisely at designated Runway Holding Point!

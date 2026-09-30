@@ -294,6 +294,7 @@ function executeTaxiMovement(ac) {
     const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1]);
     if (calculated && calculated.length > 3) {
       points = calculated.map(p => ({ lat: p[0], lon: p[1] }));
+      ac.route = calculated;
     }
   }
 
@@ -304,31 +305,13 @@ function executeTaxiMovement(ac) {
       : ((airportData && airportData.routes && airportData.routes.taxi_nc6_to_hp_n2)
           ? airportData.routes.taxi_nc6_to_hp_n2.map(p => ({ lat: p[0], lon: p[1] }))
           : flightRouteMission.taxiwayPoints);
+    ac.route = points.map(p => [p.lat, p.lon]);
   }
 
   let ptIdx = (ac._crossSavedIndex !== undefined && ac._crossSavedIndex !== null) ? ac._crossSavedIndex : 0;
   ac._crossSavedIndex = null;
 
   function moveNextTaxiNode() {
-    // Check if crossing runway stop bar (e.g. going south towards 25L or 07R)
-    if ((rwyKey === "25L" || rwyKey === "07R") && !ac._runwayCrossCleared && ptIdx === 22) {
-      // Reached holding stop bar before crossing North Runway 25R/07L!
-      ac.groundSpeed = 0;
-      ac.lat = points[ptIdx].lat;
-      ac.lon = points[ptIdx].lon;
-      ac.state = "HOLD_SHORT_CROSS";
-      ac._crossSavedIndex = ptIdx;
-      ac.hasCheckedIn = false;
-      ac.checkInPhrase = `Jakarta Ground, ${ac.callsign}, holding short runway two five right at November cross.`;
-      renderFlightStrips();
-      updateEasyModePrompter();
-      renderAllScreens();
-
-      setTimeout(() => {
-        triggerPilotCheckIn(ac);
-      }, 800);
-      return;
-    }
 
     if (ptIdx >= points.length) {
       // Arrived precisely at designated Runway Holding Point!
