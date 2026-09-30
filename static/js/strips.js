@@ -3,6 +3,49 @@ function makeElementDraggable(headerEl, windowEl) {
   let isDragging = false;
   let startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
 
+  headerEl.addEventListener('touchstart', (e) => {
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+    if (e.touches.length !== 1) return;
+    isDragging = true;
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+
+    const rect = windowEl.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    windowEl.style.transition = 'none';
+    windowEl.style.right = 'auto';
+    windowEl.style.bottom = 'auto';
+    windowEl.style.left = `${initialLeft}px`;
+    windowEl.style.top = `${initialTop}px`;
+    windowEl.style.zIndex = '60';
+
+    const onTouchMove = (ev) => {
+      if (!isDragging || ev.touches.length !== 1) return;
+      const touch = ev.touches[0];
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      const newLeft = Math.max(0, Math.min(window.innerWidth - windowEl.offsetWidth, initialLeft + dx));
+      const newTop = Math.max(0, Math.min(window.innerHeight - windowEl.offsetHeight, initialTop + dy));
+      windowEl.style.left = `${newLeft}px`;
+      windowEl.style.top = `${newTop}px`;
+    };
+
+    const onTouchEnd = () => {
+      isDragging = false;
+      windowEl.style.transition = '';
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+    };
+
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+  }, { passive: true });
+
   headerEl.addEventListener('mousedown', (e) => {
     // Only drag with left mouse button and not on interactive buttons
     if (e.button !== 0 || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
@@ -60,7 +103,7 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 
 // Strips Panel Visibility and Compact Mode State
-let isFlightStripsOpen = window.innerWidth >= 768;
+let isFlightStripsOpen = true;
 let isStripCompactMode = false;
 
 function toggleFlightStripsPanel() {

@@ -6,8 +6,9 @@ function bindPTT() {
     if (!el) return;
     el.addEventListener('mousedown', (e) => { e.preventDefault(); startRecording(); });
     el.addEventListener('mouseup', (e) => { e.preventDefault(); stopRecording(); });
-    el.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
-    el.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); startRecording(); }, { passive: false });
+    el.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); stopRecording(); }, { passive: false });
+    el.addEventListener('touchcancel', (e) => { e.preventDefault(); e.stopPropagation(); stopRecording(); }, { passive: false });
   };
 
   addListeners(pttBtn);

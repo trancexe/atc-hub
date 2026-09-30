@@ -889,6 +889,67 @@ function setupCanvasInteraction(cElem, screenKey) {
   let dragStartY = 0;
   let hasMovedSignificantly = false;
 
+  let lastTouchDist = 0;
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  cElem.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      st.isDragging = true;
+      hasMovedSignificantly = false;
+      const t = e.touches[0];
+      dragStartX = t.clientX;
+      dragStartY = t.clientY;
+      st.startX = t.clientX - st.panX;
+      st.startY = t.clientY - st.panY;
+    } else if (e.touches.length === 2) {
+      // Pinch to zoom start
+      st.isDragging = false;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDist = Math.hypot(dx, dy);
+    }
+  }, { passive: true });
+
+  cElem.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && st.isDragging) {
+      const t = e.touches[0];
+      if (Math.abs(t.clientX - dragStartX) > 4 || Math.abs(t.clientY - dragStartY) > 4) {
+        hasMovedSignificantly = true;
+      }
+      st.panX = t.clientX - st.startX;
+      st.panY = t.clientY - st.startY;
+      renderAllScreens();
+    } else if (e.touches.length === 2) {
+      // Pinch to zoom
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      if (lastTouchDist > 0) {
+        const factor = dist / lastTouchDist;
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const rect = cElem.getBoundingClientRect();
+        zoomScreen(screenKey, factor, midX - rect.left, midY - rect.top);
+      }
+      lastTouchDist = dist;
+    }
+  }, { passive: true });
+
+  cElem.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+      st.isDragging = false;
+      lastTouchDist = 0;
+    } else if (e.touches.length === 1) {
+      // Switched from pinch to single touch
+      lastTouchDist = 0;
+      st.isDragging = true;
+      const t = e.touches[0];
+      st.startX = t.clientX - st.panX;
+      st.startY = t.clientY - st.panY;
+    }
+  }, { passive: true });
+
   cElem.addEventListener('mousedown', (e) => {
     st.isDragging = true;
     hasMovedSignificantly = false;

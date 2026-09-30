@@ -228,9 +228,9 @@
             </div>
             <div class="bg-slate-900/90 backdrop-blur border border-slate-800 px-2 py-0.5 rounded text-[11px] font-radar text-slate-400 flex gap-1.5 items-center">
               <button onclick="toggleTaxiwayLabels()" id="btn-toggle-tw-labels" class="px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-600/80 text-amber-300 font-bold hover:bg-amber-900 mr-1 text-[10px]">TWY: ON</button>
-              <button onclick="zoomScreen('ground', 1.25)" class="hover:text-emerald-300 font-bold">+</button>
-              <button onclick="zoomScreen('ground', 0.8)" class="hover:text-emerald-300 font-bold">-</button>
-              <button onclick="resetScreen('ground')" class="hover:text-emerald-300 ml-1">Center</button>
+              <button onclick="zoomScreen('ground', 1.35)" class="w-6 h-6 flex items-center justify-center rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-sm leading-none border border-slate-700 active:scale-95">+</button>
+              <button onclick="zoomScreen('ground', 0.75)" class="w-6 h-6 flex items-center justify-center rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-sm leading-none border border-slate-700 active:scale-95">-</button>
+              <button onclick="resetScreen('ground')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 text-[10px] active:scale-95">Center</button>
             </div>
           </div>
           <canvas id="ground-canvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
@@ -246,10 +246,10 @@
             </div>
             <div class="bg-slate-900/90 backdrop-blur border border-slate-800 px-2 py-0.5 rounded text-[11px] font-radar text-slate-400 flex gap-1.5 items-center">
               <button onclick="toggleWeatherRadar()" id="btn-toggle-wx" class="px-1.5 py-0.5 rounded bg-sky-950/70 border border-sky-600/80 text-sky-300 font-bold hover:bg-sky-900 mr-1 text-[10px]">WX: ON</button>
-              <button onclick="toggleRulerTool()" id="btn-toggle-ruler" class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-bold hover:bg-slate-700 mr-1 text-[10px]" title="Tactical Separation Ruler: Klik 2 pesawat untuk ukur jarak & closing rate"><i class="fa-solid fa-ruler-combined"></i> RULER</button>
-              <button onclick="zoomScreen('tma', 1.25)" class="hover:text-sky-300 font-bold">+</button>
-              <button onclick="zoomScreen('tma', 0.8)" class="hover:text-sky-300 font-bold">-</button>
-              <button onclick="resetScreen('tma')" class="hover:text-sky-300 ml-1">Center</button>
+              <button onclick="toggleRulerTool()" id="btn-toggle-ruler" class="hidden sm:inline-block px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-bold hover:bg-slate-700 mr-1 text-[10px]" title="Tactical Separation Ruler"><i class="fa-solid fa-ruler-combined"></i> RULER</button>
+              <button onclick="zoomScreen('tma', 1.35)" class="w-6 h-6 flex items-center justify-center rounded bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold text-sm leading-none border border-slate-700 active:scale-95">+</button>
+              <button onclick="zoomScreen('tma', 0.75)" class="w-6 h-6 flex items-center justify-center rounded bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold text-sm leading-none border border-slate-700 active:scale-95">-</button>
+              <button onclick="resetScreen('tma')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 text-[10px] active:scale-95">Center</button>
             </div>
           </div>
           <canvas id="tma-canvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
@@ -258,7 +258,7 @@
       </div>
 
       <!-- Aircraft Strip Overlay (Right floating draggable & resizable panel) -->
-      <div id="flight-strips-window" class="resizable-panel hidden md:flex absolute top-3 right-3 z-30 w-96 max-w-[95vw] bg-slate-900/95 backdrop-blur-md border border-emerald-900/80 rounded-xl p-2.5 font-radar shadow-2xl flex-col">
+      <div id="flight-strips-window" class="resizable-panel absolute top-3 right-3 z-30 w-96 max-w-[95vw] bg-slate-900/95 backdrop-blur-md border border-emerald-900/80 rounded-xl p-2.5 font-radar shadow-2xl flex flex-col">
         <!-- Draggable Title Bar -->
         <div id="flight-strips-header" class="drag-handle text-xs font-bold text-emerald-400 border-b border-emerald-900/50 pb-1.5 mb-2 flex justify-between items-center cursor-grab active:cursor-grabbing bg-slate-950/60 -mx-2.5 -mt-2.5 px-2.5 py-1.5 rounded-t-xl">
           <div class="flex items-center gap-1.5">
@@ -624,18 +624,18 @@
   </div>
 
   <!-- Modular ATC Frontend Scripts -->
-  <script src="/js/state.js?v=20260930_v16"></script>
-  <script src="/js/logger.js?v=20260930_v16"></script>
-  <script src="/js/audio.js?v=20260930_v16"></script>
-  <script src="/js/radar.js?v=20260930_v16"></script>
-  <script src="/js/strips.js?v=20260930_v16"></script>
-  <script src="/js/physics_ground.js?v=20260930_v16"></script>
-  <script src="/js/safety.js?v=20260930_v16"></script>
-  <script src="/js/tactical.js?v=20260930_v16"></script>
-  <script src="/js/aman.js?v=20260930_v16"></script>
-  <script src="/js/academy.js?v=20260930_v16"></script>
-  <script src="/js/weather.js?v=20260930_v16"></script>
-  <script src="/js/physics_air.js?v=20260930_v16"></script>
-  <script src="/js/controller.js?v=20260930_v16"></script>
+  <script src="/js/state.js?v=20260930_v17"></script>
+  <script src="/js/logger.js?v=20260930_v17"></script>
+  <script src="/js/audio.js?v=20260930_v17"></script>
+  <script src="/js/radar.js?v=20260930_v17"></script>
+  <script src="/js/strips.js?v=20260930_v17"></script>
+  <script src="/js/physics_ground.js?v=20260930_v17"></script>
+  <script src="/js/safety.js?v=20260930_v17"></script>
+  <script src="/js/tactical.js?v=20260930_v17"></script>
+  <script src="/js/aman.js?v=20260930_v17"></script>
+  <script src="/js/academy.js?v=20260930_v17"></script>
+  <script src="/js/weather.js?v=20260930_v17"></script>
+  <script src="/js/physics_air.js?v=20260930_v17"></script>
+  <script src="/js/controller.js?v=20260930_v17"></script>
 </body>
 </html>
