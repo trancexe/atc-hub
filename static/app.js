@@ -2985,11 +2985,56 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = false;
-      const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(matchedAc) : null;
-      const taxiRouteSpoken = (autoTaxi && autoTaxi.text) ? autoTaxi.text : hpName;
+
+      // Extract spoken taxiway via from ATC voice command if any
+      const spokenViaList = [];
+      const twyDict = [
+        { pattern: /\b(?:sierra\s+papa\s+(?:1|one)|sp\s*1)\b/i, code: "SP1", spoken: "Sierra Papa one" },
+        { pattern: /\b(?:sierra\s+papa\s+(?:2|two)|sp\s*2)\b/i, code: "SP2", spoken: "Sierra Papa two" },
+        { pattern: /\b(?:november\s+papa\s+(?:1|one)|np\s*1)\b/i, code: "NP1", spoken: "November Papa one" },
+        { pattern: /\b(?:november\s+papa\s+(?:2|two)|np\s*2)\b/i, code: "NP2", spoken: "November Papa two" },
+        { pattern: /\b(?:november\s+papa\s+(?:3|three)|np\s*3)\b/i, code: "NP3", spoken: "November Papa three" },
+        { pattern: /\b(?:whiskey\s+charlie\s+(?:1|one)|wc\s*1)\b/i, code: "WC1", spoken: "Whiskey Charlie one" },
+        { pattern: /\b(?:whiskey\s+charlie\s+(?:2|two)|wc\s*2)\b/i, code: "WC2", spoken: "Whiskey Charlie two" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:1|one)|sc\s*1)\b/i, code: "SC1", spoken: "Sierra Charlie one" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:2|two)|sc\s*2)\b/i, code: "SC2", spoken: "Sierra Charlie two" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:4|four)|sc\s*4)\b/i, code: "SC4", spoken: "Sierra Charlie four" },
+        { pattern: /\b(?:november\s+charlie\s+(?:1|one)|nc\s*1)\b/i, code: "NC1", spoken: "November Charlie one" },
+        { pattern: /\b(?:november\s+charlie\s+(?:2|two)|nc\s*2)\b/i, code: "NC2", spoken: "November Charlie two" },
+        { pattern: /\b(?:november\s+charlie\s+(?:3|three)|nc\s*3)\b/i, code: "NC3", spoken: "November Charlie three" },
+        { pattern: /\b(?:november\s+charlie\s+(?:6|six)|nc\s*6)\b/i, code: "NC6", spoken: "November Charlie six" },
+        { pattern: /\b(?:november\s+charlie\s+(?:7|seven)|nc\s*7)\b/i, code: "NC7", spoken: "November Charlie seven" },
+        { pattern: /\b(?:november\s+charlie\s+yankee|ncy)\b/i, code: "NCY", spoken: "November Charlie Yankee" },
+        { pattern: /\b(?:november\s+(?:1|one)|n\s*1)\b/i, code: "N1", spoken: "November one" },
+        { pattern: /\b(?:november\s+(?:2|two)|n\s*2)\b/i, code: "N2", spoken: "November two" },
+        { pattern: /\b(?:november\s+(?:3|three)|n\s*3)\b/i, code: "N3", spoken: "November three" },
+        { pattern: /\b(?:november\s+(?:9|nine)|n\s*9)\b/i.test(norm) ? "N9" : null, code: "N9", spoken: "November nine" },
+        { pattern: /\b(?:sierra\s+(?:1|one)|s\s*1)\b/i, code: "S1", spoken: "Sierra one" },
+        { pattern: /\b(?:sierra\s+(?:2|two)|s\s*2)\b/i, code: "S2", spoken: "Sierra two" },
+        { pattern: /\b(?:sierra\s+(?:9|nine)|s\s*9)\b/i, code: "S9", spoken: "Sierra nine" }
+      ];
+
+      for (const twy of twyDict) {
+        if (twy.pattern && twy.pattern.test(norm)) {
+          spokenViaList.push(twy);
+        }
+      }
+
+      let taxiRouteSpoken = hpName;
+      if (spokenViaList.length > 0) {
+        matchedAc.assignedTaxiVia = spokenViaList.map(item => item.code);
+        taxiRouteSpoken = spokenViaList.map(item => item.spoken).join(", ");
+      } else {
+        const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(matchedAc) : null;
+        if (autoTaxi && autoTaxi.via) {
+          matchedAc.assignedTaxiVia = autoTaxi.via;
+          taxiRouteSpoken = autoTaxi.text || autoTaxi.via.join(", ");
+        }
+      }
+
       readback = `Taxi holding point runway ${rwySpoken} via ${taxiRouteSpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
-        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) via ${autoTaxi && autoTaxi.via ? autoTaxi.via.join(' - ') : hpName} | State -> TAXI`);
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) via ${taxiRouteSpoken} | State -> TAXI`);
       }
       executeTaxiMovement(matchedAc);
     } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
@@ -3159,8 +3204,41 @@ class TaxiMinHeap {
   isEmpty() { return this.data.length === 0; }
 }
 
-// Authentic Dijkstra Taxiway Routing on WIII OSM Graph
-function findTaxiwayPath(startLat, startLon, endLat, endLon) {
+// Authentic Dijkstra Taxiway Routing on WIII OSM Graph with Tactical VIA Waypoint Enforcement
+let _twyRefToNodesCache = null;
+
+function buildTaxiwayRefNodeMap() {
+  if (_twyRefToNodesCache) return _twyRefToNodesCache;
+  if (!airportData || !airportData.taxi_graph || !airportData.taxiways) return {};
+
+  const nodes = airportData.taxi_graph.nodes;
+  const taxiways = airportData.taxiways;
+  const coordToNode = new Map();
+
+  for (const nid in nodes) {
+    const pt = nodes[nid];
+    const key = `${Math.round(pt[0] * 100000)},${Math.round(pt[1] * 100000)}`;
+    coordToNode.set(key, nid);
+  }
+
+  const map = {};
+  for (const twy of taxiways) {
+    const ref = twy.ref;
+    if (!ref) continue;
+    const refUpper = ref.toUpperCase();
+    if (!map[refUpper]) map[refUpper] = new Set();
+    for (const c of (twy.coords || [])) {
+      const key = `${Math.round(c[0] * 100000)},${Math.round(c[1] * 100000)}`;
+      const nid = coordToNode.get(key);
+      if (nid) map[refUpper].add(nid);
+    }
+  }
+
+  _twyRefToNodesCache = map;
+  return map;
+}
+
+function findTaxiwayPath(startLat, startLon, endLat, endLon, requestedVia = null) {
   if (!airportData || !airportData.taxi_graph) return null;
   const graph = airportData.taxi_graph;
   const nodes = graph.nodes;
@@ -3187,6 +3265,29 @@ function findTaxiwayPath(startLat, startLon, endLat, endLon) {
     return [[startLat, startLon], [endLat, endLon]];
   }
 
+  const twyMap = buildTaxiwayRefNodeMap();
+  const avoidNodes = new Set();
+  const preferNodes = new Set();
+
+  if (requestedVia && requestedVia.length > 0) {
+    for (const v of requestedVia) {
+      const vUpper = String(v).toUpperCase().trim();
+      if (twyMap[vUpper]) {
+        for (const nid of twyMap[vUpper]) preferNodes.add(nid);
+      }
+      // If ATC explicitly commands one parallel corridor, penalize the opposite parallel corridor
+      if (vUpper === "SP1" && twyMap["SP2"]) {
+        for (const nid of twyMap["SP2"]) avoidNodes.add(nid);
+      } else if (vUpper === "SP2" && twyMap["SP1"]) {
+        for (const nid of twyMap["SP1"]) avoidNodes.add(nid);
+      } else if (vUpper === "NP1" && twyMap["NP2"]) {
+        for (const nid of twyMap["NP2"]) avoidNodes.add(nid);
+      } else if (vUpper === "NP2" && twyMap["NP1"]) {
+        for (const nid of twyMap["NP1"]) avoidNodes.add(nid);
+      }
+    }
+  }
+
   const dist = {};
   const prev = {};
   const pq = new TaxiMinHeap();
@@ -3208,7 +3309,15 @@ function findTaxiwayPath(startLat, startLon, endLat, endLon) {
       const vPt = nodes[v];
       const dLat = (vPt[0] - uPt[0]) * 111000;
       const dLon = (vPt[1] - uPt[1]) * 111000 * Math.cos(uPt[0] * Math.PI / 180);
-      const weight = Math.hypot(dLat, dLon);
+      let weight = Math.hypot(dLat, dLon);
+
+      if (avoidNodes.has(v)) {
+        weight += 10000.0; // Heavy penalty to prevent diverting into forbidden taxiway
+      }
+      if (preferNodes.has(v)) {
+        weight *= 0.1; // 10x attraction bonus to follow commanded taxiway
+      }
+
       const newDist = cur.d + weight;
 
       if (dist[v] === undefined || newDist < dist[v]) {
@@ -3416,7 +3525,8 @@ function executeTaxiMovement(ac) {
   // Dynamically compute authentic taxiway path via Dijkstra if departed from any gate
   let points = null;
   if (airportData && airportData.taxi_graph && ac.lat && ac.lon) {
-    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1]);
+    const viaReq = ac.assignedTaxiVia || (ac.commandedTaxiVia ? [ac.commandedTaxiVia] : null);
+    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1], viaReq);
     if (calculated && calculated.length > 3) {
       points = calculated.map(p => ({ lat: p[0], lon: p[1] }));
       ac.route = calculated;

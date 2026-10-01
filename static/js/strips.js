@@ -774,11 +774,56 @@ function handleRadarVoiceCommand(text, parsedData) {
     } else if (matchedAc.state === "READY_TAXI" && (intent === "TAXI" || norm.includes("taxi"))) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = false;
-      const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(matchedAc) : null;
-      const taxiRouteSpoken = (autoTaxi && autoTaxi.text) ? autoTaxi.text : hpName;
+
+      // Extract spoken taxiway via from ATC voice command if any
+      const spokenViaList = [];
+      const twyDict = [
+        { pattern: /\b(?:sierra\s+papa\s+(?:1|one)|sp\s*1)\b/i, code: "SP1", spoken: "Sierra Papa one" },
+        { pattern: /\b(?:sierra\s+papa\s+(?:2|two)|sp\s*2)\b/i, code: "SP2", spoken: "Sierra Papa two" },
+        { pattern: /\b(?:november\s+papa\s+(?:1|one)|np\s*1)\b/i, code: "NP1", spoken: "November Papa one" },
+        { pattern: /\b(?:november\s+papa\s+(?:2|two)|np\s*2)\b/i, code: "NP2", spoken: "November Papa two" },
+        { pattern: /\b(?:november\s+papa\s+(?:3|three)|np\s*3)\b/i, code: "NP3", spoken: "November Papa three" },
+        { pattern: /\b(?:whiskey\s+charlie\s+(?:1|one)|wc\s*1)\b/i, code: "WC1", spoken: "Whiskey Charlie one" },
+        { pattern: /\b(?:whiskey\s+charlie\s+(?:2|two)|wc\s*2)\b/i, code: "WC2", spoken: "Whiskey Charlie two" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:1|one)|sc\s*1)\b/i, code: "SC1", spoken: "Sierra Charlie one" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:2|two)|sc\s*2)\b/i, code: "SC2", spoken: "Sierra Charlie two" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:4|four)|sc\s*4)\b/i, code: "SC4", spoken: "Sierra Charlie four" },
+        { pattern: /\b(?:november\s+charlie\s+(?:1|one)|nc\s*1)\b/i, code: "NC1", spoken: "November Charlie one" },
+        { pattern: /\b(?:november\s+charlie\s+(?:2|two)|nc\s*2)\b/i, code: "NC2", spoken: "November Charlie two" },
+        { pattern: /\b(?:november\s+charlie\s+(?:3|three)|nc\s*3)\b/i, code: "NC3", spoken: "November Charlie three" },
+        { pattern: /\b(?:november\s+charlie\s+(?:6|six)|nc\s*6)\b/i, code: "NC6", spoken: "November Charlie six" },
+        { pattern: /\b(?:november\s+charlie\s+(?:7|seven)|nc\s*7)\b/i, code: "NC7", spoken: "November Charlie seven" },
+        { pattern: /\b(?:november\s+charlie\s+yankee|ncy)\b/i, code: "NCY", spoken: "November Charlie Yankee" },
+        { pattern: /\b(?:november\s+(?:1|one)|n\s*1)\b/i, code: "N1", spoken: "November one" },
+        { pattern: /\b(?:november\s+(?:2|two)|n\s*2)\b/i, code: "N2", spoken: "November two" },
+        { pattern: /\b(?:november\s+(?:3|three)|n\s*3)\b/i, code: "N3", spoken: "November three" },
+        { pattern: /\b(?:november\s+(?:9|nine)|n\s*9)\b/i.test(norm) ? "N9" : null, code: "N9", spoken: "November nine" },
+        { pattern: /\b(?:sierra\s+(?:1|one)|s\s*1)\b/i, code: "S1", spoken: "Sierra one" },
+        { pattern: /\b(?:sierra\s+(?:2|two)|s\s*2)\b/i, code: "S2", spoken: "Sierra two" },
+        { pattern: /\b(?:sierra\s+(?:9|nine)|s\s*9)\b/i, code: "S9", spoken: "Sierra nine" }
+      ];
+
+      for (const twy of twyDict) {
+        if (twy.pattern && twy.pattern.test(norm)) {
+          spokenViaList.push(twy);
+        }
+      }
+
+      let taxiRouteSpoken = hpName;
+      if (spokenViaList.length > 0) {
+        matchedAc.assignedTaxiVia = spokenViaList.map(item => item.code);
+        taxiRouteSpoken = spokenViaList.map(item => item.spoken).join(", ");
+      } else {
+        const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(matchedAc) : null;
+        if (autoTaxi && autoTaxi.via) {
+          matchedAc.assignedTaxiVia = autoTaxi.via;
+          taxiRouteSpoken = autoTaxi.text || autoTaxi.via.join(", ");
+        }
+      }
+
       readback = `Taxi holding point runway ${rwySpoken} via ${taxiRouteSpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
-        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) via ${autoTaxi && autoTaxi.via ? autoTaxi.via.join(' - ') : hpName} | State -> TAXI`);
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) via ${taxiRouteSpoken} | State -> TAXI`);
       }
       executeTaxiMovement(matchedAc);
     } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {

@@ -39,8 +39,41 @@ class TaxiMinHeap {
   isEmpty() { return this.data.length === 0; }
 }
 
-// Authentic Dijkstra Taxiway Routing on WIII OSM Graph
-function findTaxiwayPath(startLat, startLon, endLat, endLon) {
+// Authentic Dijkstra Taxiway Routing on WIII OSM Graph with Tactical VIA Waypoint Enforcement
+let _twyRefToNodesCache = null;
+
+function buildTaxiwayRefNodeMap() {
+  if (_twyRefToNodesCache) return _twyRefToNodesCache;
+  if (!airportData || !airportData.taxi_graph || !airportData.taxiways) return {};
+
+  const nodes = airportData.taxi_graph.nodes;
+  const taxiways = airportData.taxiways;
+  const coordToNode = new Map();
+
+  for (const nid in nodes) {
+    const pt = nodes[nid];
+    const key = `${Math.round(pt[0] * 100000)},${Math.round(pt[1] * 100000)}`;
+    coordToNode.set(key, nid);
+  }
+
+  const map = {};
+  for (const twy of taxiways) {
+    const ref = twy.ref;
+    if (!ref) continue;
+    const refUpper = ref.toUpperCase();
+    if (!map[refUpper]) map[refUpper] = new Set();
+    for (const c of (twy.coords || [])) {
+      const key = `${Math.round(c[0] * 100000)},${Math.round(c[1] * 100000)}`;
+      const nid = coordToNode.get(key);
+      if (nid) map[refUpper].add(nid);
+    }
+  }
+
+  _twyRefToNodesCache = map;
+  return map;
+}
+
+function findTaxiwayPath(startLat, startLon, endLat, endLon, requestedVia = null) {
   if (!airportData || !airportData.taxi_graph) return null;
   const graph = airportData.taxi_graph;
   const nodes = graph.nodes;
@@ -67,6 +100,29 @@ function findTaxiwayPath(startLat, startLon, endLat, endLon) {
     return [[startLat, startLon], [endLat, endLon]];
   }
 
+  const twyMap = buildTaxiwayRefNodeMap();
+  const avoidNodes = new Set();
+  const preferNodes = new Set();
+
+  if (requestedVia && requestedVia.length > 0) {
+    for (const v of requestedVia) {
+      const vUpper = String(v).toUpperCase().trim();
+      if (twyMap[vUpper]) {
+        for (const nid of twyMap[vUpper]) preferNodes.add(nid);
+      }
+      // If ATC explicitly commands one parallel corridor, penalize the opposite parallel corridor
+      if (vUpper === "SP1" && twyMap["SP2"]) {
+        for (const nid of twyMap["SP2"]) avoidNodes.add(nid);
+      } else if (vUpper === "SP2" && twyMap["SP1"]) {
+        for (const nid of twyMap["SP1"]) avoidNodes.add(nid);
+      } else if (vUpper === "NP1" && twyMap["NP2"]) {
+        for (const nid of twyMap["NP2"]) avoidNodes.add(nid);
+      } else if (vUpper === "NP2" && twyMap["NP1"]) {
+        for (const nid of twyMap["NP1"]) avoidNodes.add(nid);
+      }
+    }
+  }
+
   const dist = {};
   const prev = {};
   const pq = new TaxiMinHeap();
@@ -88,7 +144,15 @@ function findTaxiwayPath(startLat, startLon, endLat, endLon) {
       const vPt = nodes[v];
       const dLat = (vPt[0] - uPt[0]) * 111000;
       const dLon = (vPt[1] - uPt[1]) * 111000 * Math.cos(uPt[0] * Math.PI / 180);
-      const weight = Math.hypot(dLat, dLon);
+      let weight = Math.hypot(dLat, dLon);
+
+      if (avoidNodes.has(v)) {
+        weight += 10000.0; // Heavy penalty to prevent diverting into forbidden taxiway
+      }
+      if (preferNodes.has(v)) {
+        weight *= 0.1; // 10x attraction bonus to follow commanded taxiway
+      }
+
       const newDist = cur.d + weight;
 
       if (dist[v] === undefined || newDist < dist[v]) {
@@ -296,7 +360,8 @@ function executeTaxiMovement(ac) {
   // Dynamically compute authentic taxiway path via Dijkstra if departed from any gate
   let points = null;
   if (airportData && airportData.taxi_graph && ac.lat && ac.lon) {
-    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1]);
+    const viaReq = ac.assignedTaxiVia || (ac.commandedTaxiVia ? [ac.commandedTaxiVia] : null);
+    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1], viaReq);
     if (calculated && calculated.length > 3) {
       points = calculated.map(p => ({ lat: p[0], lon: p[1] }));
       ac.route = calculated;
