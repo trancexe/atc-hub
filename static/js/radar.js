@@ -455,7 +455,8 @@ function drawGroundScreen() {
       ctx.font = "bold 9px 'Share Tech Mono'";
       ctx.fillStyle = "#fde68a";
       const hpName = hp.name || hp.ref || 'STOP BAR';
-      ctx.fillText(`HOLD ${hpName}`, p.x + 5, p.y + 3);
+      // Offset holding point label slightly so it never collides with yellow taxiway badges
+      ctx.fillText(`HOLD ${hpName}`, p.x + 8, p.y - 6);
     }
   });
 
