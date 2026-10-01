@@ -904,12 +904,13 @@ function setupCanvasInteraction(cElem, screenKey) {
       st.startY = t.clientY - st.panY;
     } else if (e.touches.length === 2) {
       // Pinch to zoom start
+      e.preventDefault();
       st.isDragging = false;
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       lastTouchDist = Math.hypot(dx, dy);
     }
-  }, { passive: true });
+  }, { passive: false });
 
   cElem.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1 && st.isDragging) {
@@ -921,20 +922,22 @@ function setupCanvasInteraction(cElem, screenKey) {
       st.panY = t.clientY - st.startY;
       renderAllScreens();
     } else if (e.touches.length === 2) {
+      e.preventDefault();
       // Pinch to zoom
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.hypot(dx, dy);
-      if (lastTouchDist > 0) {
+      if (lastTouchDist > 0 && dist > 0) {
         const factor = dist / lastTouchDist;
+        const clampedFactor = Math.max(0.7, Math.min(1.4, factor));
         const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
         const rect = cElem.getBoundingClientRect();
-        zoomScreen(screenKey, factor, midX - rect.left, midY - rect.top);
+        zoomScreen(screenKey, clampedFactor, midX - rect.left, midY - rect.top);
       }
       lastTouchDist = dist;
     }
-  }, { passive: true });
+  }, { passive: false });
 
   cElem.addEventListener('touchend', (e) => {
     if (e.touches.length === 0) {
@@ -948,7 +951,7 @@ function setupCanvasInteraction(cElem, screenKey) {
       st.startX = t.clientX - st.panX;
       st.startY = t.clientY - st.panY;
     }
-  }, { passive: true });
+  }, { passive: false });
 
   cElem.addEventListener('mousedown', (e) => {
     st.isDragging = true;

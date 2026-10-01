@@ -111,9 +111,12 @@ function toggleFlightStripsPanel() {
   const btn = document.getElementById('toggle-strips-btn');
   if (!panel) return;
 
-  isFlightStripsOpen = !isFlightStripsOpen;
-  if (isFlightStripsOpen) {
+  // Determine current visibility from computed or explicit style/class
+  const isCurrentlyHidden = panel.classList.contains('hidden') || panel.style.display === 'none';
+  if (isCurrentlyHidden) {
     panel.classList.remove('hidden');
+    panel.style.display = 'flex';
+    isFlightStripsOpen = true;
     if (btn) {
       btn.classList.add('bg-emerald-950', 'border-emerald-500', 'text-emerald-300');
       btn.classList.remove('bg-slate-900', 'border-emerald-800');
@@ -121,6 +124,8 @@ function toggleFlightStripsPanel() {
     renderFlightStrips();
   } else {
     panel.classList.add('hidden');
+    panel.style.display = 'none';
+    isFlightStripsOpen = false;
     if (btn) {
       btn.classList.remove('bg-emerald-950', 'border-emerald-500');
       btn.classList.add('bg-slate-900', 'border-emerald-800');

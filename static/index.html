@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ATC HUB - WIII Multi-Radar & Voice Academy</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,7 +12,12 @@
       height: 100%;
       height: 100dvh;
       overflow: hidden;
-      touch-action: manipulation;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    canvas {
+      touch-action: none;
     }
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap');
     .font-radar { font-family: 'Share Tech Mono', monospace; }
@@ -69,15 +74,19 @@
       #easy-mode-prompter {
         width: calc(100vw - 16px) !important;
         max-width: calc(100vw - 16px) !important;
-        bottom: 84px !important;
+        bottom: 74px !important;
         left: 8px !important;
         transform: none !important;
-        padding: 8px 10px !important;
+        padding: 6px 8px !important;
       }
       #easy-mode-prompter.collapsed #prompt-context,
       #easy-mode-prompter.collapsed #prompt-tactical-chips,
       #easy-mode-prompter.collapsed #prompt-instruction-label {
         display: none !important;
+      }
+      #bottom-ptt-bar {
+        bottom: 8px !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
       }
     }
   </style>
@@ -357,7 +366,7 @@
       </div>
 
       <!-- Bottom Push-to-Talk Bar -->
-      <div class="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
+      <div id="bottom-ptt-bar" class="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
         <div id="ptt-status" class="text-[10px] sm:text-xs font-radar text-slate-400 mb-1 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow">
           Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Mic to Transmit
         </div>
@@ -624,18 +633,18 @@
   </div>
 
   <!-- Modular ATC Frontend Scripts -->
-  <script src="/js/state.js?v=20260930_v17"></script>
-  <script src="/js/logger.js?v=20260930_v17"></script>
-  <script src="/js/audio.js?v=20260930_v17"></script>
-  <script src="/js/radar.js?v=20260930_v17"></script>
-  <script src="/js/strips.js?v=20260930_v17"></script>
-  <script src="/js/physics_ground.js?v=20260930_v17"></script>
-  <script src="/js/safety.js?v=20260930_v17"></script>
-  <script src="/js/tactical.js?v=20260930_v17"></script>
-  <script src="/js/aman.js?v=20260930_v17"></script>
-  <script src="/js/academy.js?v=20260930_v17"></script>
-  <script src="/js/weather.js?v=20260930_v17"></script>
-  <script src="/js/physics_air.js?v=20260930_v17"></script>
-  <script src="/js/controller.js?v=20260930_v17"></script>
+  <script src="/js/state.js?v=20260930_v18"></script>
+  <script src="/js/logger.js?v=20260930_v18"></script>
+  <script src="/js/audio.js?v=20260930_v18"></script>
+  <script src="/js/radar.js?v=20260930_v18"></script>
+  <script src="/js/strips.js?v=20260930_v18"></script>
+  <script src="/js/physics_ground.js?v=20260930_v18"></script>
+  <script src="/js/safety.js?v=20260930_v18"></script>
+  <script src="/js/tactical.js?v=20260930_v18"></script>
+  <script src="/js/aman.js?v=20260930_v18"></script>
+  <script src="/js/academy.js?v=20260930_v18"></script>
+  <script src="/js/weather.js?v=20260930_v18"></script>
+  <script src="/js/physics_air.js?v=20260930_v18"></script>
+  <script src="/js/controller.js?v=20260930_v18"></script>
 </body>
 </html>
