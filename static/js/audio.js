@@ -592,8 +592,15 @@ async function setupRecording() {
       let ext = 'webm';
       if (type.includes('ogg')) ext = 'ogg';
       else if (type.includes('wav')) ext = 'wav';
+      else if (type.includes('mp4') || type.includes('m4a')) ext = 'mp4';
 
       audioChunks = [];
+      if (audioBlob.size < 500) {
+        console.warn("Audio blob too short/empty:", audioBlob.size);
+        const pttStatus = document.getElementById('ptt-status');
+        if (pttStatus) pttStatus.textContent = "Tekan & tahan tombol mic saat berbicara!";
+        return;
+      }
       await sendAudioToWhisper(audioBlob, ext);
     };
 
@@ -601,7 +608,6 @@ async function setupRecording() {
   } catch (err) {
     console.warn("Microphone access error:", err);
     updateMicStatusWarning("Mic permission denied or not found");
-    alert("Detail error microphone: " + (err.name || err.message || err));
     throw err;
   }
 }
@@ -713,7 +719,8 @@ async function sendAudioToWhisper(blob, ext) {
 
     if (res.success) {
       if (currentTab === 'radar') {
-        document.getElementById('recognized-text').textContent = `"${res.text}"`;
+        const recEl = document.getElementById('recognized-text');
+        if (recEl) recEl.textContent = `"${res.text}"`;
         document.getElementById('ptt-status').textContent = `Transmitted (${res.duration}s)`;
         if (typeof logTelemetry === 'function') {
           logTelemetry('VOICE', `Voice Input: "${res.text}"`, {
@@ -732,7 +739,7 @@ async function sendAudioToWhisper(blob, ext) {
     }
   } catch (e) {
     console.error("Transcribe error:", e);
-    document.getElementById('ptt-status').textContent = "Voice Error / Check Server";
+    document.getElementById('ptt-status').textContent = `Voice Error: ${e.message || 'Check Server'}`;
   }
 }
 

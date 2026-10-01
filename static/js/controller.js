@@ -507,7 +507,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   setLayout(initialLayout);
   renderFlightStrips();
   updateEasyModePrompter();
-  setupRecording();
+  if (!isMobile) {
+    setupRecording().catch(err => console.log("Desktop mic auto-init deferred"));
+  }
 
   // Pilot initiates check-in transmission after 2 seconds!
   setTimeout(() => {
