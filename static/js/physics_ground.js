@@ -153,7 +153,9 @@ function assignRealisticGate(airline, callsign) {
     if (airUpper.includes("BATIK") || csUpper.includes("BTK")) {
       pool = t2D.length ? t2D : t2E;
     } else {
-      pool = t1A.length ? t1A : t1B;
+      // Distribute across Terminal 1 sub-terminals (1A, 1B, 1C) to avoid stacking in a single cul-de-sac
+      const t1All = [...t1A, ...t1B, ...t1C];
+      pool = t1All.length ? t1All : gates;
     }
   } else if (airUpper.includes("AIRASIA") || csUpper.includes("AWQ") || csUpper.includes("AXM") || airUpper.includes("SCOOT")) {
     // Low-Cost International / Domestic at Terminal 2F
@@ -162,8 +164,11 @@ function assignRealisticGate(airline, callsign) {
     pool = gates;
   }
 
-  if (!pool.length) pool = gates;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const occupiedGates = new Set(aircraft.map(a => a.assignedGate).filter(Boolean));
+  const availablePool = pool.filter(g => !occupiedGates.has(g.ref));
+  const finalPool = availablePool.length ? availablePool : pool;
+
+  return finalPool[Math.floor(Math.random() * finalPool.length)];
 }
 
 function getGateByName(ref) {

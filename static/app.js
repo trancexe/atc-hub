@@ -3273,7 +3273,9 @@ function assignRealisticGate(airline, callsign) {
     if (airUpper.includes("BATIK") || csUpper.includes("BTK")) {
       pool = t2D.length ? t2D : t2E;
     } else {
-      pool = t1A.length ? t1A : t1B;
+      // Distribute across Terminal 1 sub-terminals (1A, 1B, 1C) to avoid stacking in a single cul-de-sac
+      const t1All = [...t1A, ...t1B, ...t1C];
+      pool = t1All.length ? t1All : gates;
     }
   } else if (airUpper.includes("AIRASIA") || csUpper.includes("AWQ") || csUpper.includes("AXM") || airUpper.includes("SCOOT")) {
     // Low-Cost International / Domestic at Terminal 2F
@@ -3282,8 +3284,11 @@ function assignRealisticGate(airline, callsign) {
     pool = gates;
   }
 
-  if (!pool.length) pool = gates;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const occupiedGates = new Set(aircraft.map(a => a.assignedGate).filter(Boolean));
+  const availablePool = pool.filter(g => !occupiedGates.has(g.ref));
+  const finalPool = availablePool.length ? availablePool : pool;
+
+  return finalPool[Math.floor(Math.random() * finalPool.length)];
 }
 
 function getGateByName(ref) {
@@ -6474,8 +6479,40 @@ function handleAiAutonomousDispatch(ac, idx) {
   const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
 
-  // AI GATE: Execute pushback immediately without timer lag
+  // AI GATE: Execute pushback with Apron Alleyway & Stand Spacing Protection (ICAO Doc 9476)
   if (ac.state === "GATE" && !ac._aiPushIssued) {
+    // Check if another aircraft is currently pushing back or maneuvering in the same cul-de-sac / concourse alleyway
+    const getGateConcourse = (gRef) => {
+      if (!gRef) return "T2E";
+      const c = gRef[0].toUpperCase();
+      if (["A","B","C","D","E","F"].includes(c)) return c;
+      return "T3";
+    };
+
+    const myConcourse = getGateConcourse(ac.assignedGate);
+    const isAlleywayBusy = aircraft.some(other => {
+      if (other.id === ac.id) return false;
+      const otherConcourse = getGateConcourse(other.assignedGate);
+      // If in same concourse cul-de-sac (e.g. T1A: A1-A7, T1B, T2D, etc.)
+      if (otherConcourse === myConcourse) {
+        // If another plane is already pushing back or just starting to taxi out of the cul-de-sac
+        if (other.state === "PUSHBACK" || (other.state === "READY_TAXI" && !other._runwayCrossCleared)) {
+          return true;
+        }
+      }
+      // Direct proximity check: if another moving aircraft is within 150m of our gate
+      if (ac.lat && ac.lon && other.lat && other.lon && other.groundSpeed > 0) {
+        const d = calculateDistanceMeters(ac.lat, ac.lon, other.lat, other.lon);
+        if (d < 140) return true;
+      }
+      return false;
+    });
+
+    if (isAlleywayBusy) {
+      // Defer pushback approval until the cul-de-sac / alleyway is clear of conflicting pushback traffic
+      return;
+    }
+
     ac._aiPushIssued = true;
     transmitAiClearance(
       ac,
