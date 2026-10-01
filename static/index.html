@@ -71,12 +71,24 @@
 
     /* Mobile-first Prompter adjustments */
     @media (max-width: 768px) {
-      #easy-mode-prompter {
-        display: none !important;
-      }
       #bottom-ptt-bar {
-        bottom: 12px !important;
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+        position: static !important;
+        transform: none !important;
+        margin-top: 4px;
+        padding-bottom: env(safe-area-inset-bottom, 2px);
+      }
+      #easy-mode-prompter {
+        position: static !important;
+        transform: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 4px 8px !important;
+        margin-bottom: 2px;
+      }
+      #easy-mode-prompter.collapsed #prompt-context,
+      #easy-mode-prompter.collapsed #prompt-tactical-chips,
+      #easy-mode-prompter.collapsed #prompt-instruction-label {
+        display: none !important;
       }
     }
   </style>
@@ -258,79 +270,84 @@
 
       <!-- Aircraft Strip Overlay (Right floating draggable & resizable panel) -->
 
-      <!-- EASY MODE ATC ASSISTANT PROMPTER (FLOATING CARD) -->
-      <div id="easy-mode-prompter" class="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 w-[540px] max-w-[90vw] bg-slate-900/95 backdrop-blur-md border border-amber-500/60 rounded-xl p-3 shadow-2xl transition-all font-radar">
-        <div class="flex items-center justify-between border-b border-amber-500/30 pb-1.5 mb-1.5">
-          <div class="flex items-center space-x-1.5">
-            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-            <span class="text-xs font-bold text-amber-400 tracking-wider flex items-center gap-1">
-              <i class="fa-solid fa-headset"></i> COPILOT
-            </span>
-            <span id="prompt-ac-badge" class="px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-600/50 text-[10px] text-amber-200">
-              GIA502 (GATE)
-            </span>
-          </div>
-          <div class="flex items-center space-x-1.5">
-            <button onclick="cyclePrompterAircraft()" class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
-              Ganti (Tab)
-            </button>
-            <button onclick="playCurrentPromptAudio()" class="text-xs text-amber-400 hover:text-amber-200 px-1" title="Dengarkan contoh suara">
-              <i class="fa-solid fa-volume-high"></i>
-            </button>
-            <button onclick="togglePrompterCollapse()" id="btn-prompter-toggle" class="text-xs text-slate-400 hover:text-white px-1" title="Minimize / Expand Prompter">
-              <i class="fa-solid fa-chevron-down" id="prompter-chevron"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="text-[10px] text-slate-300 mb-1" id="prompt-context">
-          Skenario: Garuda 123 siap di Gate meminta izin pushback dan start engine.
-        </div>
-
-        <div class="bg-slate-950 border border-amber-500/40 p-2 rounded-lg flex items-center justify-between gap-2">
-          <div class="flex-1 min-w-0">
-            <div id="prompt-instruction-label" class="text-[9px] uppercase text-amber-500 font-bold mb-0.5">Ucapkan / Tekan Kirim:</div>
-            <div id="prompt-speech-text" class="text-xs sm:text-sm font-bold text-amber-300 leading-snug select-text truncate sm:whitespace-normal">
-              "Garuda one two three, push and start approved, facing west"
+      <!-- Bottom Controls Dock (Prompter + PTT Stacked Cleanly) -->
+      <div class="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 w-[540px] max-w-[96vw] flex flex-col items-center pointer-events-none">
+        
+        <!-- EASY MODE ATC ASSISTANT PROMPTER (FLOATING CARD) -->
+        <div id="easy-mode-prompter" class="pointer-events-auto w-full bg-slate-900/95 backdrop-blur-md border border-amber-500/60 rounded-xl p-2.5 sm:p-3 shadow-2xl transition-all font-radar mb-1.5">
+          <div class="flex items-center justify-between border-b border-amber-500/30 pb-1 sm:pb-1.5 mb-1 sm:mb-1.5">
+            <div class="flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+              <span class="text-xs font-bold text-amber-400 tracking-wider flex items-center gap-1">
+                <i class="fa-solid fa-headset"></i> COPILOT
+              </span>
+              <span id="prompt-ac-badge" class="px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-600/50 text-[10px] text-amber-200">
+                GIA502 (GATE)
+              </span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <button onclick="cyclePrompterAircraft()" class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                Ganti (Tab)
+              </button>
+              <button onclick="playCurrentPromptAudio()" class="text-xs text-amber-400 hover:text-amber-200 px-1" title="Dengarkan contoh suara">
+                <i class="fa-solid fa-volume-high"></i>
+              </button>
+              <button onclick="togglePrompterCollapse()" id="btn-prompter-toggle" class="text-xs text-slate-400 hover:text-white px-1" title="Minimize / Expand Prompter">
+                <i class="fa-solid fa-chevron-down" id="prompter-chevron"></i>
+              </button>
             </div>
           </div>
-          <button id="debug-send-btn" onclick="executeDebugCommand()" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg border border-emerald-400 shadow-md flex items-center gap-1 transition active:scale-95 whitespace-nowrap shrink-0">
-            <i class="fa-solid fa-paper-plane"></i> KIRIM
-          </button>
-        </div>
 
-        <!-- QUICK TACTICAL ACTION CHIPS (Milestone 5 Easy Mode Shortcuts) -->
-        <div id="prompt-tactical-chips" class="mt-1.5 pt-1 border-t border-slate-800/80 flex items-center gap-1 flex-wrap text-[9px]">
-          <span class="text-slate-500 uppercase font-bold mr-0.5">Taktis:</span>
-          <button onclick="quickTacticalVector(250)" class="px-1.5 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-compass"></i> HDG 250°
-          </button>
-          <button onclick="quickTacticalVector(180)" class="px-1.5 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-compass"></i> HDG 180°
-          </button>
-          <button onclick="quickTacticalSpeed(180)" class="px-1.5 py-0.5 rounded bg-sky-950/70 hover:bg-sky-900 border border-sky-600/60 text-sky-300 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-gauge"></i> 180K
-          </button>
-          <button onclick="quickTacticalGoAround()" class="px-1.5 py-0.5 rounded bg-red-950/80 hover:bg-red-900 border border-red-600/70 text-red-300 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-plane-circle-exclamation"></i> GO-AROUND
-          </button>
-        </div>
-      </div>
+          <div class="text-[10px] text-slate-300 mb-1" id="prompt-context">
+            Skenario: Garuda 123 siap di Gate meminta izin pushback dan start engine.
+          </div>
 
-      <!-- Bottom Push-to-Talk Bar -->
-      <div id="bottom-ptt-bar" class="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
-        <div id="ptt-status" class="text-[10px] sm:text-xs font-radar text-slate-400 mb-1 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow">
-          Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Mic to Transmit
-        </div>
-        <div class="flex items-center space-x-2 sm:space-x-3 bg-slate-900/95 backdrop-blur border border-emerald-900/80 p-1.5 sm:p-2.5 rounded-2xl shadow-2xl">
-          <button id="ptt-btn" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-base sm:text-lg shadow-lg transition transform active:scale-95 border-2 border-emerald-400">
-            <i class="fa-solid fa-microphone"></i>
-          </button>
-          <div class="font-radar text-left pr-1 sm:pr-2">
-            <div class="text-[10px] sm:text-xs text-slate-400 leading-tight">CONTROLLER VOICE INPUT</div>
-            <div id="voice-indicator" class="text-[9px] sm:text-[10px] text-emerald-400 font-mono font-bold leading-tight">WHISPER VAD: READY</div>
+          <div class="bg-slate-950 border border-amber-500/40 p-1.5 sm:p-2 rounded-lg flex items-center justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div id="prompt-instruction-label" class="text-[9px] uppercase text-amber-500 font-bold mb-0.5">Ucapkan / Tekan Kirim:</div>
+              <div id="prompt-speech-text" class="text-xs sm:text-sm font-bold text-amber-300 leading-snug select-text truncate sm:whitespace-normal">
+                "Garuda one two three, push and start approved, facing west"
+              </div>
+            </div>
+            <button id="debug-send-btn" onclick="executeDebugCommand()" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg border border-emerald-400 shadow-md flex items-center gap-1 transition active:scale-95 whitespace-nowrap shrink-0">
+              <i class="fa-solid fa-paper-plane"></i> KIRIM
+            </button>
+          </div>
+
+          <!-- QUICK TACTICAL ACTION CHIPS (Milestone 5 Easy Mode Shortcuts) -->
+          <div id="prompt-tactical-chips" class="mt-1.5 pt-1 border-t border-slate-800/80 flex items-center gap-1 flex-wrap text-[9px]">
+            <span class="text-slate-500 uppercase font-bold mr-0.5">Taktis:</span>
+            <button onclick="quickTacticalVector(250)" class="px-1.5 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
+              <i class="fa-solid fa-compass"></i> HDG 250°
+            </button>
+            <button onclick="quickTacticalVector(180)" class="px-1.5 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 border border-amber-600/60 text-amber-300 font-bold flex items-center gap-1">
+              <i class="fa-solid fa-compass"></i> HDG 180°
+            </button>
+            <button onclick="quickTacticalSpeed(180)" class="px-1.5 py-0.5 rounded bg-sky-950/70 hover:bg-sky-900 border border-sky-600/60 text-sky-300 font-bold flex items-center gap-1">
+              <i class="fa-solid fa-gauge"></i> 180K
+            </button>
+            <button onclick="quickTacticalGoAround()" class="px-1.5 py-0.5 rounded bg-red-950/80 hover:bg-red-900 border border-red-600/70 text-red-300 font-bold flex items-center gap-1">
+              <i class="fa-solid fa-plane-circle-exclamation"></i> GO-AROUND
+            </button>
           </div>
         </div>
+
+        <!-- Bottom Push-to-Talk Bar -->
+        <div id="bottom-ptt-bar" class="pointer-events-auto flex flex-col items-center">
+          <div id="ptt-status" class="text-[9px] sm:text-xs font-radar text-slate-400 mb-0.5 sm:mb-1 px-2 py-0.5 sm:px-3 sm:py-1 bg-slate-900/90 rounded border border-slate-800 transition-all shadow">
+            Press & Hold <span class="text-emerald-400 font-bold">SPACEBAR</span> or Mic to Transmit
+          </div>
+          <div class="flex items-center space-x-2 sm:space-x-3 bg-slate-900/95 backdrop-blur border border-emerald-900/80 p-1 sm:p-2 rounded-2xl shadow-2xl">
+            <button id="ptt-btn" class="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-sm sm:text-lg shadow-lg transition transform active:scale-95 border-2 border-emerald-400">
+              <i class="fa-solid fa-microphone"></i>
+            </button>
+            <div class="font-radar text-left pr-1 sm:pr-2">
+              <div class="text-[9px] sm:text-xs text-slate-400 leading-tight">CONTROLLER VOICE INPUT</div>
+              <div id="voice-indicator" class="text-[8px] sm:text-[10px] text-emerald-400 font-mono font-bold leading-tight">WHISPER VAD: READY</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -625,18 +642,18 @@
   </div>
 
   <!-- Modular ATC Frontend Scripts -->
-  <script src="/js/state.js?v=20260930_v19"></script>
-  <script src="/js/logger.js?v=20260930_v19"></script>
-  <script src="/js/audio.js?v=20260930_v19"></script>
-  <script src="/js/radar.js?v=20260930_v19"></script>
-  <script src="/js/strips.js?v=20260930_v19"></script>
-  <script src="/js/physics_ground.js?v=20260930_v19"></script>
-  <script src="/js/safety.js?v=20260930_v19"></script>
-  <script src="/js/tactical.js?v=20260930_v19"></script>
-  <script src="/js/aman.js?v=20260930_v19"></script>
-  <script src="/js/academy.js?v=20260930_v19"></script>
-  <script src="/js/weather.js?v=20260930_v19"></script>
-  <script src="/js/physics_air.js?v=20260930_v19"></script>
-  <script src="/js/controller.js?v=20260930_v19"></script>
+  <script src="/js/state.js?v=20260930_v20"></script>
+  <script src="/js/logger.js?v=20260930_v20"></script>
+  <script src="/js/audio.js?v=20260930_v20"></script>
+  <script src="/js/radar.js?v=20260930_v20"></script>
+  <script src="/js/strips.js?v=20260930_v20"></script>
+  <script src="/js/physics_ground.js?v=20260930_v20"></script>
+  <script src="/js/safety.js?v=20260930_v20"></script>
+  <script src="/js/tactical.js?v=20260930_v20"></script>
+  <script src="/js/aman.js?v=20260930_v20"></script>
+  <script src="/js/academy.js?v=20260930_v20"></script>
+  <script src="/js/weather.js?v=20260930_v20"></script>
+  <script src="/js/physics_air.js?v=20260930_v20"></script>
+  <script src="/js/controller.js?v=20260930_v20"></script>
 </body>
 </html>
