@@ -75,7 +75,7 @@ LESSONS = [
             "type": "B738",
             "gate": "Gate E1"
         },
-        "situation": "INDONESIA 502 di Stand E1 melakukan initial call: 'Jakarta Delivery, INDONESIA 502, Stand Echo 1, Information Bravo, POB 156, destination Surabaya via DOLTA 1C departure, request clearance.' Berikan IFR clearance resmi.",
+        "situation": "INDONESIA 502 at Stand Echo 1 reporting initial call: 'Jakarta Delivery, INDONESIA 502, Stand Echo 1, Information Bravo, POB 156, destination Surabaya via DOLTA 1C departure, request clearance.' Issue official IFR departure clearance.",
         "target_text": "Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, cleared to Surabaya via DOLTA one Charlie departure, climb flight level one four zero, squawk four five two one'",
         "keywords": ["indonesia", "502", "surabaya", "dolta", "140", "4521"],
@@ -92,7 +92,7 @@ LESSONS = [
             "type": "B738",
             "gate": "Gate E1"
         },
-        "situation": "Pesawat siap pushback dan start engine di apron Terminal 3, menghadap ke arah Barat.",
+        "situation": "Aircraft is ready for pushback and engine start at Terminal 3 ramp, facing West.",
         "target_text": "Indonesia 502 push and start approved, facing west",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, push and start approved, facing west'",
         "keywords": ["indonesia", "502", "push", "start", "approved", "west"],
@@ -109,7 +109,7 @@ LESSONS = [
             "type": "B738",
             "gate": "Apron T3"
         },
-        "situation": "Pesawat sudah selesai pushback, instruksikan taxi ke holding point Runway 25R lewat taxiway North Cross 1 dan North 2.",
+        "situation": "Aircraft completed pushback. Instruct aircraft to taxi to Runway 25R holding point via taxiways North Cross 1 and North 2.",
         "target_text": "Indonesia 502 taxi to holding point runway 25R via NC1, N2",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, taxi to holding point runway two five right via North Charlie one, November two'",
         "keywords": ["indonesia", "502", "taxi", "holding point", "25r", "nc1"],
@@ -126,7 +126,7 @@ LESSONS = [
             "type": "B738",
             "gate": "Holding Point 25R"
         },
-        "situation": "Ada pesawat mendarat di runway, instruksikan INDONESIA 502 untuk masuk runway dan tunggu (Line up and wait).",
+        "situation": "Preceding aircraft is on runway rollout. Instruct INDONESIA 502 to line up and wait Runway 25R.",
         "target_text": "Indonesia 502 line up and wait runway 25R",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, line up and wait runway two five right'",
         "keywords": ["indonesia", "502", "line up", "wait", "25r"],
@@ -143,7 +143,7 @@ LESSONS = [
             "type": "B738",
             "gate": "Runway 25R"
         },
-        "situation": "Runway sudah bebas, angin 250 derajat 8 knot. Berikan izin lepas landas.",
+        "situation": "Runway is clear, wind 250 degrees at 8 knots. Issue takeoff clearance.",
         "target_text": "Indonesia 502 wind 250 at 8 knots, runway 25R cleared for takeoff",
         "phonetic_tips": "ICAO Telephony: 'INDONESIA five zero two, wind two five zero degrees eight knots, runway two five right cleared for takeoff'",
         "keywords": ["indonesia", "502", "wind", "cleared for takeoff", "25r"],
@@ -160,7 +160,7 @@ LESSONS = [
             "type": "A333",
             "gate": "TMA Inbound"
         },
-        "situation": "LION INTER 650 mendekati bandara via DOLTA 1A. Berikan izin ILS approach Runway 25L dan instruksi descend ke 3000 feet.",
+        "situation": "LION INTER 650 inbound via DOLTA 1A STAR. Issue ILS approach clearance Runway 25L and instruct descent to 3000 feet.",
         "target_text": "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L",
         "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, descend to three thousand feet, cleared ILS runway two five left'",
         "keywords": ["lion inter", "650", "descend", "3000", "cleared", "ils", "25l"],
@@ -177,7 +177,7 @@ LESSONS = [
             "type": "A333",
             "gate": "Final Approach"
         },
-        "situation": "LION INTER 650 sudah di final 3 mile. Berikan izin mendarat di Runway 25L, angin tenang.",
+        "situation": "LION INTER 650 on 3-mile final. Clear to land Runway 25L, wind calm.",
         "target_text": "Lion Inter 650 runway 25L cleared to land, wind 250 at 6",
         "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, runway two five left cleared to land, wind two five zero degrees six knots'",
         "keywords": ["lion inter", "650", "cleared to land", "25l"],
@@ -194,7 +194,7 @@ LESSONS = [
             "type": "A333",
             "gate": "TMA Holding"
         },
-        "situation": "Antrean kedatangan padat. Instruksikan LION INTER 650 untuk masuk holding pattern di atas fix TEGID maintain FL100.",
+        "situation": "Heavy inbound congestion. Instruct LION INTER 650 to enter holding pattern over TEGID fix and maintain FL100.",
         "target_text": "Lion Inter 650 hold over TEGID, maintain FL 100",
         "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, hold over Tango Echo Golf India Delta, maintain flight level one zero zero'",
         "keywords": ["lion inter", "650", "hold", "tegid", "100"],
@@ -211,7 +211,7 @@ LESSONS = [
             "type": "A333",
             "gate": "Short Final RWY 25L"
         },
-        "situation": "Landasan terhalang kendaraan inspeksi di short final. Batalkan pendaratan segera!",
+        "situation": "Runway occupied by inspection vehicle on short final. Immediately abort landing!",
         "target_text": "Lion Inter 650 go around, climb to 3000 feet",
         "phonetic_tips": "ICAO Telephony: 'LION INTER six five zero, go around, climb to three thousand feet'",
         "keywords": ["lion inter", "650", "go around", "climb", "3000"],

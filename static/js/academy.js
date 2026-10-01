@@ -5,11 +5,11 @@ const INTERACTIVE_SCENARIOS = [
   {
     id: "lesson-1",
     num: 1,
-    title: "Lesson 1: Pengenalan Radar & Seleksi Target",
+    title: "Lesson 1: Radar Introduction & Target Selection",
     category: "Radar Basics",
-    desc: "Latihan langsung memilih pesawat di radar/strip, membaca data block, dan mengidentifikasi squawk code.",
-    instruction: "Klik strip penerbangan atau klik simbol pesawat <b>GIA502</b> pada radar untuk memilih target aktif.",
-    targetPhrase: "Klik strip GIA502",
+    desc: "Hands-on practice selecting aircraft on radar/strip, reading data blocks, and identifying squawk codes.",
+    instruction: "Click the flight strip or click the aircraft symbol <b>GIA502</b> on the radar scope to select active target.",
+    targetPhrase: "Click strip GIA502",
     spawnAircraft: () => {
       resetScenarioAircraft();
       aircraft.push({
@@ -35,15 +35,15 @@ const INTERACTIVE_SCENARIOS = [
     checkSuccess: () => {
       return selectedAircraftIndex !== -1 && aircraft[selectedAircraftIndex] && aircraft[selectedAircraftIndex].id === "GIA502";
     },
-    successMessage: "Bagus! Target GIA502 berhasil dipilih. Data block aktif dan siap menerima instruksi."
+    successMessage: "Great job! Target GIA502 selected. Data block is active and ready for control instructions."
   },
   {
     id: "lesson-2",
     num: 2,
-    title: "Lesson 2: Komunikasi Radio PTT & IFR Clearance",
+    title: "Lesson 2: PTT Radio Comms & IFR Clearance",
     category: "Radio Phraseology",
-    desc: "Praktek langsung menekan tombol SPASI (PTT) dan berbicara ke mikrofon atau klik Kirim ATC untuk memberikan izin IFR.",
-    instruction: "Pilih <b>GIA502</b>, lalu ucapkan ke Mic atau tekan tombol Kirim ATC:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521\"</span>",
+    desc: "Hands-on practice holding SPACEBAR (PTT) and speaking into microphone or pressing Send ATC to issue IFR clearance.",
+    instruction: "Select <b>GIA502</b>, then speak into Mic or press Send ATC:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521\"</span>",
     targetPhrase: "Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -72,15 +72,15 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "GIA502");
       return ac && (ac.squawk === "4521" || (ac.fde && ac.fde.assignedAlt === "FL140"));
     },
-    successMessage: "Pilot GIA502 membaca readback resmi dan menyetel squawk 4521! IFR clearance sukses."
+    successMessage: "Pilot GIA502 read back official clearance and squawked 4521! IFR clearance successful."
   },
   {
     id: "lesson-3",
     num: 3,
     title: "Lesson 3: Ground Control — Pushback & Taxi",
     category: "Ground Control",
-    desc: "Instruksikan pesawat untuk dorong mundur dan taxi ke holding point Runway 25R.",
-    instruction: "Ucapkan ke mic atau kirim instruksi:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 push and start approved, facing west\"</span> kemudian setelah pushback berikan <span class='text-sky-300 font-bold'>\"Indonesia 502 taxi to holding point runway 25R\"</span>",
+    desc: "Instruct aircraft to push back and taxi to Runway 25R holding point.",
+    instruction: "Speak into mic or send clearance:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 push and start approved, facing west\"</span> then upon pushback completion grant <span class='text-sky-300 font-bold'>\"Indonesia 502 taxi to holding point runway 25R\"</span>",
     targetPhrase: "Indonesia 502 push and start approved, facing west",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -108,15 +108,15 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "GIA502");
       return ac && ["PUSHBACK", "TAXI", "HOLDING"].includes(ac.state);
     },
-    successMessage: "Pesawat GIA502 bergerak keluar dari gate dan mulai taxi di taxiway menuju holding point!"
+    successMessage: "Aircraft GIA502 pushed back from gate and commenced taxi towards holding point!"
   },
   {
     id: "lesson-4",
     num: 4,
     title: "Lesson 4: Tower Control — Line Up & Takeoff",
     category: "Tower Control",
-    desc: "Berikan izin masuk ke runway aktif dan otorisasi lepas landas setelah kondisi aman.",
-    instruction: "GIA502 berada di holding point 25R. Berikan izin lepas landas:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 runway 25R cleared for takeoff\"</span>",
+    desc: "Authorize aircraft to enter active runway and issue takeoff clearance when clear.",
+    instruction: "GIA502 is at holding point 25R. Issue takeoff clearance:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 runway 25R cleared for takeoff\"</span>",
     targetPhrase: "Indonesia 502 runway 25R cleared for takeoff",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -144,15 +144,15 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "GIA502");
       return ac && ["TAKEOFF", "CLIMB", "AIRBORNE"].includes(ac.state);
     },
-    successMessage: "GIA502 full throttle, lepas landas dan mengudara menuju initial altitude!"
+    successMessage: "GIA502 rolling full throttle, airborne and climbing out towards initial altitude!"
   },
   {
     id: "lesson-5",
     num: 5,
     title: "Lesson 5: Approach Control — ILS Clearance",
     category: "Approach Control",
-    desc: "Pandu pesawat kedatangan (Arrival) yang mendekati localizer untuk intercept glide slope dan mendarat.",
-    instruction: "Lion Inter 650 sedang berada di TMA mendekati runway 25L. Berikan ILS clearance:<br><span class='text-amber-300 font-bold'>\"Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L\"</span>",
+    desc: "Guide inbound arrival aircraft approaching localizer to intercept glide slope and land.",
+    instruction: "Lion Inter 650 is in TMA approaching runway 25L. Issue ILS clearance:<br><span class='text-amber-300 font-bold'>\"Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L\"</span>",
     targetPhrase: "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -179,15 +179,15 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "LNI650");
       return ac && ac.fde && ac.fde.assignedAlt === "A030";
     },
-    successMessage: "LNI650 menangkap localizer dan glide slope ILS runway 25L serta turun ke 3000 ft!"
+    successMessage: "LNI650 intercepted localizer and ILS glide slope for Runway 25L descending to 3000 ft!"
   },
   {
     id: "lesson-6",
     num: 6,
     title: "Lesson 6: Emergency Handling — Go-Around",
     category: "Emergency & Safety",
-    desc: "Runway terhalang! Batalkan pendaratan pesawat di short final dengan instruksi Go-Around darurat.",
-    instruction: "Garuda 502 berada di short final tetapi runway tidak steril. Segera instruksikan:<br><span class='text-red-400 font-bold'>\"Indonesia 502 go around!\"</span>",
+    desc: "Runway obstructed! Abort aircraft landing on short final with emergency Go-Around instruction.",
+    instruction: "Garuda 502 is on short final but runway is not sterilized. Immediately instruct:<br><span class='text-red-400 font-bold'>\"Indonesia 502 go around!\"</span>",
     targetPhrase: "Indonesia 502 go around",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -214,7 +214,7 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "GIA502");
       return ac && (ac.state === "GO_AROUND" || (ac.fde && ac.fde.directFix === "GO_AROUND"));
     },
-    successMessage: "Pesawat segera batalkan pendaratan, mendaki tajam ke 3000 ft dan menjauh dari runway!"
+    successMessage: "Aircraft promptly initiated go-around, climbing steeply to 3000 ft clear of runway!"
   }
 ];
 
@@ -246,7 +246,7 @@ function initAcademyTutorial() {
             <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 uppercase">
               ${s.category}
             </span>
-            <span class="text-[10px] font-mono text-amber-400 font-bold">PRAKTEK LANGSUNG</span>
+            <span class="text-[10px] font-mono text-amber-400 font-bold">HANDS-ON DRILL</span>
           </div>
           <h4 class="text-sm font-bold text-white font-radar mt-2 group-hover:text-emerald-400 transition">${s.title}</h4>
           <p class="text-xs text-slate-400 mt-1 leading-relaxed">${s.desc}</p>
@@ -254,7 +254,7 @@ function initAcademyTutorial() {
         <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
           <span class="text-[10px] text-slate-500 font-mono"><i class="fa-solid fa-plane-departure text-emerald-500 mr-1"></i>Live Scenario</span>
           <button onclick="startHandsOnScenario('${s.id}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold font-radar flex items-center gap-1.5 shadow transition active:scale-95">
-            <i class="fa-solid fa-gamepad text-[11px]"></i> Mainkan Misi
+            <i class="fa-solid fa-gamepad text-[11px]"></i> Launch Mission
           </button>
         </div>
       </div>
@@ -314,19 +314,19 @@ function showPracticeMissionHUD(scenario) {
     <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-crosshairs mr-1"></i>MISI PRAKTEK: ${scenario.title}</span>
+        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-crosshairs mr-1"></i>PRACTICE MISSION: ${scenario.title}</span>
       </div>
-      <button onclick="quitPracticeScenario()" class="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded bg-slate-800" title="Keluar Misi">
-        <i class="fa-solid fa-xmark"></i> Batal
+      <button onclick="quitPracticeScenario()" class="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded bg-slate-800" title="Abort Mission">
+        <i class="fa-solid fa-xmark"></i> Abort
       </button>
     </div>
     <div class="text-xs text-slate-200 leading-relaxed font-sans mb-2">
       ${scenario.instruction}
     </div>
     <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800/80">
-      <span class="text-slate-400 font-mono">Status Misi: <b class="text-amber-400 animate-pulse">MENUNGGU AKSI ANDA...</b></span>
-      <button onclick="autoExecuteScenarioHelp()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold font-mono text-[10px]" title="Kirim otomatis perintah target">
-        <i class="fa-solid fa-bolt mr-1"></i>Bantu Kirim
+      <span class="text-slate-400 font-mono">Mission Status: <b class="text-amber-400 animate-pulse">AWAITING YOUR ACTION...</b></span>
+      <button onclick="autoExecuteScenarioHelp()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold font-mono text-[10px]" title="Auto transmit target clearance">
+        <i class="fa-solid fa-bolt mr-1"></i>Auto Transmit
       </button>
     </div>
   `;
@@ -358,7 +358,7 @@ function showMissionSuccessModal(scenario) {
         <i class="fa-solid fa-trophy"></i>
       </div>
       <div>
-        <span class="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">Misi Berhasil Diselesaikan!</span>
+        <span class="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">Mission Successfully Completed!</span>
         <h3 class="text-lg font-bold text-white mt-2">${scenario.title}</h3>
         <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
           ${scenario.successMessage}
@@ -366,10 +366,10 @@ function showMissionSuccessModal(scenario) {
       </div>
       <div class="pt-2 flex items-center justify-center gap-3">
         <button onclick="quitPracticeScenario()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold font-mono">
-          Tutup
+          Close
         </button>
         <button onclick="nextPracticeScenario('${scenario.id}')" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-mono shadow-lg flex items-center gap-1.5">
-          Lanjut Misi Berikutnya <i class="fa-solid fa-arrow-right"></i>
+          Next Mission <i class="fa-solid fa-arrow-right"></i>
         </button>
       </div>
     </div>

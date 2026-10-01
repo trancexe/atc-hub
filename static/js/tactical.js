@@ -10,7 +10,7 @@ function toggleRulerTool() {
     }
     const pttStatus = document.getElementById('ptt-status');
     if (pttStatus) {
-      pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> TACTICAL RULER: Klik pesawat pertama, lalu klik pesawat kedua di radar untuk ukur separasi!</span>`;
+      pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> TACTICAL RULER: Click first aircraft, then click second aircraft on radar to measure separation!</span>`;
     }
   } else {
     rulerSelectedAc1 = null;

@@ -1003,14 +1003,14 @@ function setupCanvasInteraction(cElem, screenKey) {
           rulerSelectedAc1 = aircraft[closestAcIdx];
           const pttStatus = document.getElementById('ptt-status');
           if (pttStatus) {
-            pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> Target 1 (${rulerSelectedAc1.callsign}) dipilih! Sekarang klik target kedua...</span>`;
+            pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> Target 1 (${rulerSelectedAc1.callsign}) selected! Now click second aircraft...</span>`;
           }
         } else if (!rulerSelectedAc2 && aircraft[closestAcIdx].id !== rulerSelectedAc1.id) {
           rulerSelectedAc2 = aircraft[closestAcIdx];
           const distNm = calculateDistanceNm(rulerSelectedAc1.lat, rulerSelectedAc1.lon, rulerSelectedAc2.lat, rulerSelectedAc2.lon);
           const pttStatus = document.getElementById('ptt-status');
           if (pttStatus) {
-            pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> SEPARASI: ${distNm.toFixed(2)} NM (${rulerSelectedAc1.callsign} ↔ ${rulerSelectedAc2.callsign})</span>`;
+            pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> SEPARATION: ${distNm.toFixed(2)} NM (${rulerSelectedAc1.callsign} ↔ ${rulerSelectedAc2.callsign})</span>`;
           }
         } else {
           // Reset anchor to this clicked aircraft

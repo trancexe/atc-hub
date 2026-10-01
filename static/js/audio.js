@@ -261,7 +261,7 @@ function getAutoSuggestTaxiRoute(ac) {
 }
 
 function getDynamicEasyModePrompt(ac) {
-  if (!ac) return { context: "Tidak ada pesawat.", speech: "Standby", actionDesc: "Standby" };
+  if (!ac) return { context: "No aircraft selected.", speech: "Standby", actionDesc: "Standby" };
 
   const cs = ac.callsign || ac.id;
   const rwyKey = ac.clearedRwy || "25R";
@@ -275,104 +275,104 @@ function getDynamicEasyModePrompt(ac) {
   switch (ac.state) {
     case "GATE":
       return {
-        context: `Pesawat di Gate ${ac.assignedGate || 'E1'} telah melaporkan initial check-in (POB ${ac.pob || 156}, tujuan ${ac.dest || 'Surabaya'}, via ${sidKey}). Siap push and start untuk Runway ${rwyKey}.`,
+        context: `Aircraft at Gate ${ac.assignedGate || 'E1'} reported initial check-in (POB ${ac.pob || 156}, dest ${ac.dest || 'Surabaya'}, via ${sidKey}). Ready for push and start Runway ${rwyKey}.`,
         speech: `${cs} push and start approved, facing west`,
         actionDesc: "Push & Start Approved"
       };
     case "PUSHBACK":
       return {
-        context: `Pesawat sedang pushback mandiri menuju taxiway...`,
+        context: `Aircraft currently pushing back towards taxilane...`,
         speech: `Standby for taxi, ${cs}`,
         actionDesc: "Pushback in progress"
       };
     case "READY_TAXI":
       return {
-        context: `Pesawat selesai pushback di ${ac.assignedGate ? 'Gate ' + ac.assignedGate : 'Gate E1'}. Berikan clearance taxi presisi via rute resmi Jeppesen 10-6.`,
+        context: `Aircraft pushback complete at ${ac.assignedGate ? 'Gate ' + ac.assignedGate : 'Gate E1'}. Issue taxi clearance via official Jeppesen 10-6 corridor.`,
         speech: `${cs} taxi holding point runway ${rwyKey} via ${autoTaxi.text || hpName}`,
         actionDesc: `Taxi via ${autoTaxi.via ? autoTaxi.via.join(' - ') : hpName}`
       };
     case "HOLD_SHORT_CROSS":
       return {
-        context: `Pesawat berhenti di Stop Bar sebelum menyeberangi runway aktif! Wajib berikan izin cross runway.`,
+        context: `Aircraft holding short at Stop Bar before active runway! Runway crossing clearance required.`,
         speech: `${cs} cross runway 25R at November cross, report vacated`,
         actionDesc: "Cross Runway Clearance"
       };
     case "TAXI":
       return {
-        context: `Pesawat sedang taxi menyusuri ${autoTaxi.via ? autoTaxi.via.join(' - ') : hpName} menuju holding point Runway ${rwyKey}...`,
+        context: `Aircraft taxiing via ${autoTaxi.via ? autoTaxi.via.join(' - ') : hpName} towards Runway ${rwyKey} holding point...`,
         speech: `Standby at holding point, ${cs}`,
         actionDesc: "Taxiing"
       };
     case "HOLDING":
       return {
-        context: `Pesawat berhenti di Holding Point ${hpName} Runway ${rwyKey}, runway siap digunakan.`,
+        context: `Aircraft holding at Holding Point ${hpName} Runway ${rwyKey}, runway is available.`,
         speech: `${cs} runway ${rwyKey} line up and wait`,
         actionDesc: `Line up and wait Runway ${rwyKey}`
       };
     case "LINE_UP":
     case "LINING_UP":
       return {
-        context: `Pesawat di posisi Runway ${rwyKey} via ${sidKey} siap lepas landas. Angin 250 derajat 8 knot.`,
+        context: `Aircraft in position on Runway ${rwyKey} via ${sidKey} ready for departure. Wind 250 degrees 8 knots.`,
         speech: `${cs} wind 250 degrees 8 knots, runway ${rwyKey} cleared for takeoff`,
         actionDesc: `Cleared Takeoff RWY ${rwyKey}`
       };
     case "TAKEOFF":
       return {
-        context: `Pesawat akselerasi lepas landas dari Runway ${rwyKey}...`,
+        context: `Aircraft rolling and accelerating for departure on Runway ${rwyKey}...`,
         speech: `Airborne climb out via ${sidKey}, ${cs}`,
         actionDesc: "Takeoff Roll"
       };
     case "APPROACH":
       return {
-        context: `Pesawat inbound pada rute kedatangan ${starKey} menuju ILS Runway ${rwyKey}.`,
+        context: `Inbound arrival established on ${starKey} STAR approaching ILS Runway ${rwyKey}.`,
         speech: `${cs} descend 3000 feet, cleared ILS runway ${rwyKey}`,
         actionDesc: `Cleared ILS RWY ${rwyKey} (${starKey})`
       };
     case "FINAL":
       return {
-        context: `Pesawat established di final approach 5 NM siap mendarat di Runway ${rwyKey}.`,
+        context: `Aircraft established on final approach 5 NM ready to land on Runway ${rwyKey}.`,
         speech: `${cs} wind 250 degrees 8 knots, runway ${rwyKey} cleared to land`,
         actionDesc: `Cleared to Land RWY ${rwyKey}`
       };
     case "LANDED":
       return {
-        context: `Pesawat telah mendarat di Runway ${rwyKey}. Instruksikan keluar runway via rapid exit resmi ${exitTwy} ke Ground.`,
+        context: `Aircraft has touched down on Runway ${rwyKey}. Instruct pilot to vacate via official rapid exit ${exitTwy} to Ground.`,
         speech: `${cs} vacate runway via ${exitTwy}, contact Ground 121 decimal 6`,
         actionDesc: `Vacate RWY via ${exitTwy}`
       };
     case "TAXI_IN":
       return {
-        context: `Pesawat mendarat sedang taxi masuk menuju Gate ${ac.assignedGate || 'E1'}. Rute auto-suggest via ${autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}.`,
+        context: `Arrived aircraft taxiing to Gate ${ac.assignedGate || 'E1'}. Auto-suggested route via ${autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}.`,
         speech: `${cs} taxi to Gate ${formatTaxiwayPhonetic(ac.assignedGate || 'E1')} via ${autoTaxi.text || 'November Charlie'}`,
         actionDesc: `Taxi via ${autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}`
       };
     case "PARKED":
       return {
-        context: `Pesawat telah parkir sempurna di gate stand, mesin dimatikan.`,
+        context: `Aircraft parked at gate stand, engines shutdown.`,
         speech: `${cs} gate arrival confirmed, shutdown approved, good day`,
         actionDesc: "At Gate / Shutdown"
       };
     case "AIRBORNE":
       return {
-        context: `Pesawat airborne passing 2000ft mengikuti SID ${sidKey}, transfer kendali ke Jakarta Approach.`,
+        context: `Aircraft airborne passing 2000ft following SID ${sidKey}, transfer control to Jakarta Approach.`,
         speech: `${cs} contact Jakarta Approach 119 decimal 75`,
         actionDesc: "Contact Approach"
       };
     case "CLIMBING":
       return {
-        context: `Pesawat mengikuti SID ${sidKey}, climb passing FL120 menuju FL140.`,
+        context: `Aircraft flying SID ${sidKey}, climbing through FL120 for FL140.`,
         speech: `${cs} climb and maintain flight level 140 via ${sidKey}`,
         actionDesc: `Climb FL140 (${sidKey})`
       };
     case "HANDOFF":
       return {
-        context: `Pesawat menyelesaikan rute SID ${sidKey} di FL140, transfer kendali ke Jakarta Center!`,
+        context: `Aircraft completed SID ${sidKey} at FL140, hand off control to Jakarta Center!`,
         speech: `${cs} contact Jakarta Center 128 decimal 5, good day`,
         actionDesc: "Handoff to Center"
       };
     case "HANDED_OFF":
       return {
-        context: `Pesawat berhasil ditransfer ke Jakarta Center via ${sidKey}. Misi selesai!`,
+        context: `Aircraft successfully transferred to Jakarta Center via ${sidKey}. Mission complete!`,
         speech: "Mission Complete",
         actionDesc: "Enroute with Center"
       };
@@ -424,7 +424,7 @@ function updateEasyModePrompter() {
   const info = getDynamicEasyModePrompt(ac);
 
   document.getElementById('prompt-ac-badge').textContent = `${ac.id} (${ac.state}) • RWY ${ac.clearedRwy || '25R'}`;
-  document.getElementById('prompt-context').textContent = `Skenario: ${info.context}`;
+  document.getElementById('prompt-context').textContent = `Scenario: ${info.context}`;
   document.getElementById('prompt-speech-text').textContent = `"${info.speech}"`;
 
   // Show/Hide Tactical Quick Action Chips (only relevant when airborne)
@@ -598,7 +598,7 @@ async function setupRecording() {
       if (audioBlob.size < 500) {
         console.warn("Audio blob too short/empty:", audioBlob.size);
         const pttStatus = document.getElementById('ptt-status');
-        if (pttStatus) pttStatus.textContent = "Tekan & tahan tombol mic saat berbicara!";
+        if (pttStatus) pttStatus.textContent = "Press & hold mic button while speaking!";
         return;
       }
       await sendAudioToWhisper(audioBlob, ext);
@@ -668,7 +668,7 @@ async function startRecording() {
         pttStatus.className = "text-xs font-radar mb-1.5 px-3 py-1 rounded border transition-all bg-red-950 text-red-400 border-red-700 animate-pulse";
       }
       const acadRecStatus = document.getElementById('academy-rec-status');
-      if (acadRecStatus) acadRecStatus.textContent = "Merekam suara... Lepas SPACEBAR untuk kirim.";
+      if (acadRecStatus) acadRecStatus.textContent = "Recording audio... Release SPACEBAR to transmit.";
     }
   } catch (e) {
     console.error("Start recording failed:", e);
@@ -694,7 +694,7 @@ function stopRecording() {
       pttStatus.className = "text-xs font-radar mb-1.5 px-3 py-1 rounded border transition-all bg-slate-900 border-emerald-800 text-emerald-400";
     }
     const acadRecStatus = document.getElementById('academy-rec-status');
-    if (acadRecStatus) acadRecStatus.textContent = "Memproses Whisper AI...";
+    if (acadRecStatus) acadRecStatus.textContent = "Processing Whisper AI...";
   } catch (e) {
     console.error("Stop recording failed:", e);
   }

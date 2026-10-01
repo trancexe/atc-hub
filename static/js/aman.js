@@ -417,8 +417,8 @@ function renderAmanSequencerPanel() {
   if (badge) badge.textContent = sequence.length;
 
   if (sequence.length === 0) {
-    listEl.innerHTML = '<div class="p-3 text-center text-slate-500 text-xs italic">Tidak ada pesawat arrival inbound saat ini. Klik "+ Inbound" untuk spawn pesawat kedatangan.</div>';
-    if (stackEl) stackEl.innerHTML = '<div class="text-slate-600 text-[10px] italic p-1">Holding stack kosong.</div>';
+    listEl.innerHTML = '<div class="p-3 text-center text-slate-500 text-xs italic">No inbound arrival traffic currently active. Click "+ Inbound" to spawn an arrival.</div>';
+    if (stackEl) stackEl.innerHTML = '<div class="text-slate-600 text-[10px] italic p-1">Holding stack empty.</div>';
     return;
   }
 
@@ -456,11 +456,11 @@ function renderAmanSequencerPanel() {
           <span class="truncate"><i class="fa-solid fa-arrows-left-right text-sky-400 mr-1"></i>${item.spacingAdvice}</span>
           <div class="flex items-center gap-1 shrink-0 ml-1">
             ${item.isHolding
-              ? `<button onclick="leaveHoldingPattern(${acIdx})" class="px-1.5 py-0.2 rounded bg-emerald-900 text-emerald-200 hover:bg-emerald-800 text-[9px] font-bold" title="Tinggalkan Holding & Masuk Approach">LEAVE HOLD</button>`
-              : `<button onclick="issueHoldingPattern(${acIdx}, 'TEGID', 'FL100')" class="px-1.5 py-0.2 rounded bg-purple-900 text-purple-200 hover:bg-purple-800 text-[9px] font-bold" title="Tugaskan Holding di TEGID FL100">HOLD</button>`
+              ? `<button onclick="leaveHoldingPattern(${acIdx})" class="px-1.5 py-0.2 rounded bg-emerald-900 text-emerald-200 hover:bg-emerald-800 text-[9px] font-bold" title="Leave Holding & Enter Approach">LEAVE HOLD</button>`
+              : `<button onclick="issueHoldingPattern(${acIdx}, 'TEGID', 'FL100')" class="px-1.5 py-0.2 rounded bg-purple-900 text-purple-200 hover:bg-purple-800 text-[9px] font-bold" title="Assign Holding at TEGID FL100">HOLD</button>`
             }
-            <button onclick="reorderAmanSlot(${idx}, Math.max(0, ${idx - 1}))" class="px-1 py-0.2 rounded bg-slate-800 hover:bg-slate-700 text-[9px]" title="Pindahkan Urutan Naik">▲</button>
-            <button onclick="reorderAmanSlot(${idx}, Math.min(${sequence.length - 1}, ${idx + 1}))" class="px-1 py-0.2 rounded bg-slate-800 hover:bg-slate-700 text-[9px]" title="Pindahkan Urutan Turun">▼</button>
+            <button onclick="reorderAmanSlot(${idx}, Math.max(0, ${idx - 1}))" class="px-1 py-0.2 rounded bg-slate-800 hover:bg-slate-700 text-[9px]" title="Move Sequence Up">▲</button>
+            <button onclick="reorderAmanSlot(${idx}, Math.min(${sequence.length - 1}, ${idx + 1}))" class="px-1 py-0.2 rounded bg-slate-800 hover:bg-slate-700 text-[9px]" title="Move Sequence Down">▼</button>
           </div>
         </div>
       </div>

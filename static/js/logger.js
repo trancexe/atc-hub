@@ -108,7 +108,7 @@ function renderAllLogs() {
     : telemetryLogs.filter(l => l.category === currentLogFilter);
 
   if (filtered.length === 0) {
-    stream.innerHTML = '<div class="text-slate-500 italic text-[10px] p-2 text-center">Tidak ada event untuk filter ini.</div>';
+    stream.innerHTML = '<div class="text-slate-500 italic text-[10px] p-2 text-center">No events for this filter.</div>';
     return;
   }
 
@@ -166,7 +166,7 @@ function clearTelemetryLogs() {
   telemetryLogs = [];
   const stream = document.getElementById('telemetry-log-stream');
   if (stream) {
-    stream.innerHTML = '<div class="text-slate-500 italic text-[10px] p-2 text-center">Log telah dibersihkan. Menunggu event baru...</div>';
+    stream.innerHTML = '<div class="text-slate-500 italic text-[10px] p-2 text-center">Logs cleared. Waiting for new events...</div>';
   }
   const badge = document.getElementById('logger-badge');
   if (badge) badge.textContent = '0';

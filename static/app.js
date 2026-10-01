@@ -308,7 +308,7 @@ function renderAllLogs() {
     : telemetryLogs.filter(l => l.category === currentLogFilter);
 
   if (filtered.length === 0) {
-    stream.innerHTML = '<div class="text-slate-500 italic text-[10px] p-2 text-center">Tidak ada event untuk filter ini.</div>';
+    stream.innerHTML = '<div class="text-slate-500 italic text-[10px] p-2 text-center">No events for this filter.</div>';
     return;
   }
 
@@ -366,7 +366,7 @@ function clearTelemetryLogs() {
   telemetryLogs = [];
   const stream = document.getElementById('telemetry-log-stream');
   if (stream) {
-    stream.innerHTML = '<div class="text-slate-500 italic text-[10px] p-2 text-center">Log telah dibersihkan. Menunggu event baru...</div>';
+    stream.innerHTML = '<div class="text-slate-500 italic text-[10px] p-2 text-center">Logs cleared. Waiting for new events...</div>';
   }
   const badge = document.getElementById('logger-badge');
   if (badge) badge.textContent = '0';
@@ -634,7 +634,7 @@ function getAutoSuggestTaxiRoute(ac) {
 }
 
 function getDynamicEasyModePrompt(ac) {
-  if (!ac) return { context: "Tidak ada pesawat.", speech: "Standby", actionDesc: "Standby" };
+  if (!ac) return { context: "No aircraft selected.", speech: "Standby", actionDesc: "Standby" };
 
   const cs = ac.callsign || ac.id;
   const rwyKey = ac.clearedRwy || "25R";
@@ -648,104 +648,104 @@ function getDynamicEasyModePrompt(ac) {
   switch (ac.state) {
     case "GATE":
       return {
-        context: `Pesawat di Gate ${ac.assignedGate || 'E1'} telah melaporkan initial check-in (POB ${ac.pob || 156}, tujuan ${ac.dest || 'Surabaya'}, via ${sidKey}). Siap push and start untuk Runway ${rwyKey}.`,
+        context: `Aircraft at Gate ${ac.assignedGate || 'E1'} reported initial check-in (POB ${ac.pob || 156}, dest ${ac.dest || 'Surabaya'}, via ${sidKey}). Ready for push and start Runway ${rwyKey}.`,
         speech: `${cs} push and start approved, facing west`,
         actionDesc: "Push & Start Approved"
       };
     case "PUSHBACK":
       return {
-        context: `Pesawat sedang pushback mandiri menuju taxiway...`,
+        context: `Aircraft currently pushing back towards taxilane...`,
         speech: `Standby for taxi, ${cs}`,
         actionDesc: "Pushback in progress"
       };
     case "READY_TAXI":
       return {
-        context: `Pesawat selesai pushback di ${ac.assignedGate ? 'Gate ' + ac.assignedGate : 'Gate E1'}. Berikan clearance taxi presisi via rute resmi Jeppesen 10-6.`,
+        context: `Aircraft pushback complete at ${ac.assignedGate ? 'Gate ' + ac.assignedGate : 'Gate E1'}. Issue taxi clearance via official Jeppesen 10-6 corridor.`,
         speech: `${cs} taxi holding point runway ${rwyKey} via ${autoTaxi.text || hpName}`,
         actionDesc: `Taxi via ${autoTaxi.via ? autoTaxi.via.join(' - ') : hpName}`
       };
     case "HOLD_SHORT_CROSS":
       return {
-        context: `Pesawat berhenti di Stop Bar sebelum menyeberangi runway aktif! Wajib berikan izin cross runway.`,
+        context: `Aircraft holding short at Stop Bar before active runway! Runway crossing clearance required.`,
         speech: `${cs} cross runway 25R at November cross, report vacated`,
         actionDesc: "Cross Runway Clearance"
       };
     case "TAXI":
       return {
-        context: `Pesawat sedang taxi menyusuri ${autoTaxi.via ? autoTaxi.via.join(' - ') : hpName} menuju holding point Runway ${rwyKey}...`,
+        context: `Aircraft taxiing via ${autoTaxi.via ? autoTaxi.via.join(' - ') : hpName} towards Runway ${rwyKey} holding point...`,
         speech: `Standby at holding point, ${cs}`,
         actionDesc: "Taxiing"
       };
     case "HOLDING":
       return {
-        context: `Pesawat berhenti di Holding Point ${hpName} Runway ${rwyKey}, runway siap digunakan.`,
+        context: `Aircraft holding at Holding Point ${hpName} Runway ${rwyKey}, runway is available.`,
         speech: `${cs} runway ${rwyKey} line up and wait`,
         actionDesc: `Line up and wait Runway ${rwyKey}`
       };
     case "LINE_UP":
     case "LINING_UP":
       return {
-        context: `Pesawat di posisi Runway ${rwyKey} via ${sidKey} siap lepas landas. Angin 250 derajat 8 knot.`,
+        context: `Aircraft in position on Runway ${rwyKey} via ${sidKey} ready for departure. Wind 250 degrees 8 knots.`,
         speech: `${cs} wind 250 degrees 8 knots, runway ${rwyKey} cleared for takeoff`,
         actionDesc: `Cleared Takeoff RWY ${rwyKey}`
       };
     case "TAKEOFF":
       return {
-        context: `Pesawat akselerasi lepas landas dari Runway ${rwyKey}...`,
+        context: `Aircraft rolling and accelerating for departure on Runway ${rwyKey}...`,
         speech: `Airborne climb out via ${sidKey}, ${cs}`,
         actionDesc: "Takeoff Roll"
       };
     case "APPROACH":
       return {
-        context: `Pesawat inbound pada rute kedatangan ${starKey} menuju ILS Runway ${rwyKey}.`,
+        context: `Inbound arrival established on ${starKey} STAR approaching ILS Runway ${rwyKey}.`,
         speech: `${cs} descend 3000 feet, cleared ILS runway ${rwyKey}`,
         actionDesc: `Cleared ILS RWY ${rwyKey} (${starKey})`
       };
     case "FINAL":
       return {
-        context: `Pesawat established di final approach 5 NM siap mendarat di Runway ${rwyKey}.`,
+        context: `Aircraft established on final approach 5 NM ready to land on Runway ${rwyKey}.`,
         speech: `${cs} wind 250 degrees 8 knots, runway ${rwyKey} cleared to land`,
         actionDesc: `Cleared to Land RWY ${rwyKey}`
       };
     case "LANDED":
       return {
-        context: `Pesawat telah mendarat di Runway ${rwyKey}. Instruksikan keluar runway via rapid exit resmi ${exitTwy} ke Ground.`,
+        context: `Aircraft has touched down on Runway ${rwyKey}. Instruct pilot to vacate via official rapid exit ${exitTwy} to Ground.`,
         speech: `${cs} vacate runway via ${exitTwy}, contact Ground 121 decimal 6`,
         actionDesc: `Vacate RWY via ${exitTwy}`
       };
     case "TAXI_IN":
       return {
-        context: `Pesawat mendarat sedang taxi masuk menuju Gate ${ac.assignedGate || 'E1'}. Rute auto-suggest via ${autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}.`,
+        context: `Arrived aircraft taxiing to Gate ${ac.assignedGate || 'E1'}. Auto-suggested route via ${autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}.`,
         speech: `${cs} taxi to Gate ${formatTaxiwayPhonetic(ac.assignedGate || 'E1')} via ${autoTaxi.text || 'November Charlie'}`,
         actionDesc: `Taxi via ${autoTaxi.via ? autoTaxi.via.join(' - ') : 'NC'}`
       };
     case "PARKED":
       return {
-        context: `Pesawat telah parkir sempurna di gate stand, mesin dimatikan.`,
+        context: `Aircraft parked at gate stand, engines shutdown.`,
         speech: `${cs} gate arrival confirmed, shutdown approved, good day`,
         actionDesc: "At Gate / Shutdown"
       };
     case "AIRBORNE":
       return {
-        context: `Pesawat airborne passing 2000ft mengikuti SID ${sidKey}, transfer kendali ke Jakarta Approach.`,
+        context: `Aircraft airborne passing 2000ft following SID ${sidKey}, transfer control to Jakarta Approach.`,
         speech: `${cs} contact Jakarta Approach 119 decimal 75`,
         actionDesc: "Contact Approach"
       };
     case "CLIMBING":
       return {
-        context: `Pesawat mengikuti SID ${sidKey}, climb passing FL120 menuju FL140.`,
+        context: `Aircraft flying SID ${sidKey}, climbing through FL120 for FL140.`,
         speech: `${cs} climb and maintain flight level 140 via ${sidKey}`,
         actionDesc: `Climb FL140 (${sidKey})`
       };
     case "HANDOFF":
       return {
-        context: `Pesawat menyelesaikan rute SID ${sidKey} di FL140, transfer kendali ke Jakarta Center!`,
+        context: `Aircraft completed SID ${sidKey} at FL140, hand off control to Jakarta Center!`,
         speech: `${cs} contact Jakarta Center 128 decimal 5, good day`,
         actionDesc: "Handoff to Center"
       };
     case "HANDED_OFF":
       return {
-        context: `Pesawat berhasil ditransfer ke Jakarta Center via ${sidKey}. Misi selesai!`,
+        context: `Aircraft successfully transferred to Jakarta Center via ${sidKey}. Mission complete!`,
         speech: "Mission Complete",
         actionDesc: "Enroute with Center"
       };
@@ -797,7 +797,7 @@ function updateEasyModePrompter() {
   const info = getDynamicEasyModePrompt(ac);
 
   document.getElementById('prompt-ac-badge').textContent = `${ac.id} (${ac.state}) • RWY ${ac.clearedRwy || '25R'}`;
-  document.getElementById('prompt-context').textContent = `Skenario: ${info.context}`;
+  document.getElementById('prompt-context').textContent = `Scenario: ${info.context}`;
   document.getElementById('prompt-speech-text').textContent = `"${info.speech}"`;
 
   // Show/Hide Tactical Quick Action Chips (only relevant when airborne)
@@ -971,7 +971,7 @@ async function setupRecording() {
       if (audioBlob.size < 500) {
         console.warn("Audio blob too short/empty:", audioBlob.size);
         const pttStatus = document.getElementById('ptt-status');
-        if (pttStatus) pttStatus.textContent = "Tekan & tahan tombol mic saat berbicara!";
+        if (pttStatus) pttStatus.textContent = "Press & hold mic button while speaking!";
         return;
       }
       await sendAudioToWhisper(audioBlob, ext);
@@ -1041,7 +1041,7 @@ async function startRecording() {
         pttStatus.className = "text-xs font-radar mb-1.5 px-3 py-1 rounded border transition-all bg-red-950 text-red-400 border-red-700 animate-pulse";
       }
       const acadRecStatus = document.getElementById('academy-rec-status');
-      if (acadRecStatus) acadRecStatus.textContent = "Merekam suara... Lepas SPACEBAR untuk kirim.";
+      if (acadRecStatus) acadRecStatus.textContent = "Recording audio... Release SPACEBAR to transmit.";
     }
   } catch (e) {
     console.error("Start recording failed:", e);
@@ -1067,7 +1067,7 @@ function stopRecording() {
       pttStatus.className = "text-xs font-radar mb-1.5 px-3 py-1 rounded border transition-all bg-slate-900 border-emerald-800 text-emerald-400";
     }
     const acadRecStatus = document.getElementById('academy-rec-status');
-    if (acadRecStatus) acadRecStatus.textContent = "Memproses Whisper AI...";
+    if (acadRecStatus) acadRecStatus.textContent = "Processing Whisper AI...";
   } catch (e) {
     console.error("Stop recording failed:", e);
   }
@@ -2122,14 +2122,14 @@ function setupCanvasInteraction(cElem, screenKey) {
           rulerSelectedAc1 = aircraft[closestAcIdx];
           const pttStatus = document.getElementById('ptt-status');
           if (pttStatus) {
-            pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> Target 1 (${rulerSelectedAc1.callsign}) dipilih! Sekarang klik target kedua...</span>`;
+            pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> Target 1 (${rulerSelectedAc1.callsign}) selected! Now click second aircraft...</span>`;
           }
         } else if (!rulerSelectedAc2 && aircraft[closestAcIdx].id !== rulerSelectedAc1.id) {
           rulerSelectedAc2 = aircraft[closestAcIdx];
           const distNm = calculateDistanceNm(rulerSelectedAc1.lat, rulerSelectedAc1.lon, rulerSelectedAc2.lat, rulerSelectedAc2.lon);
           const pttStatus = document.getElementById('ptt-status');
           if (pttStatus) {
-            pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> SEPARASI: ${distNm.toFixed(2)} NM (${rulerSelectedAc1.callsign} ↔ ${rulerSelectedAc2.callsign})</span>`;
+            pttStatus.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> SEPARATION: ${distNm.toFixed(2)} NM (${rulerSelectedAc1.callsign} ↔ ${rulerSelectedAc2.callsign})</span>`;
           }
         } else {
           // Reset anchor to this clicked aircraft
@@ -2424,7 +2424,7 @@ function renderFlightStrips() {
   const activeCount = aircraft.filter(a => !a.isArchivedParked).length;
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="p-3 text-center text-slate-500 text-xs italic">Tidak ada strip di Bay ${activeStripBayFilter}</div>`;
+    container.innerHTML = `<div class="p-3 text-center text-slate-500 text-xs italic">No flight strips in Bay ${activeStripBayFilter}</div>`;
     document.getElementById('aircraft-count').textContent = `${activeCount} Active`;
     return;
   }
@@ -3967,7 +3967,7 @@ function toggleRulerTool() {
     }
     const pttStatus = document.getElementById('ptt-status');
     if (pttStatus) {
-      pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> TACTICAL RULER: Klik pesawat pertama, lalu klik pesawat kedua di radar untuk ukur separasi!</span>`;
+      pttStatus.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-ruler"></i> TACTICAL RULER: Click first aircraft, then click second aircraft on radar to measure separation!</span>`;
     }
   } else {
     rulerSelectedAc1 = null;
@@ -4627,8 +4627,8 @@ function renderAmanSequencerPanel() {
   if (badge) badge.textContent = sequence.length;
 
   if (sequence.length === 0) {
-    listEl.innerHTML = '<div class="p-3 text-center text-slate-500 text-xs italic">Tidak ada pesawat arrival inbound saat ini. Klik "+ Inbound" untuk spawn pesawat kedatangan.</div>';
-    if (stackEl) stackEl.innerHTML = '<div class="text-slate-600 text-[10px] italic p-1">Holding stack kosong.</div>';
+    listEl.innerHTML = '<div class="p-3 text-center text-slate-500 text-xs italic">No inbound arrival traffic currently active. Click "+ Inbound" to spawn an arrival.</div>';
+    if (stackEl) stackEl.innerHTML = '<div class="text-slate-600 text-[10px] italic p-1">Holding stack empty.</div>';
     return;
   }
 
@@ -4666,11 +4666,11 @@ function renderAmanSequencerPanel() {
           <span class="truncate"><i class="fa-solid fa-arrows-left-right text-sky-400 mr-1"></i>${item.spacingAdvice}</span>
           <div class="flex items-center gap-1 shrink-0 ml-1">
             ${item.isHolding
-              ? `<button onclick="leaveHoldingPattern(${acIdx})" class="px-1.5 py-0.2 rounded bg-emerald-900 text-emerald-200 hover:bg-emerald-800 text-[9px] font-bold" title="Tinggalkan Holding & Masuk Approach">LEAVE HOLD</button>`
-              : `<button onclick="issueHoldingPattern(${acIdx}, 'TEGID', 'FL100')" class="px-1.5 py-0.2 rounded bg-purple-900 text-purple-200 hover:bg-purple-800 text-[9px] font-bold" title="Tugaskan Holding di TEGID FL100">HOLD</button>`
+              ? `<button onclick="leaveHoldingPattern(${acIdx})" class="px-1.5 py-0.2 rounded bg-emerald-900 text-emerald-200 hover:bg-emerald-800 text-[9px] font-bold" title="Leave Holding & Enter Approach">LEAVE HOLD</button>`
+              : `<button onclick="issueHoldingPattern(${acIdx}, 'TEGID', 'FL100')" class="px-1.5 py-0.2 rounded bg-purple-900 text-purple-200 hover:bg-purple-800 text-[9px] font-bold" title="Assign Holding at TEGID FL100">HOLD</button>`
             }
-            <button onclick="reorderAmanSlot(${idx}, Math.max(0, ${idx - 1}))" class="px-1 py-0.2 rounded bg-slate-800 hover:bg-slate-700 text-[9px]" title="Pindahkan Urutan Naik">▲</button>
-            <button onclick="reorderAmanSlot(${idx}, Math.min(${sequence.length - 1}, ${idx + 1}))" class="px-1 py-0.2 rounded bg-slate-800 hover:bg-slate-700 text-[9px]" title="Pindahkan Urutan Turun">▼</button>
+            <button onclick="reorderAmanSlot(${idx}, Math.max(0, ${idx - 1}))" class="px-1 py-0.2 rounded bg-slate-800 hover:bg-slate-700 text-[9px]" title="Move Sequence Up">▲</button>
+            <button onclick="reorderAmanSlot(${idx}, Math.min(${sequence.length - 1}, ${idx + 1}))" class="px-1 py-0.2 rounded bg-slate-800 hover:bg-slate-700 text-[9px]" title="Move Sequence Down">▼</button>
           </div>
         </div>
       </div>
@@ -4829,11 +4829,11 @@ const INTERACTIVE_SCENARIOS = [
   {
     id: "lesson-1",
     num: 1,
-    title: "Lesson 1: Pengenalan Radar & Seleksi Target",
+    title: "Lesson 1: Radar Introduction & Target Selection",
     category: "Radar Basics",
-    desc: "Latihan langsung memilih pesawat di radar/strip, membaca data block, dan mengidentifikasi squawk code.",
-    instruction: "Klik strip penerbangan atau klik simbol pesawat <b>GIA502</b> pada radar untuk memilih target aktif.",
-    targetPhrase: "Klik strip GIA502",
+    desc: "Hands-on practice selecting aircraft on radar/strip, reading data blocks, and identifying squawk codes.",
+    instruction: "Click the flight strip or click the aircraft symbol <b>GIA502</b> on the radar scope to select active target.",
+    targetPhrase: "Click strip GIA502",
     spawnAircraft: () => {
       resetScenarioAircraft();
       aircraft.push({
@@ -4859,15 +4859,15 @@ const INTERACTIVE_SCENARIOS = [
     checkSuccess: () => {
       return selectedAircraftIndex !== -1 && aircraft[selectedAircraftIndex] && aircraft[selectedAircraftIndex].id === "GIA502";
     },
-    successMessage: "Bagus! Target GIA502 berhasil dipilih. Data block aktif dan siap menerima instruksi."
+    successMessage: "Great job! Target GIA502 selected. Data block is active and ready for control instructions."
   },
   {
     id: "lesson-2",
     num: 2,
-    title: "Lesson 2: Komunikasi Radio PTT & IFR Clearance",
+    title: "Lesson 2: PTT Radio Comms & IFR Clearance",
     category: "Radio Phraseology",
-    desc: "Praktek langsung menekan tombol SPASI (PTT) dan berbicara ke mikrofon atau klik Kirim ATC untuk memberikan izin IFR.",
-    instruction: "Pilih <b>GIA502</b>, lalu ucapkan ke Mic atau tekan tombol Kirim ATC:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521\"</span>",
+    desc: "Hands-on practice holding SPACEBAR (PTT) and speaking into microphone or pressing Send ATC to issue IFR clearance.",
+    instruction: "Select <b>GIA502</b>, then speak into Mic or press Send ATC:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521\"</span>",
     targetPhrase: "Indonesia 502 cleared to Surabaya via DOLTA 1C departure, climb FL 140, squawk 4521",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -4896,15 +4896,15 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "GIA502");
       return ac && (ac.squawk === "4521" || (ac.fde && ac.fde.assignedAlt === "FL140"));
     },
-    successMessage: "Pilot GIA502 membaca readback resmi dan menyetel squawk 4521! IFR clearance sukses."
+    successMessage: "Pilot GIA502 read back official clearance and squawked 4521! IFR clearance successful."
   },
   {
     id: "lesson-3",
     num: 3,
     title: "Lesson 3: Ground Control — Pushback & Taxi",
     category: "Ground Control",
-    desc: "Instruksikan pesawat untuk dorong mundur dan taxi ke holding point Runway 25R.",
-    instruction: "Ucapkan ke mic atau kirim instruksi:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 push and start approved, facing west\"</span> kemudian setelah pushback berikan <span class='text-sky-300 font-bold'>\"Indonesia 502 taxi to holding point runway 25R\"</span>",
+    desc: "Instruct aircraft to push back and taxi to Runway 25R holding point.",
+    instruction: "Speak into mic or send clearance:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 push and start approved, facing west\"</span> then upon pushback completion grant <span class='text-sky-300 font-bold'>\"Indonesia 502 taxi to holding point runway 25R\"</span>",
     targetPhrase: "Indonesia 502 push and start approved, facing west",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -4932,15 +4932,15 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "GIA502");
       return ac && ["PUSHBACK", "TAXI", "HOLDING"].includes(ac.state);
     },
-    successMessage: "Pesawat GIA502 bergerak keluar dari gate dan mulai taxi di taxiway menuju holding point!"
+    successMessage: "Aircraft GIA502 pushed back from gate and commenced taxi towards holding point!"
   },
   {
     id: "lesson-4",
     num: 4,
     title: "Lesson 4: Tower Control — Line Up & Takeoff",
     category: "Tower Control",
-    desc: "Berikan izin masuk ke runway aktif dan otorisasi lepas landas setelah kondisi aman.",
-    instruction: "GIA502 berada di holding point 25R. Berikan izin lepas landas:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 runway 25R cleared for takeoff\"</span>",
+    desc: "Authorize aircraft to enter active runway and issue takeoff clearance when clear.",
+    instruction: "GIA502 is at holding point 25R. Issue takeoff clearance:<br><span class='text-amber-300 font-bold'>\"Indonesia 502 runway 25R cleared for takeoff\"</span>",
     targetPhrase: "Indonesia 502 runway 25R cleared for takeoff",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -4968,15 +4968,15 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "GIA502");
       return ac && ["TAKEOFF", "CLIMB", "AIRBORNE"].includes(ac.state);
     },
-    successMessage: "GIA502 full throttle, lepas landas dan mengudara menuju initial altitude!"
+    successMessage: "GIA502 rolling full throttle, airborne and climbing out towards initial altitude!"
   },
   {
     id: "lesson-5",
     num: 5,
     title: "Lesson 5: Approach Control — ILS Clearance",
     category: "Approach Control",
-    desc: "Pandu pesawat kedatangan (Arrival) yang mendekati localizer untuk intercept glide slope dan mendarat.",
-    instruction: "Lion Inter 650 sedang berada di TMA mendekati runway 25L. Berikan ILS clearance:<br><span class='text-amber-300 font-bold'>\"Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L\"</span>",
+    desc: "Guide inbound arrival aircraft approaching localizer to intercept glide slope and land.",
+    instruction: "Lion Inter 650 is in TMA approaching runway 25L. Issue ILS clearance:<br><span class='text-amber-300 font-bold'>\"Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L\"</span>",
     targetPhrase: "Lion Inter 650 descend to 3000 feet, cleared ILS runway 25L",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -5003,15 +5003,15 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "LNI650");
       return ac && ac.fde && ac.fde.assignedAlt === "A030";
     },
-    successMessage: "LNI650 menangkap localizer dan glide slope ILS runway 25L serta turun ke 3000 ft!"
+    successMessage: "LNI650 intercepted localizer and ILS glide slope for Runway 25L descending to 3000 ft!"
   },
   {
     id: "lesson-6",
     num: 6,
     title: "Lesson 6: Emergency Handling — Go-Around",
     category: "Emergency & Safety",
-    desc: "Runway terhalang! Batalkan pendaratan pesawat di short final dengan instruksi Go-Around darurat.",
-    instruction: "Garuda 502 berada di short final tetapi runway tidak steril. Segera instruksikan:<br><span class='text-red-400 font-bold'>\"Indonesia 502 go around!\"</span>",
+    desc: "Runway obstructed! Abort aircraft landing on short final with emergency Go-Around instruction.",
+    instruction: "Garuda 502 is on short final but runway is not sterilized. Immediately instruct:<br><span class='text-red-400 font-bold'>\"Indonesia 502 go around!\"</span>",
     targetPhrase: "Indonesia 502 go around",
     spawnAircraft: () => {
       resetScenarioAircraft();
@@ -5038,7 +5038,7 @@ const INTERACTIVE_SCENARIOS = [
       const ac = aircraft.find(a => a.id === "GIA502");
       return ac && (ac.state === "GO_AROUND" || (ac.fde && ac.fde.directFix === "GO_AROUND"));
     },
-    successMessage: "Pesawat segera batalkan pendaratan, mendaki tajam ke 3000 ft dan menjauh dari runway!"
+    successMessage: "Aircraft promptly initiated go-around, climbing steeply to 3000 ft clear of runway!"
   }
 ];
 
@@ -5070,7 +5070,7 @@ function initAcademyTutorial() {
             <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 uppercase">
               ${s.category}
             </span>
-            <span class="text-[10px] font-mono text-amber-400 font-bold">PRAKTEK LANGSUNG</span>
+            <span class="text-[10px] font-mono text-amber-400 font-bold">HANDS-ON DRILL</span>
           </div>
           <h4 class="text-sm font-bold text-white font-radar mt-2 group-hover:text-emerald-400 transition">${s.title}</h4>
           <p class="text-xs text-slate-400 mt-1 leading-relaxed">${s.desc}</p>
@@ -5078,7 +5078,7 @@ function initAcademyTutorial() {
         <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
           <span class="text-[10px] text-slate-500 font-mono"><i class="fa-solid fa-plane-departure text-emerald-500 mr-1"></i>Live Scenario</span>
           <button onclick="startHandsOnScenario('${s.id}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold font-radar flex items-center gap-1.5 shadow transition active:scale-95">
-            <i class="fa-solid fa-gamepad text-[11px]"></i> Mainkan Misi
+            <i class="fa-solid fa-gamepad text-[11px]"></i> Launch Mission
           </button>
         </div>
       </div>
@@ -5138,19 +5138,19 @@ function showPracticeMissionHUD(scenario) {
     <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-crosshairs mr-1"></i>MISI PRAKTEK: ${scenario.title}</span>
+        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-crosshairs mr-1"></i>PRACTICE MISSION: ${scenario.title}</span>
       </div>
-      <button onclick="quitPracticeScenario()" class="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded bg-slate-800" title="Keluar Misi">
-        <i class="fa-solid fa-xmark"></i> Batal
+      <button onclick="quitPracticeScenario()" class="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded bg-slate-800" title="Abort Mission">
+        <i class="fa-solid fa-xmark"></i> Abort
       </button>
     </div>
     <div class="text-xs text-slate-200 leading-relaxed font-sans mb-2">
       ${scenario.instruction}
     </div>
     <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800/80">
-      <span class="text-slate-400 font-mono">Status Misi: <b class="text-amber-400 animate-pulse">MENUNGGU AKSI ANDA...</b></span>
-      <button onclick="autoExecuteScenarioHelp()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold font-mono text-[10px]" title="Kirim otomatis perintah target">
-        <i class="fa-solid fa-bolt mr-1"></i>Bantu Kirim
+      <span class="text-slate-400 font-mono">Mission Status: <b class="text-amber-400 animate-pulse">AWAITING YOUR ACTION...</b></span>
+      <button onclick="autoExecuteScenarioHelp()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold font-mono text-[10px]" title="Auto transmit target clearance">
+        <i class="fa-solid fa-bolt mr-1"></i>Auto Transmit
       </button>
     </div>
   `;
@@ -5182,7 +5182,7 @@ function showMissionSuccessModal(scenario) {
         <i class="fa-solid fa-trophy"></i>
       </div>
       <div>
-        <span class="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">Misi Berhasil Diselesaikan!</span>
+        <span class="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">Mission Successfully Completed!</span>
         <h3 class="text-lg font-bold text-white mt-2">${scenario.title}</h3>
         <p class="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
           ${scenario.successMessage}
@@ -5190,10 +5190,10 @@ function showMissionSuccessModal(scenario) {
       </div>
       <div class="pt-2 flex items-center justify-center gap-3">
         <button onclick="quitPracticeScenario()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold font-mono">
-          Tutup
+          Close
         </button>
         <button onclick="nextPracticeScenario('${scenario.id}')" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-mono shadow-lg flex items-center gap-1.5">
-          Lanjut Misi Berikutnya <i class="fa-solid fa-arrow-right"></i>
+          Next Mission <i class="fa-solid fa-arrow-right"></i>
         </button>
       </div>
     </div>

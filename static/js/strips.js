@@ -213,7 +213,7 @@ function renderFlightStrips() {
   const activeCount = aircraft.filter(a => !a.isArchivedParked).length;
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="p-3 text-center text-slate-500 text-xs italic">Tidak ada strip di Bay ${activeStripBayFilter}</div>`;
+    container.innerHTML = `<div class="p-3 text-center text-slate-500 text-xs italic">No flight strips in Bay ${activeStripBayFilter}</div>`;
     document.getElementById('aircraft-count').textContent = `${activeCount} Active`;
     return;
   }
