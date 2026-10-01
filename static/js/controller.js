@@ -201,11 +201,13 @@ function runAiCoControllerCycle() {
     const recEl = document.getElementById('recognized-text');
     if (recEl) recEl.textContent = `[AI ATC]: "${atcText}"`;
 
-    // Immediately execute the flight maneuver callback
-    if (executeCallback) executeCallback();
-    renderFlightStrips();
-    updateEasyModePrompter();
-    renderAllScreens();
+    // Realistic human ATC reaction delay before flight action starts (1.5 - 2.5s)
+    setTimeout(() => {
+      if (executeCallback) executeCallback();
+      renderFlightStrips();
+      updateEasyModePrompter();
+      renderAllScreens();
+    }, 1500);
 
     // Enqueue ATC Controller Voice & Readback without blocking future clearances
     enqueueRadioTransmission({
@@ -254,9 +256,24 @@ function handleAiAutonomousDispatch(ac, idx) {
   const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
   const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
 
-  // AI GATE: Execute pushback with Apron Alleyway & Stand Spacing Protection (ICAO Doc 9476)
+  // AI GATE: Execute pushback with A-CDM Slot Sequencing & Concourse Protection
   if (ac.state === "GATE" && !ac._aiPushIssued) {
-    // Check if another aircraft is currently pushing back or maneuvering in the same cul-de-sac / concourse alleyway
+    // 1. Assign realistic Scheduled Pushback Time (TSAT / EOBT) upon arriving at gate if not set
+    const now = Date.now();
+    if (!ac._scheduledPushTime) {
+      // In Spectator / AI mode: staggered departure schedule (each departure waits 15-45s after gate readiness)
+      // Count other departures currently parked or preparing
+      const gateIndex = aircraft.filter(a => a.state === "GATE" && a.id !== ac.id).length;
+      ac._scheduledPushTime = now + (10000 + gateIndex * 20000); // Stagger by 20 seconds between departures
+      return;
+    }
+
+    // Wait until scheduled pushback time arrives (mimics ATC departure slot / pilot pushback request)
+    if (now < ac._scheduledPushTime) {
+      return;
+    }
+
+    // 2. Concourse & Apron Alleyway Mutual Exclusion Check
     const getGateConcourse = (gRef) => {
       if (!gRef) return "T2E";
       const c = gRef[0].toUpperCase();
@@ -268,14 +285,11 @@ function handleAiAutonomousDispatch(ac, idx) {
     const isAlleywayBusy = aircraft.some(other => {
       if (other.id === ac.id) return false;
       const otherConcourse = getGateConcourse(other.assignedGate);
-      // If in same concourse cul-de-sac (e.g. T1A: A1-A7, T1B, T2D, etc.)
       if (otherConcourse === myConcourse) {
-        // If another plane is already pushing back or just starting to taxi out of the cul-de-sac
         if (other.state === "PUSHBACK" || (other.state === "READY_TAXI" && !other._runwayCrossCleared)) {
           return true;
         }
       }
-      // Direct proximity check: if another moving aircraft is within 150m of our gate
       if (ac.lat && ac.lon && other.lat && other.lon && other.groundSpeed > 0) {
         const d = calculateDistanceMeters(ac.lat, ac.lon, other.lat, other.lon);
         if (d < 140) return true;
