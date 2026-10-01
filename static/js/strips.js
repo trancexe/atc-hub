@@ -117,7 +117,7 @@ function toggleFlightStripsPanel() {
     // If on mobile or dragged offscreen, position cleanly below navbar
     if (window.innerWidth < 768) {
       panel.style.left = '8px';
-      panel.style.top = '56px';
+      panel.style.top = '72px';
       panel.style.right = 'auto';
       panel.style.bottom = 'auto';
     }
