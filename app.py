@@ -282,12 +282,16 @@ async def transcribe_audio(
             tmp_path = tmp.name
 
         initial_prompt = (
-            "INDONESIA, LION INTER, SUPERGREEN, BATIK, WAGON AIR, SRIWIJAYA, "
-            "one, two, tree, four, fife, six, seven, eight, niner, zero, "
-            "runway 25R, 07L, 25L, 07R, 06, 24, taxiway NC1, NC2, NC3, N1, N2, NP1, "
-            "push and start approved, taxi to holding point, cleared for takeoff, "
-            "climb and maintain flight level, descend, cleared ILS approach, cleared to land, "
-            "line up and wait, squawk, QNH, DOLTA, BUNTO, KRAKE, CKG, DKI"
+            "INDONESIA, GARUDA, LION INTER, SUPERGREEN, CITILINK, BATIK, WAGON AIR, AIRASIA, SINGAPORE, CARGOLUX, SUPERJET, SRIWIJAYA, "
+            "one, two, tree, four, fife, six, seven, eight, niner, zero, decimal, "
+            "runway 25R, 07L, 25L, 07R, 06, 24, "
+            "taxiway NC1, NC2, NC3, NC4, NC5, NC6, NC7, NCY, NCZ, NP1, NP2, NP3, NPW, NPE, "
+            "SP1, SP2, SPW, SPE, SC1, SC2, SC3, SC4, SC5, SC6, SC7, SC8, SC9, SCX, WC1, WC2, EC1, EC2, "
+            "N1, N2, N3, N4, N5, N6, N7, N8, N9, S1, S2, S3, S4, S5, S6, S7, S8, S9, M1, M2, M7, M8, "
+            "push and start approved, taxi to holding point, cleared for takeoff, cleared to land, "
+            "cleared to Surabaya, cleared to Bali, cleared to Medan, departure, "
+            "climb and maintain flight level, descend, cleared ILS approach, "
+            "line up and wait, squawk, QNH, DOLTA, BUNTO, KRAKE, CKG, DKI, TEGID, RAKIT, TOPAR, LADIR"
         )
 
         transcript = ""
@@ -424,10 +428,13 @@ def sanitize_and_normalize(raw_text: str) -> dict:
         "batik": "BTK",
         "wagon air": "AWQ",
         "airasia": "AWQ",
-        "sriwijaya": "SJY"
+        "sriwijaya": "SJY",
+        "singapore": "SIA",
+        "cargolux": "CLX",
+        "superjet": "SJV"
     }
 
-    pattern = r'\b(indonesia|garuda|lion\s+inter|lion|supergreen|citilink|batik|wagon\s+air|airasia|sriwijaya)\s*(\d{1,4})?\b'
+    pattern = r'\b(indonesia|garuda|lion\s+inter|lion|supergreen|citilink|batik|wagon\s+air|airasia|sriwijaya|singapore|cargolux|superjet)\s*(\d{1,4})?\b'
     airline_match = re.search(pattern, normalized_str, re.I)
     if airline_match:
         raw_telephony = re.sub(r'\s+', ' ', airline_match.group(1).lower())
@@ -439,7 +446,10 @@ def sanitize_and_normalize(raw_text: str) -> dict:
             "CTV": "SUPERGREEN",
             "BTK": "BATIK",
             "AWQ": "WAGON AIR",
-            "SJY": "SRIWIJAYA"
+            "SJY": "SRIWIJAYA",
+            "SIA": "SINGAPORE",
+            "CLX": "CARGOLUX",
+            "SJV": "SUPERJET"
         }.get(icao_code, raw_telephony.upper())
         callsign = f"{telephony_formal} {num}".strip() if num else telephony_formal
 
@@ -447,6 +457,8 @@ def sanitize_and_normalize(raw_text: str) -> dict:
     intent = "UNKNOWN"
     if any(k in normalized_str for k in ["push", "pushback", "start"]):
         intent = "PUSHBACK"
+    elif any(k in normalized_str for k in ["cleared to", "clearance", "cleared delivery", "delivery clearance"]) or (any(k in normalized_str for k in ["surabaya", "departure", "destination"]) and any(k in normalized_str for k in ["cleared", "clearance", "climb", "squawk"])):
+        intent = "DELIVERY"
     elif "go around" in normalized_str or "missed approach" in normalized_str or "go round" in normalized_str:
         intent = "GO_AROUND"
     elif "heading" in normalized_str or "turn left" in normalized_str or "turn right" in normalized_str or "fly heading" in normalized_str:

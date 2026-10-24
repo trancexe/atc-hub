@@ -130,14 +130,21 @@ function executeDebugCommand() {
   // Determine clearance action directly by current state machine
   let instructionText = "";
   if (ac.state === "GATE") {
-    instructionText = `${ac.callsign} push and start approved, facing west`;
+    if (!ac.hasDepartureClearance) {
+      const destName = ac.dest ? ac.dest.replace(/^[A-Z]{4}\s*\((.*?)\)$/, '$1') : "Surabaya";
+      instructionText = `${ac.callsign} cleared to ${destName} via ${ac.clearedSid || 'DOLTA 1C'} departure, runway ${rwyKey}, climb ${ac.initialAlt || 'FL140'}, squawk ${ac.squawk || '4521'}`;
+    } else {
+      instructionText = `${ac.callsign} push and start approved, facing west`;
+    }
   } else if (ac.state === "PUSHBACK") {
     // Show clear status feedback if clicked during active pushback
     const recEl = document.getElementById('recognized-text');
     if (recEl) recEl.textContent = `[PILOT]: "Pushback in progress, approaching NC6 centerline, ${ac.callsign}."`;
     return;
   } else if (ac.state === "READY_TAXI") {
-    instructionText = `${ac.callsign} taxi to holding point runway ${rwyKey} via ${hpName}`;
+    const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(ac) : null;
+    const viaSpoken = autoTaxi ? autoTaxi.text : hpName;
+    instructionText = `${ac.callsign} taxi to holding point runway ${rwyKey} via ${viaSpoken}`;
   } else if (ac.state === "HOLD_SHORT_CROSS") {
     instructionText = `${ac.callsign} cross runway 25R at November cross, report vacated`;
   } else if (ac.state === "TAXI") {
@@ -210,17 +217,25 @@ function getAutoSuggestTaxiRoute(ac) {
   // Departure taxiway route auto-suggest (Chart 10-6S / 10-6S1)
   if (["GATE", "PUSHBACK", "READY_TAXI", "TAXI"].includes(ac.state)) {
     if (rwy === "25R") {
+      const preferredHp = ac.assignedHp || "N2"; // Official Jeppesen 10-6S standard intersection N2 or full-length N1
+      const isN2 = preferredHp.toUpperCase().includes("N2");
+      const targetHp = isN2 ? "N2" : "N1";
+      const targetSpoken = isN2 ? "November two" : "November one";
+
       if (gateRef.startsWith("A") || gateRef.startsWith("B") || gateRef.startsWith("C")) {
-        return { via: ["SP1", "WC2", "NP2", "N1"], text: "Sierra Papa one, Whiskey Charlie two, November Papa two, November one", hp: "N1" };
+        return { via: ["SP1", "WC2", "NP2", targetHp], text: `Sierra Papa one, Whiskey Charlie two, November Papa two, ${targetSpoken}`, hp: targetHp };
       } else if (gateRef.startsWith("D")) {
-        return { via: ["NC7", "NP2", "N1"], text: "November Charlie seven, November Papa two, November one", hp: "N1" };
+        return { via: ["NC7", "NP2", targetHp], text: `November Charlie seven, November Papa two, ${targetSpoken}`, hp: targetHp };
       } else if (gateRef.startsWith("E")) {
-        return { via: ["NC6", "NP2", "N1"], text: "November Charlie six, November Papa two, November one", hp: "N1" };
+        return { via: ["NC6", "NP2", targetHp], text: `November Charlie six, November Papa two, ${targetSpoken}`, hp: targetHp };
       } else if (gateRef.startsWith("F")) {
-        return { via: ["NCY", "NP2", "N1"], text: "November Charlie Yankee, November Papa two, November one", hp: "N1" };
+        return { via: ["NCY", "NP2", targetHp], text: `November Charlie Yankee, November Papa two, ${targetSpoken}`, hp: targetHp };
+      } else if (gateRef === "21" || gateRef === "22" || gateRef === "23" || gateRef.startsWith("NC2")) {
+        // Official Jeppesen Route GOLF 3D: Gate NC2 direct to N2
+        return { via: ["NC2", "N2"], text: "November Charlie two, November two", hp: "N2" };
       } else {
-        // Terminal 3
-        return { via: ["NC3", "NP2", "N1"], text: "November Charlie three, November Papa two, November one", hp: "N1" };
+        // Terminal 3 (Domestic / International)
+        return { via: ["NC3", "NP2", targetHp], text: `November Charlie three, November Papa two, ${targetSpoken}`, hp: targetHp };
       }
     } else if (rwy === "07L") {
       return { via: ["NP2", "N9"], text: "November Papa two, November nine", hp: "N9" };
@@ -274,8 +289,16 @@ function getDynamicEasyModePrompt(ac) {
 
   switch (ac.state) {
     case "GATE":
+      if (!ac.hasDepartureClearance) {
+        const destName = ac.dest ? ac.dest.replace(/^[A-Z]{4}\s*\((.*?)\)$/, '$1') : "Surabaya";
+        return {
+          context: `Aircraft at Gate ${ac.assignedGate || 'E1'} reported initial check-in (POB ${ac.pob || 156}, dest ${destName}, via ${sidKey}). Issue IFR Departure Clearance.`,
+          speech: `${cs} cleared to ${destName} via ${sidKey} departure, runway ${rwyKey}, climb ${ac.initialAlt || 'FL140'}, squawk ${ac.squawk || '4521'}`,
+          actionDesc: "IFR Clearance (Delivery)"
+        };
+      }
       return {
-        context: `Aircraft at Gate ${ac.assignedGate || 'E1'} reported initial check-in (POB ${ac.pob || 156}, dest ${ac.dest || 'Surabaya'}, via ${sidKey}). Ready for push and start Runway ${rwyKey}.`,
+        context: `IFR clearance confirmed. Aircraft at Gate ${ac.assignedGate || 'E1'} ready for pushback and engine start Runway ${rwyKey}.`,
         speech: `${cs} push and start approved, facing west`,
         actionDesc: "Push & Start Approved"
       };

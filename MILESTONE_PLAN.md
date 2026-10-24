@@ -13,9 +13,9 @@
 | 3 | Multi-Sektor, Frekuensi VHF & AI Spectator | ✅ Selesai |
 | 4 | Cuaca Dinamis, ATIS & Konfigurasi Runway | ✅ Selesai |
 | 5 | Perintah Taktis Resolusi Konflik | ✅ Selesai |
-| 6 | Arrival Sequencer (AMAN) & Holding Pattern | 🔜 Berikutnya |
-| 7 | Learning Academy & Guided Training | 📋 Direncanakan |
-| 8 | Multiplayer, Skenario & Scoring | 📋 Direncanakan |
+| 6 | Arrival Sequencer (AMAN) & Holding Pattern | ✅ Selesai |
+| 7 | Learning Academy & Guided Training | ✅ Selesai |
+| 8 | Multiplayer, Skenario & Scoring | 🔜 Berikutnya |
 | 9 | Bandara Tambahan & Ekspor Data | 📋 Direncanakan |
 | 10 | Polish, Performa & Deployment Produksi | 📋 Direncanakan |
 
@@ -82,7 +82,7 @@
 
 ---
 
-## Milestone 5 — Perintah Taktis Resolusi Konflik
+## Milestone 5 — Perintah Taktis Resolusi Konflik ✅
 
 **Tujuan:** Instruksi ATC aktif untuk mengelola separasi dan sequencing secara manual.
 
@@ -92,39 +92,41 @@
 - [x] **Go-Around / Missed Approach:** Instruksi pembatalan pendaratan di fase FINAL — pesawat memanjat kembali ke 3.000 ft, melintasi ujung landasan, dan memasuki re-sequence.
 - [x] **Visual Separation Monitoring:** Ruler tool untuk mengukur jarak antar pesawat di radar secara langsung (klik tombol RULER, lalu klik pesawat A ↔ B).
 - [x] **Voice Command Integration:** Semua instruksi taktis dapat diberikan melalui Push-to-Talk speech recognition (Whisper / intent matching).
+- [x] **Jeppesen 10-6 Standard Taxi Integration:** Dukungan resmi rute taksi Jeppesen (Intersection N2 vs Full-Length N1, GOLF 3D, dan AVOID routing).
 - [x] **Dry-run test suite:** `tests/dry_run_milestone5.js` — 5/5 PASS.
 
 **Commit:** Selesai (Milestone 5)
 
 ---
 
-## Milestone 6 — Arrival Sequencer (AMAN) & Holding Pattern
+## Milestone 6 — Arrival Sequencer (AMAN) & Holding Pattern ✅
 
 **Tujuan:** Manajemen antrean kedatangan otomatis dan mekanisme penundaan terbang.
 
-- [ ] **AMAN (Arrival Manager):** Panel urutan kedatangan yang menghitung Estimated Landing Time (ELDT) setiap pesawat berdasarkan jarak, kecepatan, dan slot runway.
-- [ ] **Slot Assignment:** Drag-and-drop untuk mengatur ulang urutan antrean kedatangan.
-- [ ] **Spacing Advisor:** Saran kecepatan dan heading untuk menjaga jarak antar pesawat berurutan pada final approach.
-- [ ] **Holding Pattern Otomatis:** Jika slot belum tersedia, pesawat masuk ke racetrack holding pattern standar (inbound leg 1 menit, outbound leg 1 menit, standard rate turn) di atas fix yang ditentukan (TEGID, RAKIT, dll).
-- [ ] **Holding Stack Management:** Panel visual menampilkan tumpukan ketinggian holding (FL100, FL110, FL120...) dan urutan masuk/keluar.
-- [ ] **Hold Exit Clearance:** Instruksi *"Leave holding, resume approach"* secara manual atau otomatis saat slot tersedia.
-- [ ] **Fuel & Endurance Timer:** Indikator estimasi fuel remaining di strip — alert jika pesawat mendekat batas bingo fuel saat holding terlalu lama.
-- [ ] **Dry-run test suite:** Validasi urutan AMAN, masuk/keluar holding, dan fuel timer.
+- [x] **AMAN (Arrival Manager):** Panel urutan kedatangan yang menghitung Estimated Landing Time (ELDT) setiap pesawat berdasarkan jarak, kecepatan, dan slot runway.
+- [x] **Slot Assignment:** Drag-and-drop untuk mengatur ulang urutan antrean kedatangan.
+- [x] **Spacing Advisor:** Saran kecepatan dan heading untuk menjaga jarak antar pesawat berurutan pada final approach.
+- [x] **Holding Pattern Otomatis:** Jika slot belum tersedia, pesawat masuk ke racetrack holding pattern standar (inbound leg 1 menit, outbound leg 1 menit, standard rate turn) di atas fix yang ditentukan (TEGID, RAKIT, dll).
+- [x] **Holding Stack Management:** Panel visual menampilkan tumpukan ketinggian holding (FL100, FL110, FL120...) dan urutan masuk/keluar.
+- [x] **Hold Exit Clearance:** Instruksi *"Leave holding, resume approach"* secara manual atau otomatis saat slot tersedia.
+- [x] **Fuel & Endurance Timer:** Indikator estimasi fuel remaining di strip — alert jika pesawat mendekat batas bingo fuel saat holding terlalu lama.
+- [x] **Dry-run test suite:** `tests/dry_run_milestone6.js` — 7/7 PASS.
 
 ---
 
-## Milestone 7 — Learning Academy & Guided Training 🎓
+## Milestone 7 — Learning Academy & Guided Training 🎓 ✅
 
 **Tujuan:** Modul pelatihan terstruktur agar pemula dapat belajar ATC dari nol hingga mahir.
 
 ### 7A — Tutorial Interaktif
-- [ ] **Tutorial Mode:** Overlay panduan langkah-demi-langkah dengan sorotan elemen UI, panah instruksi, dan tooltip penjelasan.
-- [ ] **Lesson 1 — Pengenalan Radar:** Navigasi peta, zoom/pan, membaca data block pesawat.
-- [ ] **Lesson 2 — Komunikasi Radio:** Cara PTT, fraseologi ICAO dasar (*"Push and start approved"*, *"Taxi to holding point"*), alfabet fonetik.
-- [ ] **Lesson 3 — Ground Control:** Pushback, taxi routing, runway crossing protocol.
-- [ ] **Lesson 4 — Tower Control:** Lineup, takeoff clearance, landing clearance, runway management.
-- [ ] **Lesson 5 — Approach Control:** Membaca STAR, memberikan ILS clearance, sequencing inbound.
-- [ ] **Lesson 6 — Emergency Handling:** Go-around, holding, konflik separasi.
+- [x] **Tutorial Mode:** Overlay panduan langkah-demi-langkah dengan sorotan elemen UI, panah instruksi, dan tooltip penjelasan.
+- [x] **Lesson 1 — Pengenalan Radar:** Navigasi peta, zoom/pan, membaca data block pesawat.
+- [x] **Lesson 2 — Komunikasi Radio:** Cara PTT, fraseologi ICAO dasar (*"Push and start approved"*, *"Taxi to holding point"*), alfabet fonetik.
+- [x] **Lesson 3 — Ground Control:** Pushback, taxi routing, runway crossing protocol.
+- [x] **Lesson 4 — Tower Control:** Lineup, takeoff clearance, landing clearance, runway management.
+- [x] **Lesson 5 — Approach Control:** Membaca STAR, memberikan ILS clearance, sequencing inbound.
+- [x] **Lesson 6 — Emergency Handling:** Go-around, holding, konflik separasi.
+- [x] **Dry-run test suite:** `tests/dry_run_milestone7.js` — 6/6 PASS.
 
 ### 7B — Skenario Latihan Terkurasi
 - [ ] **Scenario Editor:** Preset skenario dengan jumlah pesawat, cuaca, dan konfigurasi runway tertentu.

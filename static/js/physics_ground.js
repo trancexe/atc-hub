@@ -73,7 +73,7 @@ function buildTaxiwayRefNodeMap() {
   return map;
 }
 
-function findTaxiwayPath(startLat, startLon, endLat, endLon, requestedVia = null) {
+function findTaxiwayPath(startLat, startLon, endLat, endLon, requestedVia = null, avoidTaxiways = null) {
   if (!airportData || !airportData.taxi_graph) return null;
   const graph = airportData.taxi_graph;
   const nodes = graph.nodes;
@@ -103,6 +103,16 @@ function findTaxiwayPath(startLat, startLon, endLat, endLon, requestedVia = null
   const twyMap = buildTaxiwayRefNodeMap();
   const avoidNodes = new Set();
   const preferNodes = new Set();
+
+  // If controller specified avoid list (e.g. "avoid NP1")
+  if (avoidTaxiways && avoidTaxiways.length > 0) {
+    for (const av of avoidTaxiways) {
+      const avUpper = String(av).toUpperCase().trim();
+      if (twyMap[avUpper]) {
+        for (const nid of twyMap[avUpper]) avoidNodes.add(nid);
+      }
+    }
+  }
 
   if (requestedVia && requestedVia.length > 0) {
     for (const v of requestedVia) {
@@ -354,15 +364,29 @@ function executeTaxiMovement(ac) {
   const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
     ? airportData.runway_mechanisms[rwyKey]
     : null;
-  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
-  const hpCoord = mech && mech.holding_point ? [mech.holding_point.lat, mech.holding_point.lon] : [-6.1104895, 106.6679684];
+  
+  // Resolve designated holding point dynamically per Jeppesen 10-6 (e.g. N1, N2, N3, N9, S1, S2, S8)
+  let hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
+  let hpCoord = mech && mech.holding_point ? [mech.holding_point.lat, mech.holding_point.lon] : [-6.1104895, 106.6679684];
+
+  if (ac.assignedHp && airportData && airportData.holding_positions) {
+    const customHp = airportData.holding_positions.find(h => {
+      const hClean = h.name.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const reqClean = ac.assignedHp.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      return hClean === reqClean || hClean.startsWith(reqClean) || (h.id && h.id.toUpperCase().includes(reqClean));
+    });
+    if (customHp) {
+      hpName = customHp.name.split(' ')[0] || ac.assignedHp;
+      hpCoord = [customHp.lat, customHp.lon];
+    }
+  }
 
   // Dynamically compute authentic taxiway path via Dijkstra if departed from any gate
   let points = null;
   if (airportData && airportData.taxi_graph && ac.lat && ac.lon) {
     const viaReq = ac.assignedTaxiVia || (ac.commandedTaxiVia ? [ac.commandedTaxiVia] : null);
-    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1], viaReq);
-    if (calculated && calculated.length > 3) {
+    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1], viaReq, ac.avoidTaxiways);
+    if (calculated && calculated.length > 2) {
       points = calculated.map(p => ({ lat: p[0], lon: p[1] }));
       ac.route = calculated;
     }
@@ -474,17 +498,29 @@ function executeLineUpMovement(ac) {
     ? airportData.runway_mechanisms[rwyKey]
     : null;
 
-  // Continuous, unbroken lead-in curve into Runway threshold
-  const entryNodes = mech && mech.lineup_path
-    ? mech.lineup_path.map(p => ({ lat: p[0], lon: p[1] }))
-    : ((airportData && airportData.routes && airportData.routes.runway_25r_entry_lineup)
-        ? airportData.routes.runway_25r_entry_lineup.map(p => ({ lat: p[0], lon: p[1] }))
-        : [
-            { lat: -6.110490, lon: 106.667968 },
-            { lat: -6.109798, lon: 106.667797 },
-            { lat: -6.109270, lon: 106.668258 },
-            { lat: -6.108959, lon: 106.669062 }
-          ]);
+  // Dynamic lineup: check if lining up from intersection (e.g. N2, N3) or default threshold N1
+  let entryNodes = null;
+  if (ac.assignedHp && ac.assignedHp.toUpperCase().includes("N2")) {
+    // Intersection departure via N2 straight into 25R runway track
+    entryNodes = [
+      { lat: -6.109950, lon: 106.668480 },
+      { lat: -6.109600, lon: 106.668380 },
+      { lat: -6.109270, lon: 106.668258 },
+      { lat: -6.109438, lon: 106.667831 }
+    ];
+  } else {
+    // Continuous, unbroken lead-in curve into Runway threshold
+    entryNodes = mech && mech.lineup_path
+      ? mech.lineup_path.map(p => ({ lat: p[0], lon: p[1] }))
+      : ((airportData && airportData.routes && airportData.routes.runway_25r_entry_lineup)
+          ? airportData.routes.runway_25r_entry_lineup.map(p => ({ lat: p[0], lon: p[1] }))
+          : [
+              { lat: -6.110490, lon: 106.667968 },
+              { lat: -6.109798, lon: 106.667797 },
+              { lat: -6.109270, lon: 106.668258 },
+              { lat: -6.108959, lon: 106.669062 }
+            ]);
+  }
 
   const targetHeading = mech ? mech.heading : 250;
   let eIdx = 1;
@@ -585,7 +621,7 @@ function executeTakeoffMovement(ac) {
     : null;
 
   // Continuous real runway centerline roll along designated Runway direction
-  const rollNodes = mech && mech.takeoff_roll_path
+  let rollNodes = mech && mech.takeoff_roll_path
     ? mech.takeoff_roll_path.map(p => ({ lat: p[0], lon: p[1] }))
     : ((airportData && airportData.routes && airportData.routes.runway_25r_takeoff_roll)
         ? airportData.routes.runway_25r_takeoff_roll.map(p => ({ lat: p[0], lon: p[1] }))
@@ -597,8 +633,21 @@ function executeTakeoffMovement(ac) {
           ]);
 
   const targetHeading = mech ? mech.heading : 250;
-  // Snap smoothly to threshold starting point to prevent any coordinate warp
+  
+  // If aircraft entered from an intersection (e.g. N2), slice remaining runway roll points ahead
   if (rollNodes.length > 0) {
+    let closestIdx = 0;
+    let minD = Infinity;
+    for (let i = 0; i < rollNodes.length; i++) {
+      const d = (rollNodes[i].lat - ac.lat) ** 2 + (rollNodes[i].lon - ac.lon) ** 2;
+      if (d < minD) {
+        minD = d;
+        closestIdx = i;
+      }
+    }
+    if (closestIdx > 0 && closestIdx < rollNodes.length - 2) {
+      rollNodes = rollNodes.slice(closestIdx);
+    }
     ac.lat = rollNodes[0].lat;
     ac.lon = rollNodes[0].lon;
   }

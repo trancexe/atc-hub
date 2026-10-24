@@ -1,10 +1,11 @@
 // Dry Run Test for Milestone 4: Weather Engine, METAR Presets, Wind Analysis, ATIS, and Separation Expansion
 const assert = require('assert');
 const fs = require('fs');
+const path = require('path');
 
 console.log("=== DRY RUN TEST: MILESTONE 4 (WEATHER, ATIS & RUNWAY CONFIG) ===");
 
-const appJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/app.js', 'utf8');
+const appJs = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
 // Extract Weather presets and logic
 eval(appJs.slice(appJs.indexOf('const WEATHER_PRESETS = {'), appJs.indexOf('let currentWeather =')).replace('const WEATHER_PRESETS', 'global.WEATHER_PRESETS'));

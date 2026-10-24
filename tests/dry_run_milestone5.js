@@ -1,10 +1,11 @@
 // Dry Run Test for Milestone 5: Tactical Conflict Resolution & Separation Tools
 const assert = require('assert');
 const fs = require('fs');
+const path = require('path');
 
 console.log("=== DRY RUN TEST: MILESTONE 5 (TACTICAL CONFLICT RESOLUTION) ===");
 
-const appJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/app.js', 'utf8');
+const appJs = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
 // Global mock context
 global.aircraft = [

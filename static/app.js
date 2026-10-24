@@ -503,14 +503,21 @@ function executeDebugCommand() {
   // Determine clearance action directly by current state machine
   let instructionText = "";
   if (ac.state === "GATE") {
-    instructionText = `${ac.callsign} push and start approved, facing west`;
+    if (!ac.hasDepartureClearance) {
+      const destName = ac.dest ? ac.dest.replace(/^[A-Z]{4}\s*\((.*?)\)$/, '$1') : "Surabaya";
+      instructionText = `${ac.callsign} cleared to ${destName} via ${ac.clearedSid || 'DOLTA 1C'} departure, runway ${rwyKey}, climb ${ac.initialAlt || 'FL140'}, squawk ${ac.squawk || '4521'}`;
+    } else {
+      instructionText = `${ac.callsign} push and start approved, facing west`;
+    }
   } else if (ac.state === "PUSHBACK") {
     // Show clear status feedback if clicked during active pushback
     const recEl = document.getElementById('recognized-text');
     if (recEl) recEl.textContent = `[PILOT]: "Pushback in progress, approaching NC6 centerline, ${ac.callsign}."`;
     return;
   } else if (ac.state === "READY_TAXI") {
-    instructionText = `${ac.callsign} taxi to holding point runway ${rwyKey} via ${hpName}`;
+    const autoTaxi = (typeof getAutoSuggestTaxiRoute === "function") ? getAutoSuggestTaxiRoute(ac) : null;
+    const viaSpoken = autoTaxi ? autoTaxi.text : hpName;
+    instructionText = `${ac.callsign} taxi to holding point runway ${rwyKey} via ${viaSpoken}`;
   } else if (ac.state === "HOLD_SHORT_CROSS") {
     instructionText = `${ac.callsign} cross runway 25R at November cross, report vacated`;
   } else if (ac.state === "TAXI") {
@@ -583,17 +590,25 @@ function getAutoSuggestTaxiRoute(ac) {
   // Departure taxiway route auto-suggest (Chart 10-6S / 10-6S1)
   if (["GATE", "PUSHBACK", "READY_TAXI", "TAXI"].includes(ac.state)) {
     if (rwy === "25R") {
+      const preferredHp = ac.assignedHp || "N2"; // Official Jeppesen 10-6S standard intersection N2 or full-length N1
+      const isN2 = preferredHp.toUpperCase().includes("N2");
+      const targetHp = isN2 ? "N2" : "N1";
+      const targetSpoken = isN2 ? "November two" : "November one";
+
       if (gateRef.startsWith("A") || gateRef.startsWith("B") || gateRef.startsWith("C")) {
-        return { via: ["SP1", "WC2", "NP2", "N1"], text: "Sierra Papa one, Whiskey Charlie two, November Papa two, November one", hp: "N1" };
+        return { via: ["SP1", "WC2", "NP2", targetHp], text: `Sierra Papa one, Whiskey Charlie two, November Papa two, ${targetSpoken}`, hp: targetHp };
       } else if (gateRef.startsWith("D")) {
-        return { via: ["NC7", "NP2", "N1"], text: "November Charlie seven, November Papa two, November one", hp: "N1" };
+        return { via: ["NC7", "NP2", targetHp], text: `November Charlie seven, November Papa two, ${targetSpoken}`, hp: targetHp };
       } else if (gateRef.startsWith("E")) {
-        return { via: ["NC6", "NP2", "N1"], text: "November Charlie six, November Papa two, November one", hp: "N1" };
+        return { via: ["NC6", "NP2", targetHp], text: `November Charlie six, November Papa two, ${targetSpoken}`, hp: targetHp };
       } else if (gateRef.startsWith("F")) {
-        return { via: ["NCY", "NP2", "N1"], text: "November Charlie Yankee, November Papa two, November one", hp: "N1" };
+        return { via: ["NCY", "NP2", targetHp], text: `November Charlie Yankee, November Papa two, ${targetSpoken}`, hp: targetHp };
+      } else if (gateRef === "21" || gateRef === "22" || gateRef === "23" || gateRef.startsWith("NC2")) {
+        // Official Jeppesen Route GOLF 3D: Gate NC2 direct to N2
+        return { via: ["NC2", "N2"], text: "November Charlie two, November two", hp: "N2" };
       } else {
-        // Terminal 3
-        return { via: ["NC3", "NP2", "N1"], text: "November Charlie three, November Papa two, November one", hp: "N1" };
+        // Terminal 3 (Domestic / International)
+        return { via: ["NC3", "NP2", targetHp], text: `November Charlie three, November Papa two, ${targetSpoken}`, hp: targetHp };
       }
     } else if (rwy === "07L") {
       return { via: ["NP2", "N9"], text: "November Papa two, November nine", hp: "N9" };
@@ -647,8 +662,16 @@ function getDynamicEasyModePrompt(ac) {
 
   switch (ac.state) {
     case "GATE":
+      if (!ac.hasDepartureClearance) {
+        const destName = ac.dest ? ac.dest.replace(/^[A-Z]{4}\s*\((.*?)\)$/, '$1') : "Surabaya";
+        return {
+          context: `Aircraft at Gate ${ac.assignedGate || 'E1'} reported initial check-in (POB ${ac.pob || 156}, dest ${destName}, via ${sidKey}). Issue IFR Departure Clearance.`,
+          speech: `${cs} cleared to ${destName} via ${sidKey} departure, runway ${rwyKey}, climb ${ac.initialAlt || 'FL140'}, squawk ${ac.squawk || '4521'}`,
+          actionDesc: "IFR Clearance (Delivery)"
+        };
+      }
       return {
-        context: `Aircraft at Gate ${ac.assignedGate || 'E1'} reported initial check-in (POB ${ac.pob || 156}, dest ${ac.dest || 'Surabaya'}, via ${sidKey}). Ready for push and start Runway ${rwyKey}.`,
+        context: `IFR clearance confirmed. Aircraft at Gate ${ac.assignedGate || 'E1'} ready for pushback and engine start Runway ${rwyKey}.`,
         speech: `${cs} push and start approved, facing west`,
         actionDesc: "Push & Start Approved"
       };
@@ -2904,21 +2927,44 @@ function handleRadarVoiceCommand(text, parsedData) {
   // Find matching aircraft
   let matchedAc = null;
   if (parsed.callsign) {
-    const cs = parsed.callsign.toLowerCase().replace(/\s+/g, '');
-    matchedAc = aircraft.find(a => a.id.toLowerCase() === cs || a.callsign.toLowerCase().includes(cs));
+    const csClean = parsed.callsign.toLowerCase().replace(/[^a-z0-9]/g, '');
+    matchedAc = aircraft.find(a => {
+      const aIdClean = a.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const aCsClean = a.callsign.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return aIdClean === csClean || aCsClean === csClean || aCsClean.includes(csClean) || csClean.includes(aCsClean);
+    });
   }
   if (!matchedAc) {
-    matchedAc = aircraft.find(a => norm.includes(a.id.toLowerCase()) || norm.includes(a.callsign.toLowerCase()));
+    const normClean = norm.replace(/[^a-z0-9]/g, '');
+    matchedAc = aircraft.find(a => {
+      const aIdClean = a.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const aCsClean = a.callsign.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return normClean.includes(aIdClean) || normClean.includes(aCsClean);
+    });
   }
   if (!matchedAc) {
-    if (norm.includes("garuda") || norm.includes("indonesia") || norm.includes("502")) {
-      matchedAc = aircraft.find(a => a.id.includes("502") || a.callsign.includes("502"));
-    } else if (norm.includes("supergreen") || norm.includes("citilink") || norm.includes("123")) {
+    if (norm.includes("garuda") || norm.includes("indonesia")) {
+      const numMatch = norm.match(/\b(?:502|880|888)\b/);
+      const targetNum = numMatch ? numMatch[0] : "502";
+      matchedAc = aircraft.find(a => a.id.includes(targetNum) || a.callsign.includes(targetNum));
+    } else if (norm.includes("supergreen") || norm.includes("citilink")) {
       matchedAc = aircraft.find(a => a.id.includes("123") || a.callsign.includes("123"));
-    } else if (norm.includes("lion") || norm.includes("712")) {
-      matchedAc = aircraft.find(a => a.id.includes("712") || a.callsign.includes("712"));
-    } else if (norm.includes("batik") || norm.includes("650")) {
-      matchedAc = aircraft.find(a => a.id.includes("650") || a.callsign.includes("650"));
+    } else if (norm.includes("lion")) {
+      const numMatch = norm.match(/\b(?:712|530|650)\b/);
+      const targetNum = numMatch ? numMatch[0] : "712";
+      matchedAc = aircraft.find(a => a.id.includes(targetNum) || a.callsign.includes(targetNum));
+    } else if (norm.includes("batik")) {
+      const numMatch = norm.match(/\b(?:650|652)\b/);
+      const targetNum = numMatch ? numMatch[0] : "650";
+      matchedAc = aircraft.find(a => a.id.includes(targetNum) || a.callsign.includes(targetNum));
+    } else if (norm.includes("singapore")) {
+      matchedAc = aircraft.find(a => a.id.includes("958") || a.callsign.includes("958"));
+    } else if (norm.includes("cargolux")) {
+      matchedAc = aircraft.find(a => a.id.includes("742") || a.callsign.includes("742"));
+    } else if (norm.includes("superjet")) {
+      matchedAc = aircraft.find(a => a.id.includes("182") || a.callsign.includes("182"));
+    } else if (norm.includes("wagon")) {
+      matchedAc = aircraft.find(a => a.id.includes("751") || a.callsign.includes("751"));
     }
   }
 
@@ -2975,7 +3021,20 @@ function handleRadarVoiceCommand(text, parsedData) {
     const mech = airportData && airportData.runway_mechanisms ? airportData.runway_mechanisms[rwyKey] : null;
     const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
 
-    if (matchedAc.state === "GATE" && (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start"))) {
+    if (matchedAc.state === "GATE" && (intent === "DELIVERY" || norm.includes("cleared to") || norm.includes("clearance") || (norm.includes("cleared") && (norm.includes("surabaya") || norm.includes("bali") || norm.includes("medan") || norm.includes("dolta") || norm.includes("bunto"))))) {
+      matchedAc.hasDepartureClearance = true;
+      const destName = matchedAc.dest ? matchedAc.dest.replace(/^[A-Z]{4}\s*\((.*?)\)$/, '$1') : "Surabaya";
+      const sidName = matchedAc.clearedSid || "DOLTA 1C";
+      const flName = matchedAc.initialAlt || "FL140";
+      const sqCode = matchedAc.squawk || "4521";
+      readback = `Cleared to ${destName} via ${sidName} departure, runway ${rwySpoken}, climb ${flName}, squawk ${sqCode}, ${matchedAc.callsign}`;
+      if (typeof logTelemetry === 'function') {
+        logTelemetry('BEHAVIOR', `${matchedAc.id} IFR Delivery Clearance`, `Cleared to ${destName} via ${sidName} RWY ${rwySpoken} | Squawk: ${sqCode}`);
+      }
+      matchedAc.checkInPhrase = `Jakarta Ground, ${matchedAc.callsign}, Gate Echo 1, ready for push and start, facing west.`;
+      matchedAc.responsePrompt = `${matchedAc.callsign} push and start approved, facing west`;
+      updateEasyModePrompter();
+    } else if (matchedAc.state === "GATE" && (intent === "PUSHBACK" || norm.includes("push") || norm.includes("start"))) {
       matchedAc.state = "PUSHBACK";
       readback = "Push and start approved, facing west, " + matchedAc.callsign;
       if (typeof logTelemetry === 'function') {
@@ -2986,41 +3045,116 @@ function handleRadarVoiceCommand(text, parsedData) {
       matchedAc.state = "TAXI";
       matchedAc._runwayCrossCleared = false;
 
-      // Extract spoken taxiway via from ATC voice command if any
+      // Extract spoken taxiway via & target holding point from ATC voice command per Jeppesen 10-6
       const spokenViaList = [];
       const twyDict = [
-        { pattern: /\b(?:sierra\s+papa\s+(?:1|one)|sp\s*1)\b/i, code: "SP1", spoken: "Sierra Papa one" },
-        { pattern: /\b(?:sierra\s+papa\s+(?:2|two)|sp\s*2)\b/i, code: "SP2", spoken: "Sierra Papa two" },
+        // North Parallels & Connectors
         { pattern: /\b(?:november\s+papa\s+(?:1|one)|np\s*1)\b/i, code: "NP1", spoken: "November Papa one" },
         { pattern: /\b(?:november\s+papa\s+(?:2|two)|np\s*2)\b/i, code: "NP2", spoken: "November Papa two" },
         { pattern: /\b(?:november\s+papa\s+(?:3|three)|np\s*3)\b/i, code: "NP3", spoken: "November Papa three" },
-        { pattern: /\b(?:whiskey\s+charlie\s+(?:1|one)|wc\s*1)\b/i, code: "WC1", spoken: "Whiskey Charlie one" },
-        { pattern: /\b(?:whiskey\s+charlie\s+(?:2|two)|wc\s*2)\b/i, code: "WC2", spoken: "Whiskey Charlie two" },
-        { pattern: /\b(?:sierra\s+charlie\s+(?:1|one)|sc\s*1)\b/i, code: "SC1", spoken: "Sierra Charlie one" },
-        { pattern: /\b(?:sierra\s+charlie\s+(?:2|two)|sc\s*2)\b/i, code: "SC2", spoken: "Sierra Charlie two" },
-        { pattern: /\b(?:sierra\s+charlie\s+(?:4|four)|sc\s*4)\b/i, code: "SC4", spoken: "Sierra Charlie four" },
+        { pattern: /\b(?:november\s+papa\s+whiskey|npw)\b/i, code: "NPW", spoken: "November Papa Whiskey" },
+        { pattern: /\b(?:november\s+papa\s+echo|npe)\b/i, code: "NPE", spoken: "November Papa Echo" },
+        // North Central Taxilanes
         { pattern: /\b(?:november\s+charlie\s+(?:1|one)|nc\s*1)\b/i, code: "NC1", spoken: "November Charlie one" },
         { pattern: /\b(?:november\s+charlie\s+(?:2|two)|nc\s*2)\b/i, code: "NC2", spoken: "November Charlie two" },
         { pattern: /\b(?:november\s+charlie\s+(?:3|three)|nc\s*3)\b/i, code: "NC3", spoken: "November Charlie three" },
+        { pattern: /\b(?:november\s+charlie\s+(?:4|four)|nc\s*4)\b/i, code: "NC4", spoken: "November Charlie four" },
+        { pattern: /\b(?:november\s+charlie\s+(?:5|five)|nc\s*5)\b/i, code: "NC5", spoken: "November Charlie five" },
         { pattern: /\b(?:november\s+charlie\s+(?:6|six)|nc\s*6)\b/i, code: "NC6", spoken: "November Charlie six" },
         { pattern: /\b(?:november\s+charlie\s+(?:7|seven)|nc\s*7)\b/i, code: "NC7", spoken: "November Charlie seven" },
         { pattern: /\b(?:november\s+charlie\s+yankee|ncy)\b/i, code: "NCY", spoken: "November Charlie Yankee" },
-        { pattern: /\b(?:november\s+(?:1|one)|n\s*1)\b/i, code: "N1", spoken: "November one" },
-        { pattern: /\b(?:november\s+(?:2|two)|n\s*2)\b/i, code: "N2", spoken: "November two" },
-        { pattern: /\b(?:november\s+(?:3|three)|n\s*3)\b/i, code: "N3", spoken: "November three" },
-        { pattern: /\b(?:november\s+(?:9|nine)|n\s*9)\b/i.test(norm) ? "N9" : null, code: "N9", spoken: "November nine" },
-        { pattern: /\b(?:sierra\s+(?:1|one)|s\s*1)\b/i, code: "S1", spoken: "Sierra one" },
-        { pattern: /\b(?:sierra\s+(?:2|two)|s\s*2)\b/i, code: "S2", spoken: "Sierra two" },
-        { pattern: /\b(?:sierra\s+(?:9|nine)|s\s*9)\b/i, code: "S9", spoken: "Sierra nine" }
+        { pattern: /\b(?:november\s+charlie\s+zulu|ncz)\b/i, code: "NCZ", spoken: "November Charlie Zulu" },
+        { pattern: /\b(?:november\s+charlie\s+(?:9|nine)|nc\s*9)\b/i, code: "NC9", spoken: "November Charlie nine" },
+        // Runway 25R / 07L Connectors & Holding Points
+        { pattern: /\b(?:november\s+(?:1|one)|n\s*1)\b/i, code: "N1", spoken: "November one", isHp: true },
+        { pattern: /\b(?:november\s+(?:2|two)|n\s*2)\b/i, code: "N2", spoken: "November two", isHp: true },
+        { pattern: /\b(?:november\s+(?:3|three)|n\s*3)\b/i, code: "N3", spoken: "November three", isHp: true },
+        { pattern: /\b(?:november\s+(?:4|four)|n\s*4)\b/i, code: "N4", spoken: "November four" },
+        { pattern: /\b(?:november\s+(?:5|five)|n\s*5)\b/i, code: "N5", spoken: "November five" },
+        { pattern: /\b(?:november\s+(?:6|six)|n\s*6)\b/i, code: "N6", spoken: "November six" },
+        { pattern: /\b(?:november\s+(?:7|seven)|n\s*7)\b/i, code: "N7", spoken: "November seven" },
+        { pattern: /\b(?:november\s+(?:8|eight)|n\s*8)\b/i, code: "N8", spoken: "November eight", isHp: true },
+        { pattern: /\b(?:november\s+(?:9|nine)|n\s*9)\b/i, code: "N9", spoken: "November nine", isHp: true },
+        // South Parallels & Connectors
+        { pattern: /\b(?:sierra\s+papa\s+(?:1|one)|sp\s*1)\b/i, code: "SP1", spoken: "Sierra Papa one" },
+        { pattern: /\b(?:sierra\s+papa\s+(?:2|two)|sp\s*2)\b/i, code: "SP2", spoken: "Sierra Papa two" },
+        { pattern: /\b(?:sierra\s+papa\s+whiskey|spw)\b/i, code: "SPW", spoken: "Sierra Papa Whiskey" },
+        { pattern: /\b(?:sierra\s+papa\s+echo|spe)\b/i, code: "SPE", spoken: "Sierra Papa Echo" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:1|one)|sc\s*1)\b/i, code: "SC1", spoken: "Sierra Charlie one" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:2|two)|sc\s*2)\b/i, code: "SC2", spoken: "Sierra Charlie two" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:3|three)|sc\s*3)\b/i, code: "SC3", spoken: "Sierra Charlie three" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:4|four)|sc\s*4)\b/i, code: "SC4", spoken: "Sierra Charlie four" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:5|five)|sc\s*5)\b/i, code: "SC5", spoken: "Sierra Charlie five" },
+        { pattern: /\b(?:sierra\s+charlie\s+(?:6|six)|sc\s*6)\b/i, code: "SC6", spoken: "Sierra Charlie six" },
+        { pattern: /\b(?:sierra\s+charlie\s+x\-?ray|scx)\b/i, code: "SCX", spoken: "Sierra Charlie X-ray" },
+        // Runway 25L / 07R Connectors & Holding Points
+        { pattern: /\b(?:sierra\s+(?:1|one)|s\s*1)\b/i, code: "S1", spoken: "Sierra one", isHp: true },
+        { pattern: /\b(?:sierra\s+(?:2|two)|s\s*2)\b/i, code: "S2", spoken: "Sierra two", isHp: true },
+        { pattern: /\b(?:sierra\s+(?:3|three)|s\s*3)\b/i, code: "S3", spoken: "Sierra three", isHp: true },
+        { pattern: /\b(?:sierra\s+(?:4|four)|s\s*4)\b/i, code: "S4", spoken: "Sierra four" },
+        { pattern: /\b(?:sierra\s+(?:5|five)|s\s*5)\b/i, code: "S5", spoken: "Sierra five" },
+        { pattern: /\b(?:sierra\s+(?:6|six)|s\s*6)\b/i, code: "S6", spoken: "Sierra six" },
+        { pattern: /\b(?:sierra\s+(?:7|seven)|s\s*7)\b/i, code: "S7", spoken: "Sierra seven" },
+        { pattern: /\b(?:sierra\s+(?:8|eight)|s\s*8)\b/i, code: "S8", spoken: "Sierra eight", isHp: true },
+        { pattern: /\b(?:sierra\s+(?:9|nine)|s\s*9)\b/i, code: "S9", spoken: "Sierra nine", isHp: true },
+        // West & East Crossovers
+        { pattern: /\b(?:whiskey\s+charlie\s+(?:1|one)|wc\s*1)\b/i, code: "WC1", spoken: "Whiskey Charlie one" },
+        { pattern: /\b(?:whiskey\s+charlie\s+(?:2|two)|wc\s*2)\b/i, code: "WC2", spoken: "Whiskey Charlie two" },
+        { pattern: /\b(?:echo\s+charlie\s+(?:1|one)|ec\s*1)\b/i, code: "EC1", spoken: "Echo Charlie one" },
+        { pattern: /\b(?:echo\s+charlie\s+(?:2|two)|ec\s*2)\b/i, code: "EC2", spoken: "Echo Charlie two" },
+        // Runway 3 Connectors (24 / 06)
+        { pattern: /\b(?:mike\s+(?:1|one)|m\s*1)\b/i, code: "M1", spoken: "Mike one", isHp: true },
+        { pattern: /\b(?:mike\s+(?:2|two)|m\s*2)\b/i, code: "M2", spoken: "Mike two" },
+        { pattern: /\b(?:mike\s+(?:7|seven)|m\s*7)\b/i, code: "M7", spoken: "Mike seven", isHp: true },
+        { pattern: /\b(?:mike\s+(?:8|eight)|m\s*8)\b/i, code: "M8", spoken: "Mike eight", isHp: true }
       ];
 
+      // Check for explicit "avoid" taxiway instructions (e.g. "avoid NP1", "do not use NP1")
+      const avoidList = [];
+      const avoidMatch = norm.match(/\b(?:avoid|do\s*not\s*use)\s+([a-z0-9\s]+?)(?=\s+(?:via|to|and|runway)|$)/i);
+      if (avoidMatch) {
+        const avoidPhrase = avoidMatch[1];
+        for (const twy of twyDict) {
+          if (twy.pattern && twy.pattern.test(avoidPhrase)) {
+            avoidList.push(twy.code);
+          }
+        }
+      }
+      matchedAc.avoidTaxiways = avoidList;
+
+      // Extract spoken taxiways in chronological order of appearance in the sentence
+      const detectedIndices = [];
       for (const twy of twyDict) {
-        if (twy.pattern && twy.pattern.test(norm)) {
-          spokenViaList.push(twy);
+        if (twy.pattern) {
+          const m = norm.match(twy.pattern);
+          if (m && m.index !== undefined) {
+            // Check if this taxiway was part of the avoid clause
+            if (!avoidList.includes(twy.code)) {
+              detectedIndices.push({ idx: m.index, twy });
+            }
+          }
+        }
+      }
+      detectedIndices.sort((a, b) => a.idx - b.idx);
+      detectedIndices.forEach(item => {
+        if (!spokenViaList.some(v => v.code === item.twy.code)) {
+          spokenViaList.push(item.twy);
+        }
+      });
+
+      // Detect commanded holding point from the spoken taxiways (e.g. N2, N1, N9, S1, S8)
+      let designatedHp = null;
+      for (let i = spokenViaList.length - 1; i >= 0; i--) {
+        if (spokenViaList[i].isHp) {
+          designatedHp = spokenViaList[i];
+          break;
         }
       }
 
-      let taxiRouteSpoken = hpName;
+      let activeHpName = designatedHp ? designatedHp.code : hpName;
+      matchedAc.assignedHp = activeHpName;
+
+      let taxiRouteSpoken = activeHpName;
       if (spokenViaList.length > 0) {
         matchedAc.assignedTaxiVia = spokenViaList.map(item => item.code);
         taxiRouteSpoken = spokenViaList.map(item => item.spoken).join(", ");
@@ -3029,12 +3163,16 @@ function handleRadarVoiceCommand(text, parsedData) {
         if (autoTaxi && autoTaxi.via) {
           matchedAc.assignedTaxiVia = autoTaxi.via;
           taxiRouteSpoken = autoTaxi.text || autoTaxi.via.join(", ");
+          if (autoTaxi.hp) {
+            matchedAc.assignedHp = autoTaxi.hp;
+            activeHpName = autoTaxi.hp;
+          }
         }
       }
 
       readback = `Taxi holding point runway ${rwySpoken} via ${taxiRouteSpoken}, ${matchedAc.callsign}`;
       if (typeof logTelemetry === 'function') {
-        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${hpName} (RWY ${rwySpoken}) via ${taxiRouteSpoken} | State -> TAXI`);
+        logTelemetry('BEHAVIOR', `${matchedAc.id} Taxi Clearance Granted`, `Holding Point: ${activeHpName} (RWY ${rwySpoken}) via ${taxiRouteSpoken} | State -> TAXI`);
       }
       executeTaxiMovement(matchedAc);
     } else if (matchedAc.state === "HOLD_SHORT_CROSS" && (norm.includes("cross") || norm.includes("continue") || norm.includes("proceed"))) {
@@ -3078,10 +3216,10 @@ function handleRadarVoiceCommand(text, parsedData) {
       if (typeof logTelemetry === 'function') {
         logTelemetry('BEHAVIOR', `${matchedAc.id} Cleared to Land`, `Runway: ${rwySpoken} | Landing Rollout Authorized`);
       }
-    } else if (norm.includes("leave hold") || norm.includes("resume approach") || norm.includes("cancel hold")) {
+    } else if ((norm.includes("leave hold") || norm.includes("resume approach") || norm.includes("cancel hold")) && matchedAc.altitude > 100) {
       const idx = aircraft.findIndex(a => a.id === matchedAc.id);
       readback = leaveHoldingPattern(idx);
-    } else if (norm.includes("hold") || norm.includes("holding")) {
+    } else if ((norm.includes("hold") || norm.includes("holding")) && !norm.includes("holding point") && !norm.includes("hold short") && matchedAc.altitude > 100) {
       const idx = aircraft.findIndex(a => a.id === matchedAc.id);
       let fix = "TEGID";
       if (norm.includes("bunto")) fix = "BUNTO";
@@ -3238,7 +3376,7 @@ function buildTaxiwayRefNodeMap() {
   return map;
 }
 
-function findTaxiwayPath(startLat, startLon, endLat, endLon, requestedVia = null) {
+function findTaxiwayPath(startLat, startLon, endLat, endLon, requestedVia = null, avoidTaxiways = null) {
   if (!airportData || !airportData.taxi_graph) return null;
   const graph = airportData.taxi_graph;
   const nodes = graph.nodes;
@@ -3268,6 +3406,16 @@ function findTaxiwayPath(startLat, startLon, endLat, endLon, requestedVia = null
   const twyMap = buildTaxiwayRefNodeMap();
   const avoidNodes = new Set();
   const preferNodes = new Set();
+
+  // If controller specified avoid list (e.g. "avoid NP1")
+  if (avoidTaxiways && avoidTaxiways.length > 0) {
+    for (const av of avoidTaxiways) {
+      const avUpper = String(av).toUpperCase().trim();
+      if (twyMap[avUpper]) {
+        for (const nid of twyMap[avUpper]) avoidNodes.add(nid);
+      }
+    }
+  }
 
   if (requestedVia && requestedVia.length > 0) {
     for (const v of requestedVia) {
@@ -3519,15 +3667,29 @@ function executeTaxiMovement(ac) {
   const mech = (airportData && airportData.runway_mechanisms && airportData.runway_mechanisms[rwyKey])
     ? airportData.runway_mechanisms[rwyKey]
     : null;
-  const hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
-  const hpCoord = mech && mech.holding_point ? [mech.holding_point.lat, mech.holding_point.lon] : [-6.1104895, 106.6679684];
+  
+  // Resolve designated holding point dynamically per Jeppesen 10-6 (e.g. N1, N2, N3, N9, S1, S2, S8)
+  let hpName = mech && mech.holding_point ? mech.holding_point.name : "N1";
+  let hpCoord = mech && mech.holding_point ? [mech.holding_point.lat, mech.holding_point.lon] : [-6.1104895, 106.6679684];
+
+  if (ac.assignedHp && airportData && airportData.holding_positions) {
+    const customHp = airportData.holding_positions.find(h => {
+      const hClean = h.name.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const reqClean = ac.assignedHp.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      return hClean === reqClean || hClean.startsWith(reqClean) || (h.id && h.id.toUpperCase().includes(reqClean));
+    });
+    if (customHp) {
+      hpName = customHp.name.split(' ')[0] || ac.assignedHp;
+      hpCoord = [customHp.lat, customHp.lon];
+    }
+  }
 
   // Dynamically compute authentic taxiway path via Dijkstra if departed from any gate
   let points = null;
   if (airportData && airportData.taxi_graph && ac.lat && ac.lon) {
     const viaReq = ac.assignedTaxiVia || (ac.commandedTaxiVia ? [ac.commandedTaxiVia] : null);
-    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1], viaReq);
-    if (calculated && calculated.length > 3) {
+    const calculated = findTaxiwayPath(ac.lat, ac.lon, hpCoord[0], hpCoord[1], viaReq, ac.avoidTaxiways);
+    if (calculated && calculated.length > 2) {
       points = calculated.map(p => ({ lat: p[0], lon: p[1] }));
       ac.route = calculated;
     }
@@ -3639,17 +3801,29 @@ function executeLineUpMovement(ac) {
     ? airportData.runway_mechanisms[rwyKey]
     : null;
 
-  // Continuous, unbroken lead-in curve into Runway threshold
-  const entryNodes = mech && mech.lineup_path
-    ? mech.lineup_path.map(p => ({ lat: p[0], lon: p[1] }))
-    : ((airportData && airportData.routes && airportData.routes.runway_25r_entry_lineup)
-        ? airportData.routes.runway_25r_entry_lineup.map(p => ({ lat: p[0], lon: p[1] }))
-        : [
-            { lat: -6.110490, lon: 106.667968 },
-            { lat: -6.109798, lon: 106.667797 },
-            { lat: -6.109270, lon: 106.668258 },
-            { lat: -6.108959, lon: 106.669062 }
-          ]);
+  // Dynamic lineup: check if lining up from intersection (e.g. N2, N3) or default threshold N1
+  let entryNodes = null;
+  if (ac.assignedHp && ac.assignedHp.toUpperCase().includes("N2")) {
+    // Intersection departure via N2 straight into 25R runway track
+    entryNodes = [
+      { lat: -6.109950, lon: 106.668480 },
+      { lat: -6.109600, lon: 106.668380 },
+      { lat: -6.109270, lon: 106.668258 },
+      { lat: -6.109438, lon: 106.667831 }
+    ];
+  } else {
+    // Continuous, unbroken lead-in curve into Runway threshold
+    entryNodes = mech && mech.lineup_path
+      ? mech.lineup_path.map(p => ({ lat: p[0], lon: p[1] }))
+      : ((airportData && airportData.routes && airportData.routes.runway_25r_entry_lineup)
+          ? airportData.routes.runway_25r_entry_lineup.map(p => ({ lat: p[0], lon: p[1] }))
+          : [
+              { lat: -6.110490, lon: 106.667968 },
+              { lat: -6.109798, lon: 106.667797 },
+              { lat: -6.109270, lon: 106.668258 },
+              { lat: -6.108959, lon: 106.669062 }
+            ]);
+  }
 
   const targetHeading = mech ? mech.heading : 250;
   let eIdx = 1;
@@ -3750,7 +3924,7 @@ function executeTakeoffMovement(ac) {
     : null;
 
   // Continuous real runway centerline roll along designated Runway direction
-  const rollNodes = mech && mech.takeoff_roll_path
+  let rollNodes = mech && mech.takeoff_roll_path
     ? mech.takeoff_roll_path.map(p => ({ lat: p[0], lon: p[1] }))
     : ((airportData && airportData.routes && airportData.routes.runway_25r_takeoff_roll)
         ? airportData.routes.runway_25r_takeoff_roll.map(p => ({ lat: p[0], lon: p[1] }))
@@ -3762,8 +3936,21 @@ function executeTakeoffMovement(ac) {
           ]);
 
   const targetHeading = mech ? mech.heading : 250;
-  // Snap smoothly to threshold starting point to prevent any coordinate warp
+  
+  // If aircraft entered from an intersection (e.g. N2), slice remaining runway roll points ahead
   if (rollNodes.length > 0) {
+    let closestIdx = 0;
+    let minD = Infinity;
+    for (let i = 0; i < rollNodes.length; i++) {
+      const d = (rollNodes[i].lat - ac.lat) ** 2 + (rollNodes[i].lon - ac.lon) ** 2;
+      if (d < minD) {
+        minD = d;
+        closestIdx = i;
+      }
+    }
+    if (closestIdx > 0 && closestIdx < rollNodes.length - 2) {
+      rollNodes = rollNodes.slice(closestIdx);
+    }
     ac.lat = rollNodes[0].lat;
     ac.lon = rollNodes[0].lon;
   }

@@ -33,15 +33,18 @@ Menggantikan marker dot bulat konvensional dengan siluet pesawat aerodinamis ber
 * **Automatic Hold & Resume:** Pengereman darat otomatis (`groundSpeed = 0`) dengan indikator status merah `HOLD (TRAFFIC AHEAD)` hingga jalur steril.
 
 ### 4. Navigasi Darat Presisi Jeppesen 10-6, One-Way Corridors & Penataan Gate Maskapai
-* **One-Way Corridors & Standard Taxi Routes:**
-  * **Koridor Luar (NP - North Parallel):** Alur taksi satu arah keberangkatan (*outbound*) menuju Runway.
+* **One-Way Corridors & Standard Taxi Routes (Jeppesen 10-6 Series):**
+  * **Koridor Luar (NP - North Parallel):** Alur taksi satu arah keberangkatan (*outbound*) menuju Runway (NP2 untuk 25R/07L).
   * **Koridor Dalam (NC - North Central):** Alur taksi satu arah kedatangan (*inbound*) menuju Gate Terminal.
-  * **Crossover West (WC1 & WC2):** Menghubungkan Terminal 1 ke Terminal 2/3 (WC1: arah selatan-utara, WC2: arah utara-selatan).
+  * **Crossover West & East (WC1, WC2, EC1, EC2):** Menghubungkan Terminal 1 ke Terminal 2/3 (WC1: arah utara-selatan, WC2: arah selatan-utara).
+  * **Intersection Departure N2 vs Full-Length N1 (Jeppesen 10-6S / 10-6S1):** ATC memiliki kendali penuh menentukan titik tunggu keberangkatan Runway 25R (`N2` untuk intersection departure atau `N1` untuk full-length departure). Pesawat akan berhenti presisi di stop bar holding point yang diperintahkan (`HOLD N2` atau `HOLD N1`), diikuti kurva *lineup* dan *takeoff roll* yang otomatis disesuaikan dari titik persimpangan tersebut.
+  * **Route GOLF 3D (Terminal 3):** Rute langsung dari Stand Concourse NC2 menuju holding point N2 tanpa memutar ke paralel luar.
+  * **Negative Routing & Avoid Tactical Directives:** Mendukung perintah suara penghindaran taxiway (misal: *"avoid November Papa one"* atau *"do not use NP1"*), yang secara dinamis memblokir koridor bersangkutan (+10.000m Dijkstra penalty) dan mengalihkan pergerakan ke rute alternatif resmi (seperti `NPW -> NCZ -> NC7 -> NP2`).
 * **Auto-Suggest Taxiway Presisi & Easy Mode Prompter:**
-  * ATC dipandu prompter dengan rute taksi resmi dalam ejaan fonetik ICAO, misalnya: `GIA880 taxi holding point runway 25R via November Charlie three, November Papa two, November two`.
+  * ATC dipandu prompter dengan rute taksi resmi dalam ejaan fonetik ICAO, misalnya: `GIA880 taxi holding point runway 25R via November Charlie six, November Papa two, November two`.
   * Pesawat mendarat dipandu keluar melalui Rapid Exit resmi (**N4–N7** di 25R, **S4–S7** di 25L, **N2–N3** di 07L).
 * **Penugasan Gate Realistis Berdasarkan Maskapai (T1, T2, T3):**
-  * **Terminal 3 (Pier International 1–10):** Khusus widebody internasional (Garuda International `GIA880/888`, Singapore Airlines `SIA958`, Cargolux, dsb.).
+  * **Terminal 3 (Pier International 1–10):** Khusus widebody internasional (Garuda International `GIA880/888`, Singapore Airlines `SIA958`, Cargolux `CLX742`, dsb.).
   * **Terminal 3 (Pier Domestic 11–28):** Garuda Indonesia rute domestik.
   * **Terminal 2 (2D, 2E, 2F):** Batik Air (2D/2E), AirAsia & Scoot (2F LCC).
   * **Terminal 1 (1A, 1B, 1C):** Lion Air & Super Air Jet (1A/1B), Citilink (1C).
@@ -58,7 +61,8 @@ Menggantikan marker dot bulat konvensional dengan siluet pesawat aerodinamis ber
 
 ### 6. Voice Recognition & Pilot Audio Feedback
 * **Push-to-Talk (PTT) Speech Recognition:** Mendukung tombol spasi (*Spacebar*), tombol mouse, dan sentuh layar (*touch*) dengan intent matching perintah ATC ICAO.
-* **Dynamic Callsign Voice Routing:** Pengenalan suara cerdas membedakan perintah berdasarkan callsign yang diucapkan (*"Indonesia 502"*, *"Supergreen 123"*), tanpa mengharuskan controller memilih kartu flight strip secara manual.
+* **Full IFR Delivery Departure Clearance:** Mendukung alur resmi izin rute penerbangan saat pesawat berada di Gate (*"Indonesia 502 cleared to Surabaya via DOLTA 1C departure, runway 25R, climb FL140, squawk 4521"*), diikuti readback lengkap ICAO dan transisi otomatis ke fase siap pushback.
+* **Universal Callsign & Airline Telephony Mapping:** Pengenalan suara cerdas membedakan perintah berdasarkan callsign yang diucapkan tanpa spasi/tanda baca, mencakup Garuda Indonesia (`INDONESIA`), Lion Air (`LION INTER`), Citilink (`SUPERGREEN`), Batik Air (`BATIK`), Indonesia AirAsia (`WAGON AIR`), Sriwijaya Air (`SRIWIJAYA`), Singapore Airlines (`SINGAPORE`), Cargolux (`CARGOLUX`), dan Super Air Jet (`SUPERJET`).
 * **VHF Pilot Audio Pipeline:** Readback pilot realistis menggunakan Edge-TTS (`en-US-GuyNeural`) dengan filter bandpass radio VHF, suara chirp radio klik, dan ekspansi fonetik digit tunggal resmi ICAO (*"five zero two"* alih-alih *"five o two"*).
 
 ---

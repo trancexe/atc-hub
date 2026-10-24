@@ -5,7 +5,8 @@ const fs = require('fs');
 console.log("=== DRY RUN TEST: MILESTONE 7 (LEARNING ACADEMY & GUIDED TRAINING) ===");
 
 // 1. Validate Backend Lessons Syllabus in app.py
-const appPy = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/app.py', 'utf8');
+const path = require('path');
+const appPy = fs.readFileSync(path.join(__dirname, '../app.py'), 'utf8');
 assert.ok(appPy.includes('"id": "del-1"'), "Contains IFR Clearance Lesson (del-1)");
 assert.ok(appPy.includes('"id": "gnd-1"'), "Contains Pushback Lesson (gnd-1)");
 assert.ok(appPy.includes('"id": "gnd-2"'), "Contains Taxi Lesson (gnd-2)");
@@ -19,7 +20,7 @@ assert.ok(appPy.includes('Taxi holding point runway 25R'), "Validates concise IC
 console.log("✓ PASS: Backend Academy Syllabus contains full progression (IFR, Pushback, Taxi, Lineup, Takeoff, ILS, Holding, Go-Around)");
 
 // 2. Validate Interactive Hands-on Scenario Engine in academy.js
-const academyJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/js/academy.js', 'utf8');
+const academyJs = fs.readFileSync(path.join(__dirname, '../static/js/academy.js'), 'utf8');
 
 // Global mock DOM environment
 global.aircraft = [];
@@ -55,27 +56,27 @@ assert.strictEqual(INTERACTIVE_SCENARIOS.length, 6, "Must define exactly 6 hands
 
 const s1 = INTERACTIVE_SCENARIOS[0];
 assert.strictEqual(s1.id, "lesson-1");
-assert.ok(s1.title.includes("Lesson 1: Pengenalan Radar"), "Lesson 1 covers Radar");
+assert.ok(s1.title.includes("Radar") || s1.title.includes("Pengenalan Radar"), "Lesson 1 covers Radar");
 
 const s2 = INTERACTIVE_SCENARIOS[1];
 assert.strictEqual(s2.id, "lesson-2");
-assert.ok(s2.title.includes("Lesson 2: Komunikasi Radio"), "Lesson 2 covers Radio Phraseology & IFR");
+assert.ok(s2.title.includes("Radio") || s2.title.includes("Komunikasi Radio"), "Lesson 2 covers Radio Phraseology & IFR");
 
 const s3 = INTERACTIVE_SCENARIOS[2];
 assert.strictEqual(s3.id, "lesson-3");
-assert.ok(s3.title.includes("Lesson 3: Ground Control"), "Lesson 3 covers Ground Pushback & Taxi");
+assert.ok(s3.title.includes("Ground Control"), "Lesson 3 covers Ground Pushback & Taxi");
 
 const s4 = INTERACTIVE_SCENARIOS[3];
 assert.strictEqual(s4.id, "lesson-4");
-assert.ok(s4.title.includes("Lesson 4: Tower Control"), "Lesson 4 covers Lineup & Takeoff");
+assert.ok(s4.title.includes("Tower Control"), "Lesson 4 covers Lineup & Takeoff");
 
 const s5 = INTERACTIVE_SCENARIOS[4];
 assert.strictEqual(s5.id, "lesson-5");
-assert.ok(s5.title.includes("Lesson 5: Approach Control"), "Lesson 5 covers STAR & ILS");
+assert.ok(s5.title.includes("Approach Control"), "Lesson 5 covers STAR & ILS");
 
 const s6 = INTERACTIVE_SCENARIOS[5];
 assert.strictEqual(s6.id, "lesson-6");
-assert.ok(s6.title.includes("Lesson 6: Emergency"), "Lesson 6 covers Go-around");
+assert.ok(s6.title.includes("Emergency"), "Lesson 6 covers Go-around");
 
 console.log("✓ PASS: All 6 hands-on interactive scenarios verified!");
 

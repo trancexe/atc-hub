@@ -84,7 +84,8 @@ global.calculateDistanceNm = function(lat1, lon1, lat2, lon2) {
 };
 
 // Load aman.js module
-const amanJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/js/aman.js', 'utf8');
+const path = require('path');
+const amanJs = fs.readFileSync(path.join(__dirname, '../static/js/aman.js'), 'utf8');
 eval(amanJs);
 
 // TEST 1: AMAN Arrival Sequencing & ELDT Calculation

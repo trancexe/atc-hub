@@ -1,7 +1,8 @@
 // Automated Dry Run Verification for Milestone 2: Electronic Flight Strip Bay Management & FDE
 const fs = require('fs');
+const path = require('path');
 
-const appJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/app.js', 'utf8');
+const appJs = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
 // Global mock state
 global.selectedAircraftIndex = 0;
@@ -15,6 +16,7 @@ global.document = {
 global.airportData = { sids: [], stars: [] };
 global.playRadioChirp = () => {};
 global.renderAllScreens = () => {};
+global.window = { addEventListener: () => {} };
 
 // Extract functions
 eval(appJs.slice(appJs.indexOf('let activeStripBayFilter = "ALL";'), appJs.indexOf('function changeAircraftRunway(')));

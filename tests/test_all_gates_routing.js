@@ -2,10 +2,12 @@
 const fs = require('fs');
 const assert = require('assert');
 
-const wiii = JSON.parse(fs.readFileSync('/home/bmnrtkgto/project/atc-hub/wiii_data.json', 'utf8'));
-const appJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/app.js', 'utf8');
+const path = require('path');
+const wiii = JSON.parse(fs.readFileSync(path.join(__dirname, '../wiii_data.json'), 'utf8'));
+const appJs = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
 global.airportData = wiii;
+global.aircraft = [];
 
 eval(appJs.slice(appJs.indexOf('class TaxiMinHeap {'), appJs.indexOf('function executePushbackMovement(')));
 

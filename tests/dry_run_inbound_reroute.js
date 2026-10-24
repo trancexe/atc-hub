@@ -1,8 +1,9 @@
 // Automated Dry Run Verification for Dynamic Inbound Runway Re-routing & Taxi-In Connectivity
 const fs = require('fs');
 
-const wiii = JSON.parse(fs.readFileSync('/home/bmnrtkgto/project/atc-hub/wiii_data.json', 'utf8'));
-const appJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/app.js', 'utf8');
+const path = require('path');
+const wiii = JSON.parse(fs.readFileSync(path.join(__dirname, '../wiii_data.json'), 'utf8'));
+const appJs = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
 global.airportData = wiii;
 global.calculateDistanceNm = (lat1, lon1, lat2, lon2) => {

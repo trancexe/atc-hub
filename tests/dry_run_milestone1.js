@@ -1,7 +1,8 @@
 // Dry Run Test for Milestone 1: STCA (Short Term Conflict Alert) & MSAW (Minimum Safe Altitude Warning)
 const fs = require('fs');
+const path = require('path');
 
-const appJs = fs.readFileSync('/home/bmnrtkgto/project/atc-hub/static/app.js', 'utf8');
+const appJs = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
 // Mock browser environment
 global.refLat = -6.125556;
