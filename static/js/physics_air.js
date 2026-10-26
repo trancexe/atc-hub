@@ -382,6 +382,11 @@ function scheduleTurnaroundOutbound(ac, delayMs = 25000) {
     ac.state = "GATE";
     ac.groundSpeed = 0;
     ac.altitude = 0;
+    if (ac.assignedGate && typeof getRealisticGateHeading === "function") {
+      const gHdg = getRealisticGateHeading(ac.assignedGate);
+      ac.heading = gHdg;
+      ac.targetHeading = gHdg;
+    }
     ac.dest = destObj.code;
     ac.pob = Math.floor(120 + Math.random() * 80);
     ac.clearedRwy = rwy;
@@ -500,7 +505,11 @@ function spawnOutboundDeparture() {
   const chosen = outboundCallsigns[aircraft.length % outboundCallsigns.length];
   const assignedGate = (typeof assignRealisticGate === "function")
     ? assignRealisticGate(chosen.airline, chosen.callsign)
-    : { ref: "E1", lat: -6.121757, lon: 106.651077, terminal: "T2" };
+    : { ref: "E1", lat: -6.121483, lon: 106.651348, terminal: "T2", heading: 109 };
+
+  const gateHdg = (assignedGate && assignedGate.heading !== undefined)
+    ? assignedGate.heading
+    : ((typeof getRealisticGateHeading === "function") ? getRealisticGateHeading(assignedGate.ref) : 109);
 
   const rwyKey = (aircraft.length % 2 === 0) ? "25R" : "25L";
   const allSids = (airportData && airportData.sids) ? airportData.sids : [];
@@ -516,7 +525,8 @@ function spawnOutboundDeparture() {
     pob: Math.floor(130 + Math.random() * 70),
     lat: assignedGate.lat,
     lon: assignedGate.lon,
-    heading: 70, // Parked at stand facing terminal/gate
+    heading: gateHdg,
+    targetHeading: gateHdg,
     altitude: 0,
     groundSpeed: 0,
     state: "GATE",

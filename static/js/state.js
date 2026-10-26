@@ -52,13 +52,14 @@ let aircraft = [
     pob: 156,
     sid: "DOLTA 1C",
     initialAlt: "FL140",
-    lat: -6.121757,
-    lon: 106.651077,
-    heading: 70, // Parked facing concourse Gate E1 (east-northeast)
+    lat: -6.121483,
+    lon: 106.651348,
+    heading: 109, // Parked facing concourse Gate E1 (nose-in)
     altitude: 0,
     groundSpeed: 0,
-    targetHeading: 70,
+    targetHeading: 109,
     state: "GATE",
+    assignedGate: "E1",
     clearedRwy: "25R",
     clearedSid: "DOLTA 1C",
     squawk: "4521",

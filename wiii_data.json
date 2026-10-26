@@ -40962,7 +40962,8 @@
       "lon": 106.654469,
       "nearest_node": "8359555040",
       "terminal": "T2",
-      "subterminal": "T2F"
+      "subterminal": "T2F",
+      "heading": 161
     },
     {
       "id": "495492706",
@@ -40971,7 +40972,8 @@
       "lon": 106.654871,
       "nearest_node": "10269904982",
       "terminal": "T2",
-      "subterminal": "T2F"
+      "subterminal": "T2F",
+      "heading": 158
     },
     {
       "id": "495492707",
@@ -40980,7 +40982,8 @@
       "lon": 106.655242,
       "nearest_node": "10269904007",
       "terminal": "T2",
-      "subterminal": "T2F"
+      "subterminal": "T2F",
+      "heading": 158
     },
     {
       "id": "495492708",
@@ -40989,7 +40992,8 @@
       "lon": 106.655879,
       "nearest_node": "309103413",
       "terminal": "T2",
-      "subterminal": "T2F"
+      "subterminal": "T2F",
+      "heading": 249
     },
     {
       "id": "495492709",
@@ -40998,7 +41002,8 @@
       "lon": 106.656155,
       "nearest_node": "8359554846",
       "terminal": "T2",
-      "subterminal": "T2F"
+      "subterminal": "T2F",
+      "heading": 249
     },
     {
       "id": "495492711",
@@ -41007,7 +41012,8 @@
       "lon": 106.656127,
       "nearest_node": "8359554853",
       "terminal": "T2",
-      "subterminal": "T2F"
+      "subterminal": "T2F",
+      "heading": 248
     },
     {
       "id": "495492712",
@@ -41016,7 +41022,8 @@
       "lon": 106.655965,
       "nearest_node": "8359554916",
       "terminal": "T2",
-      "subterminal": "T2F"
+      "subterminal": "T2F",
+      "heading": 273
     },
     {
       "id": "495492713",
@@ -41025,7 +41032,8 @@
       "lon": 106.651348,
       "nearest_node": "8359555235",
       "terminal": "T2",
-      "subterminal": "T2E"
+      "subterminal": "T2E",
+      "heading": 109
     },
     {
       "id": "495492714",
@@ -41034,7 +41042,8 @@
       "lon": 106.651272,
       "nearest_node": "10268541362",
       "terminal": "T2",
-      "subterminal": "T2E"
+      "subterminal": "T2E",
+      "heading": 98
     },
     {
       "id": "495492715",
@@ -41043,7 +41052,8 @@
       "lon": 106.651333,
       "nearest_node": "10268541343",
       "terminal": "T2",
-      "subterminal": "T2E"
+      "subterminal": "T2E",
+      "heading": 98
     },
     {
       "id": "495492716",
@@ -41052,7 +41062,8 @@
       "lon": 106.651734,
       "nearest_node": "8359555163",
       "terminal": "T2",
-      "subterminal": "T2E"
+      "subterminal": "T2E",
+      "heading": 158
     },
     {
       "id": "495492717",
@@ -41061,7 +41072,8 @@
       "lon": 106.652351,
       "nearest_node": "8359555070",
       "terminal": "T2",
-      "subterminal": "T2E"
+      "subterminal": "T2E",
+      "heading": 219
     },
     {
       "id": "495492719",
@@ -41070,7 +41082,8 @@
       "lon": 106.652685,
       "nearest_node": "10269133635",
       "terminal": "T2",
-      "subterminal": "T2E"
+      "subterminal": "T2E",
+      "heading": 219
     },
     {
       "id": "495492720",
@@ -41079,7 +41092,8 @@
       "lon": 106.652999,
       "nearest_node": "309103402",
       "terminal": "T2",
-      "subterminal": "T2E"
+      "subterminal": "T2E",
+      "heading": 208
     },
     {
       "id": "495492721",
@@ -41088,7 +41102,8 @@
       "lon": 106.649957,
       "nearest_node": "10268376104",
       "terminal": "T2",
-      "subterminal": "T2D"
+      "subterminal": "T2D",
+      "heading": 68
     },
     {
       "id": "495492722",
@@ -41097,7 +41112,8 @@
       "lon": 106.649495,
       "nearest_node": "10268450187",
       "terminal": "T2",
-      "subterminal": "T2D"
+      "subterminal": "T2D",
+      "heading": 68
     },
     {
       "id": "495492723",
@@ -41106,7 +41122,8 @@
       "lon": 106.649194,
       "nearest_node": "10268476876",
       "terminal": "T2",
-      "subterminal": "T2D"
+      "subterminal": "T2D",
+      "heading": 68
     },
     {
       "id": "495492724",
@@ -41115,7 +41132,8 @@
       "lon": 106.649001,
       "nearest_node": "8359463530",
       "terminal": "T2",
-      "subterminal": "T2D"
+      "subterminal": "T2D",
+      "heading": 68
     },
     {
       "id": "495492725",
@@ -41124,7 +41142,8 @@
       "lon": 106.649439,
       "nearest_node": "10268547257",
       "terminal": "T2",
-      "subterminal": "T2D"
+      "subterminal": "T2D",
+      "heading": 158
     },
     {
       "id": "495492726",
@@ -41133,7 +41152,8 @@
       "lon": 106.649839,
       "nearest_node": "10268548419",
       "terminal": "T2",
-      "subterminal": "T2D"
+      "subterminal": "T2D",
+      "heading": 158
     },
     {
       "id": "495492727",
@@ -41142,7 +41162,8 @@
       "lon": 106.650374,
       "nearest_node": "8359555239",
       "terminal": "T2",
-      "subterminal": "T2D"
+      "subterminal": "T2D",
+      "heading": 155
     },
     {
       "id": "495492728",
@@ -41151,7 +41172,8 @@
       "lon": 106.658754,
       "nearest_node": "8359464123",
       "terminal": "T1",
-      "subterminal": "T1A"
+      "subterminal": "T1A",
+      "heading": 220
     },
     {
       "id": "495492729",
@@ -41160,7 +41182,8 @@
       "lon": 106.659238,
       "nearest_node": "8359464113",
       "terminal": "T1",
-      "subterminal": "T1A"
+      "subterminal": "T1A",
+      "heading": 219
     },
     {
       "id": "495492730",
@@ -41169,7 +41192,8 @@
       "lon": 106.659571,
       "nearest_node": "8359464113",
       "terminal": "T1",
-      "subterminal": "T1A"
+      "subterminal": "T1A",
+      "heading": 219
     },
     {
       "id": "495492731",
@@ -41178,7 +41202,8 @@
       "lon": 106.659797,
       "nearest_node": "8359464199",
       "terminal": "T1",
-      "subterminal": "T1A"
+      "subterminal": "T1A",
+      "heading": 278
     },
     {
       "id": "495492732",
@@ -41187,7 +41212,8 @@
       "lon": 106.659419,
       "nearest_node": "10252855850",
       "terminal": "T1",
-      "subterminal": "T1A"
+      "subterminal": "T1A",
+      "heading": 338
     },
     {
       "id": "495492733",
@@ -41196,7 +41222,8 @@
       "lon": 106.659028,
       "nearest_node": "8359464218",
       "terminal": "T1",
-      "subterminal": "T1A"
+      "subterminal": "T1A",
+      "heading": 338
     },
     {
       "id": "495492734",
@@ -41205,7 +41232,8 @@
       "lon": 106.658501,
       "nearest_node": "10252855829",
       "terminal": "T1",
-      "subterminal": "T1A"
+      "subterminal": "T1A",
+      "heading": 335
     },
     {
       "id": "495492735",
@@ -41214,7 +41242,8 @@
       "lon": 106.65719,
       "nearest_node": "8354598300",
       "terminal": "T1",
-      "subterminal": "T1B"
+      "subterminal": "T1B",
+      "heading": 278
     },
     {
       "id": "495492736",
@@ -41223,7 +41252,8 @@
       "lon": 106.65726,
       "nearest_node": "10252847182",
       "terminal": "T1",
-      "subterminal": "T1B"
+      "subterminal": "T1B",
+      "heading": 279
     },
     {
       "id": "495492737",
@@ -41232,7 +41262,8 @@
       "lon": 106.657208,
       "nearest_node": "8354667635",
       "terminal": "T1",
-      "subterminal": "T1B"
+      "subterminal": "T1B",
+      "heading": 278
     },
     {
       "id": "495492738",
@@ -41241,7 +41272,8 @@
       "lon": 106.656813,
       "nearest_node": "8354667688",
       "terminal": "T1",
-      "subterminal": "T1B"
+      "subterminal": "T1B",
+      "heading": 310
     },
     {
       "id": "495492739",
@@ -41250,7 +41282,8 @@
       "lon": 106.656192,
       "nearest_node": "5011224874",
       "terminal": "T1",
-      "subterminal": "T1B"
+      "subterminal": "T1B",
+      "heading": 39
     },
     {
       "id": "495492740",
@@ -41259,7 +41292,8 @@
       "lon": 106.655854,
       "nearest_node": "5011224826",
       "terminal": "T1",
-      "subterminal": "T1B"
+      "subterminal": "T1B",
+      "heading": 39
     },
     {
       "id": "495492741",
@@ -41268,7 +41302,8 @@
       "lon": 106.655538,
       "nearest_node": "8354667695",
       "terminal": "T1",
-      "subterminal": "T1B"
+      "subterminal": "T1B",
+      "heading": 38
     },
     {
       "id": "495492742",
@@ -41277,7 +41312,8 @@
       "lon": 106.653458,
       "nearest_node": "5011224812",
       "terminal": "T1",
-      "subterminal": "T1C"
+      "subterminal": "T1C",
+      "heading": 341
     },
     {
       "id": "495492743",
@@ -41286,7 +41322,8 @@
       "lon": 106.653043,
       "nearest_node": "10253571348",
       "terminal": "T1",
-      "subterminal": "T1C"
+      "subterminal": "T1C",
+      "heading": 336
     },
     {
       "id": "495492744",
@@ -41295,7 +41332,8 @@
       "lon": 106.652642,
       "nearest_node": "5011224772",
       "terminal": "T1",
-      "subterminal": "T1C"
+      "subterminal": "T1C",
+      "heading": 338
     },
     {
       "id": "495492745",
@@ -41304,7 +41342,8 @@
       "lon": 106.652021,
       "nearest_node": "10253590580",
       "terminal": "T1",
-      "subterminal": "T1C"
+      "subterminal": "T1C",
+      "heading": 39
     },
     {
       "id": "495492746",
@@ -41313,7 +41352,8 @@
       "lon": 106.651788,
       "nearest_node": "309104630",
       "terminal": "T1",
-      "subterminal": "T1C"
+      "subterminal": "T1C",
+      "heading": 69
     },
     {
       "id": "495492747",
@@ -41322,7 +41362,8 @@
       "lon": 106.651843,
       "nearest_node": "5011224756",
       "terminal": "T1",
-      "subterminal": "T1C"
+      "subterminal": "T1C",
+      "heading": 68
     },
     {
       "id": "495492748",
@@ -41331,7 +41372,8 @@
       "lon": 106.652054,
       "nearest_node": "5011224795",
       "terminal": "T1",
-      "subterminal": "T1C"
+      "subterminal": "T1C",
+      "heading": 67
     },
     {
       "id": "5123675521",
@@ -41340,7 +41382,8 @@
       "lon": 106.665165,
       "nearest_node": "8359696987",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5123900832",
@@ -41349,7 +41392,8 @@
       "lon": 106.664415,
       "nearest_node": "10266911371",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5228070331",
@@ -41358,7 +41402,8 @@
       "lon": 106.663655,
       "nearest_node": "10266916941",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5228070332",
@@ -41367,7 +41412,8 @@
       "lon": 106.6673,
       "nearest_node": "10266192703",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5228070333",
@@ -41376,7 +41422,8 @@
       "lon": 106.66657,
       "nearest_node": "10266142802",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5228070334",
@@ -41385,7 +41432,8 @@
       "lon": 106.665822,
       "nearest_node": "10266142803",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5228070335",
@@ -41394,7 +41442,8 @@
       "lon": 106.662828,
       "nearest_node": "10266916931",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5228070336",
@@ -41403,7 +41452,8 @@
       "lon": 106.662083,
       "nearest_node": "10266916921",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5228070337",
@@ -41412,7 +41462,8 @@
       "lon": 106.66124,
       "nearest_node": "8359624535",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 159
     },
     {
       "id": "5228070338",
@@ -41421,7 +41472,8 @@
       "lon": 106.668033,
       "nearest_node": "10266192702",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5249600512",
@@ -41430,7 +41482,8 @@
       "lon": 106.659435,
       "nearest_node": "8359624539",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 212
     },
     {
       "id": "5249600513",
@@ -41439,7 +41492,8 @@
       "lon": 106.659313,
       "nearest_node": "8359624540",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 221
     },
     {
       "id": "5249600514",
@@ -41448,7 +41502,8 @@
       "lon": 106.659178,
       "nearest_node": "8359624541",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 233
     },
     {
       "id": "5249600515",
@@ -41457,7 +41512,8 @@
       "lon": 106.65904,
       "nearest_node": "3986695110",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 247
     },
     {
       "id": "5249609028",
@@ -41466,7 +41522,8 @@
       "lon": 106.669554,
       "nearest_node": "10266189824",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "5249609029",
@@ -41475,7 +41532,8 @@
       "lon": 106.66879,
       "nearest_node": "10266192701",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "6269714086",
@@ -41484,7 +41542,8 @@
       "lon": 106.659179,
       "nearest_node": "309103255",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 88
     },
     {
       "id": "6269714087",
@@ -41493,7 +41552,8 @@
       "lon": 106.658976,
       "nearest_node": "8359554953",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 77
     },
     {
       "id": "6269714088",
@@ -41502,7 +41562,8 @@
       "lon": 106.658734,
       "nearest_node": "8359554853",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 68
     },
     {
       "id": "6269714089",
@@ -41511,7 +41572,8 @@
       "lon": 106.658496,
       "nearest_node": "309103258",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 67
     },
     {
       "id": "6269714090",
@@ -41520,7 +41582,8 @@
       "lon": 106.65822,
       "nearest_node": "10269943754",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 68
     },
     {
       "id": "6269714091",
@@ -41529,7 +41592,8 @@
       "lon": 106.657952,
       "nearest_node": "10269933902",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 68
     },
     {
       "id": "6269714092",
@@ -41538,7 +41602,8 @@
       "lon": 106.657685,
       "nearest_node": "10269918845",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     },
     {
       "id": "6269714093",
@@ -41547,7 +41612,8 @@
       "lon": 106.657441,
       "nearest_node": "10266926475",
       "terminal": "T3",
-      "subterminal": "T3"
+      "subterminal": "T3",
+      "heading": 158
     }
   ],
   "holding_positions": [

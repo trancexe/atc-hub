@@ -250,6 +250,21 @@ function getGateByName(ref) {
   return airportData.gates.find(g => g.ref === ref) || null;
 }
 
+function getRealisticGateHeading(gateRef) {
+  if (!gateRef) return 109;
+  if (airportData && airportData.gates) {
+    const g = airportData.gates.find(x => x.ref === gateRef);
+    if (g && g.heading !== undefined) return g.heading;
+  }
+  if (airportData && airportData.pushback_release_points && airportData.pushback_release_points[gateRef]) {
+    const pb = airportData.pushback_release_points[gateRef];
+    const dy = (pb.gate_lat || 0) - pb.release_lat;
+    const dx = ((pb.gate_lon || 0) - pb.release_lon) * Math.cos(-6.12 * Math.PI / 180);
+    return Math.round((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360);
+  }
+  return 109;
+}
+
 function executePushbackMovement(ac) {
   // Clear any existing interval
   if (ac._pushInterval) clearInterval(ac._pushInterval);

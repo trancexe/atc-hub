@@ -52,13 +52,14 @@ let aircraft = [
     pob: 156,
     sid: "DOLTA 1C",
     initialAlt: "FL140",
-    lat: -6.121757,
-    lon: 106.651077,
-    heading: 70, // Parked facing concourse Gate E1 (east-northeast)
+    lat: -6.121483,
+    lon: 106.651348,
+    heading: 109, // Parked facing concourse Gate E1 (nose-in)
     altitude: 0,
     groundSpeed: 0,
-    targetHeading: 70,
+    targetHeading: 109,
     state: "GATE",
+    assignedGate: "E1",
     clearedRwy: "25R",
     clearedSid: "DOLTA 1C",
     squawk: "4521",
@@ -3553,6 +3554,21 @@ function getGateByName(ref) {
   return airportData.gates.find(g => g.ref === ref) || null;
 }
 
+function getRealisticGateHeading(gateRef) {
+  if (!gateRef) return 109;
+  if (airportData && airportData.gates) {
+    const g = airportData.gates.find(x => x.ref === gateRef);
+    if (g && g.heading !== undefined) return g.heading;
+  }
+  if (airportData && airportData.pushback_release_points && airportData.pushback_release_points[gateRef]) {
+    const pb = airportData.pushback_release_points[gateRef];
+    const dy = (pb.gate_lat || 0) - pb.release_lat;
+    const dx = ((pb.gate_lon || 0) - pb.release_lon) * Math.cos(-6.12 * Math.PI / 180);
+    return Math.round((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360);
+  }
+  return 109;
+}
+
 function executePushbackMovement(ac) {
   // Clear any existing interval
   if (ac._pushInterval) clearInterval(ac._pushInterval);
@@ -5029,9 +5045,9 @@ const INTERACTIVE_SCENARIOS = [
         airline: "Garuda Indonesia",
         type: "B738",
         gate: "Gate E1",
-        lat: -6.1255,
-        lon: 106.6558,
-        heading: 90,
+        lat: -6.121483,
+        lon: 106.651348,
+        heading: 109,
         altitude: 0,
         groundSpeed: 0,
         state: "PARKED",
@@ -5064,9 +5080,9 @@ const INTERACTIVE_SCENARIOS = [
         airline: "Garuda Indonesia",
         type: "B738",
         gate: "Gate E1",
-        lat: -6.1255,
-        lon: 106.6558,
-        heading: 90,
+        lat: -6.121483,
+        lon: 106.651348,
+        heading: 109,
         altitude: 0,
         groundSpeed: 0,
         state: "PARKED",
@@ -5101,9 +5117,9 @@ const INTERACTIVE_SCENARIOS = [
         airline: "Garuda Indonesia",
         type: "B738",
         gate: "Gate E1",
-        lat: -6.1255,
-        lon: 106.6558,
-        heading: 90,
+        lat: -6.121483,
+        lon: 106.651348,
+        heading: 109,
         altitude: 0,
         groundSpeed: 0,
         state: "PARKED",
@@ -6063,6 +6079,11 @@ function scheduleTurnaroundOutbound(ac, delayMs = 25000) {
     ac.state = "GATE";
     ac.groundSpeed = 0;
     ac.altitude = 0;
+    if (ac.assignedGate && typeof getRealisticGateHeading === "function") {
+      const gHdg = getRealisticGateHeading(ac.assignedGate);
+      ac.heading = gHdg;
+      ac.targetHeading = gHdg;
+    }
     ac.dest = destObj.code;
     ac.pob = Math.floor(120 + Math.random() * 80);
     ac.clearedRwy = rwy;
@@ -6181,7 +6202,11 @@ function spawnOutboundDeparture() {
   const chosen = outboundCallsigns[aircraft.length % outboundCallsigns.length];
   const assignedGate = (typeof assignRealisticGate === "function")
     ? assignRealisticGate(chosen.airline, chosen.callsign)
-    : { ref: "E1", lat: -6.121757, lon: 106.651077, terminal: "T2" };
+    : { ref: "E1", lat: -6.121483, lon: 106.651348, terminal: "T2", heading: 109 };
+
+  const gateHdg = (assignedGate && assignedGate.heading !== undefined)
+    ? assignedGate.heading
+    : ((typeof getRealisticGateHeading === "function") ? getRealisticGateHeading(assignedGate.ref) : 109);
 
   const rwyKey = (aircraft.length % 2 === 0) ? "25R" : "25L";
   const allSids = (airportData && airportData.sids) ? airportData.sids : [];
@@ -6197,7 +6222,8 @@ function spawnOutboundDeparture() {
     pob: Math.floor(130 + Math.random() * 70),
     lat: assignedGate.lat,
     lon: assignedGate.lon,
-    heading: 70, // Parked at stand facing terminal/gate
+    heading: gateHdg,
+    targetHeading: gateHdg,
     altitude: 0,
     groundSpeed: 0,
     state: "GATE",
